@@ -1,0 +1,247 @@
+<!doctype html><html data-theme="dark" lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Onboarding · 3 of 3 — No-halla</title><style>:root{--font-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;--font-mono:"SF Mono",ui-monospace,monospace;--text-body:13px;--text-small:11px;--text-title:17px;--radius-control:6px;--radius-card:10px;--radius-window:14px;--radius-pill:11px;--spacing-4:4px;--spacing-8:8px;--spacing-12:12px;--spacing-16:16px;--spacing-24:24px;color-scheme:light} @media(prefers-color-scheme:dark){:root:not([data-theme]){color-scheme:dark}} :root[data-theme=dark]{color-scheme:dark} :root[data-theme=contrast]{}
+*{box-sizing:border-box;margin:0}html{background:var(--color-bg)}body{min-height:100vh;color:var(--color-text);background:var(--color-bg);font:var(--text-body)/1.38 var(--font-ui);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}button:not(:disabled),input[type=checkbox],summary,select{cursor:pointer}a{color:var(--color-blue)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--color-blue);outline-offset:2px}
+[hidden]{display:none!important}::selection{background:color-mix(in srgb,var(--color-blue) 26%,var(--color-surface));color:var(--color-text)}
+h1{font-size:var(--text-title);line-height:1.2;letter-spacing:-.015em;font-weight:650}h2{font-size:13px;font-weight:650;line-height:1.3}p{line-height:1.42}
+small,.helper{color:var(--color-muted);font-size:var(--text-small)}.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.align{display:flex;align-items:center;justify-content:space-between;gap:8px}.inline{display:flex;align-items:center;gap:8px}
+.btn-link,.tool{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:28px;background:none;border:0;padding:2px 4px;text-decoration:none;border-radius:var(--radius-control);color:var(--color-blue)}.btn-link:hover,.tool:hover{background:color-mix(in srgb,var(--color-blue) 9%,transparent)}
+.tool{color:var(--color-muted);min-width:28px}.icon{display:block;flex:none}.secondary{color:var(--color-muted)}.warn{color:var(--color-orange)}.error{color:var(--color-red)}
+.pop{padding:var(--spacing-16)}.pop-head{min-height:30px}.pop-head h1{flex:none}.pop-head span{overflow-wrap:anywhere}.lore{padding-top:3px;min-height:19px}
+.ledger{background:var(--color-surface);padding:8px 12px;border:1px solid var(--color-line);border-radius:var(--radius-card);margin-top:12px}
+.dl-main{display:grid;grid-template-columns:minmax(0,1fr) 28px;align-items:center;column-gap:5px}.ledger .inline{justify-content:space-between}
+.apps-title{margin:12px 0 2px}.apps{max-height:176px;overflow:auto;border:1px solid var(--color-line);border-radius:var(--radius-card);background:var(--color-surface)}.apps>.cmp-AppRow:last-child>.app,.apps>.doop-instance:last-child .app{border-bottom:0}
+.pop-action{margin-top:12px;text-align:center}.pop-action .helper{padding:5px 2px 0}.pop-foot{display:flex;justify-content:space-between;margin-top:11px;padding-top:6px;border-top:1px solid var(--color-line)}.pop-foot .btn-link{color:var(--color-muted)}
+.action-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}.empty{padding:15px 12px;text-align:center}.empty p{margin:5px 0 7px}
+progress{width:100%;height:5px;display:block;appearance:none;border:0;background:var(--color-line);border-radius:7px;margin:6px 0 9px}progress::-webkit-progress-bar{background:var(--color-line);border-radius:7px}progress::-webkit-progress-value{background:var(--color-orange);border-radius:7px}
+details>summary{list-style:none}summary::-webkit-details-marker{display:none}.pause-menu{position:relative}.pause-menu summary{border:1px solid var(--color-line);background:var(--color-surface);border-radius:var(--radius-control);padding:4px 8px;min-height:28px;display:flex;gap:6px;align-items:center;justify-content:center}.pause-choices{position:absolute;bottom:calc(100% + 4px);right:0;left:0;z-index:2;padding:4px;border:1px solid var(--color-line);background:var(--color-surface);border-radius:var(--radius-card)}.pause-choices a{display:block;text-align:left;padding:5px 8px}
+.window{min-height:100vh;display:flex;flex-direction:column}.titlebar{height:38px;display:grid;place-items:center;position:relative;border-bottom:1px solid var(--color-line);font-weight:600;flex:none}
+.traffic{display:flex;gap:7px;position:absolute;left:14px;top:14px}.traffic i{width:10px;height:10px;border-radius:100%;background:var(--color-line)}
+.traffic i:first-child{background:#ff5f57}.traffic i:nth-child(2){background:#febc2e}.traffic i:nth-child(3){background:#28c840}
+.onbody{padding:19px 26px 12px;flex:1;min-height:0}.onbody h1{margin:0 0 5px}.onbody>p{margin-bottom:12px}.steps{display:flex;justify-content:center;gap:6px;margin-top:13px;flex:none}.steps i{width:6px;height:6px;background:var(--color-line);border-radius:4px}.steps i[aria-current]{width:18px;background:var(--color-action)}
+.onfoot{margin-top:auto;border-top:1px solid var(--color-line);padding:11px 24px;height:52px}.intro{display:grid;grid-template-columns:239px 1fr;gap:20px;align-items:center;padding-top:23px}.intro h1{font-size:22px;line-height:1.12;margin-bottom:11px}.intro p{color:var(--color-muted)}
+.illustration{width:100%;height:auto;display:block;border-radius:var(--radius-window)}.picklist{margin:8px 0 4px;border:1px solid var(--color-line);background:var(--color-surface);border-radius:var(--radius-card);overflow:hidden}
+.pickrow{min-height:43px;padding:4px 10px;display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;gap:9px;border-bottom:1px solid var(--color-line)}.pickrow:last-child{border-bottom:0}.pickrow small{display:block;overflow-wrap:anywhere}.pickrow img{width:20px;height:20px;object-fit:contain;border-radius:5px}.pickrow input{width:17px;height:17px;accent-color:var(--color-action)}.pickrow .hit{display:grid;place-items:center;width:28px;height:28px}
+.ip-panel{padding:10px 12px;background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-card);margin:10px 0}.ip-panel strong{font-size:19px}.trust-form{display:flex;align-items:center;gap:8px;margin:5px 0}.text-input,select{min-height:28px;border:1px solid var(--color-line);background:var(--color-surface);border-radius:var(--radius-control);padding:3px 7px}.text-input{flex:1;min-width:0}.text-input::placeholder{color:var(--color-muted)}
+.onbody .toggleline{margin-top:10px}.toggleline{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:30px}.switch{width:36px;height:28px;position:relative;display:grid;place-items:center;flex:none}.switch input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer}.switch input+span{width:28px;height:16px;border-radius:20px;background:var(--color-line);pointer-events:none;position:relative}.switch input+span:after{content:'';position:absolute;width:12px;height:12px;top:2px;left:2px;background:#fff;border-radius:50%}.switch input:checked+span{background:var(--color-action)}.switch input:checked+span:after{left:14px}.switch input:focus-visible+span{outline:2px solid var(--color-blue);outline-offset:3px}
+.tabbar{display:flex;gap:8px;justify-content:center;padding:6px 10px;border-bottom:1px solid var(--color-line)}.tabbar a{display:grid;place-items:center;gap:2px;width:82px;min-height:44px;border-radius:var(--radius-control);color:var(--color-muted);font-size:11px;text-decoration:none}.tabbar a[aria-current]{color:var(--color-blue);background:color-mix(in srgb,var(--color-blue) 10%,transparent);font-weight:650}.tabbar a:hover{color:var(--color-blue)}
+.prefbody{padding:14px 24px}.group{margin-top:10px}.group h2{color:var(--color-muted);font-size:11px;margin:0 2px 5px}.groupbox{border:1px solid var(--color-line);border-radius:var(--radius-card);background:var(--color-surface);padding:0 11px}.prefrow{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:35px;border-bottom:1px solid var(--color-line);padding:3px 0}.prefrow:last-child{border-bottom:0}.prefrow small{display:block;margin-top:1px}.prefrow input[type=range]{width:104px;accent-color:var(--color-action)}.prefrow .mono{font-size:11px}.prefrow output{white-space:nowrap;min-width:30px;text-align:right}.prefrow .inline{flex:none}.prefrow .btn-link{font-size:12px}.prefgrid .prefrow{gap:8px}.prefgrid{display:grid;grid-template-columns:1.14fr 1fr;gap:12px}.prefgrid .group{min-width:0}.banner{padding:8px 10px;border:1px solid var(--color-line);border-radius:var(--radius-card);display:flex;align-items:center;gap:8px;color:var(--color-orange);margin-top:10px}.banner span{flex:1}.about{display:grid;justify-items:center;text-align:center;gap:7px;margin-top:19px}.about h1{font-size:21px}.about .orn{margin:9px 0 3px}.about .inline{margin-top:8px}
+.sheet{padding:20px 20px 14px;min-height:100vh;display:flex;flex-direction:column}.sheet h1{margin-bottom:12px}.sheet h2{font-size:11px;color:var(--color-muted);margin:10px 0 5px}.sheet .picklist{margin:0}.sheetfoot{border-top:1px solid var(--color-line);padding-top:10px;margin-top:auto;display:flex;justify-content:flex-end;gap:8px}.alert{padding:20px;min-height:100vh;display:flex;flex-direction:column;gap:9px}.alert h1{margin-top:2px}.alert p{color:var(--color-muted)}.alert .error{color:var(--color-red)}.text-input[aria-invalid=true]{border-color:var(--color-red)}.alert .sheetfoot{padding-top:12px}.notification{padding:14px;min-height:100vh}.notification .body{margin:7px 0 8px;color:var(--color-muted)}.notification strong{font-size:13px}
+.endpoints{display:grid;grid-template-columns:1fr 1fr;gap:12px}.endpointrow{min-height:32px}.endpointrow .mono{overflow-wrap:anywhere}.about .limitation{max-width:390px;margin-top:4px}.identity{padding:22px 24px}.identity h1{margin-bottom:14px}.identity h2{margin:10px 0 5px}.concepts{display:grid;grid-template-columns:1fr 1fr;gap:18px}.concept{border:1px solid var(--color-line);border-radius:var(--radius-card);padding:14px}.marks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:14px}.mark{text-align:center;border:1px solid var(--color-line);border-radius:var(--radius-card);padding:10px 3px}.mark svg{display:block;margin:0 auto 6px}.swatches{display:flex;gap:6px;margin-top:14px}.swatch{flex:1;font-size:11px}.swatch i{display:block;height:20px;border-radius:4px;margin-bottom:4px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@scope (.cmp-Button){button{font:var(--text-body) var(--font-ui);font-weight:550;min-height:28px;cursor:pointer;color:var(--color-on-action);background:var(--color-action);border:1px solid transparent;border-radius:var(--radius-control);padding:4px 14px;white-space:normal}button[data-tone=secondary]{color:var(--color-text);background:var(--color-surface);border-color:var(--color-line)}button[data-tone=plain]{color:var(--color-blue);background:transparent;padding-inline:3px}button[data-tone=destructive]{color:var(--color-red);background:var(--color-surface);border-color:var(--color-line)}button[data-tone=disabled]{color:var(--color-muted);background:var(--color-line);pointer-events:none}button[data-size=wide]{width:100%}button:hover{filter:brightness(.94)}button:focus-visible{outline:2px solid var(--color-blue);outline-offset:2px}}@scope (.cmp-Badge){.badge{display:inline-flex;align-items:center;gap:5px;min-height:22px;border-radius:11px;padding:3px 8px;font:600 var(--text-small) var(--font-ui);line-height:1.2;color:var(--color-green);background:color-mix(in srgb,currentColor 10%,transparent)}.badge[data-tone=warning],.badge[data-tone=unknown]{color:var(--color-orange)}.badge[data-tone=danger]{color:var(--color-red)}.badge[data-tone=off],.badge[data-tone=checking]{color:var(--color-muted)}svg{display:none;flex:none}.badge[data-tone=success] svg:nth-child(1),.badge[data-tone=warning] svg:nth-child(2),.badge[data-tone=checking] svg:nth-child(2),.badge[data-tone=danger] svg:nth-child(3),.badge[data-tone=unknown] svg:nth-child(4),.badge[data-tone=off] svg:nth-child(5){display:block}}@scope (.cmp-AppRow){.app{height:44px;display:flex;align-items:center;gap:9px;font:var(--text-body) var(--font-ui);padding:0 9px;border-bottom:1px solid var(--color-line)}img{width:20px;height:20px;object-fit:contain;border-radius:5px}.name{flex:1;font-weight:550}.state{color:var(--color-muted);font-size:11px}.app[data-tone=frozen] .state{color:var(--color-red)}.switch{width:34px;height:28px;display:grid;place-items:center;position:relative;cursor:pointer}.switch input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer}.switch .track{width:27px;height:16px;border-radius:20px;background:var(--color-line);position:relative;pointer-events:none}.switch input:checked+.track{background:var(--color-action)}.switch .track:after{content:'';position:absolute;left:2px;top:2px;width:12px;height:12px;background:white;border-radius:50%}.switch input:checked+.track:after{left:13px}.switch input:focus-visible+.track{outline:2px solid var(--color-blue);outline-offset:3px}.sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}@scope (.cmp-NetworkField){.field{min-height:23px;display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--color-muted);font:var(--text-small) var(--font-ui)}.field span:last-child{color:var(--color-text);font-size:var(--text-body);text-align:right}.field[data-kind=mono] span:last-child{font-family:var(--font-mono);font-variant-numeric:tabular-nums}.field[data-kind=trusted] span:last-child{color:var(--color-green);font-weight:600}}@scope (.cmp-SearchField){.search{display:flex;align-items:center;gap:6px;background:var(--color-surface);color:var(--color-muted);border:1px solid var(--color-line);border-radius:var(--radius-control);padding:0 8px;min-height:29px}.search input{border:0;background:transparent;color:var(--color-text);font:var(--text-body) var(--font-ui);width:100%;min-height:28px;outline:none}.search:focus-within{outline:2px solid var(--color-blue);outline-offset:1px}input::placeholder{color:var(--color-muted)}}body{width:min(100%,560px);min-height:420px;margin:auto} .window,.sheet,.alert,.notification{min-height:420px}</style><style>
+:root{--color-bg:#f5f6fa;--color-surface:#ffffff;--color-text:#182130;--color-muted:#515f72;--color-line:#d9e0eb;--color-blue:#1557ad;--color-action:#1b5ec4;--color-on-action:#ffffff;--color-green:#196542;--color-orange:#854600;--color-red:#a42338;--color-fjord:#16323b;--color-fjord-light:#2a4a55;--color-bronze:#b5763a;--color-metal-light:#d9a066;--color-bone:#e8e0d0;--color-ember:#c65a3a;--color-chrome:#eef1f7;--color-control:#f0f3f8;--color-control-line:#7b889c}
+@media(prefers-color-scheme:dark){:root:not([data-theme]){--color-bg:#0e1f26;--color-surface:#1c333d;--color-text:#f2f5fa;--color-muted:#a9b8c4;--color-line:#2e4a52;--color-blue:#94bcff;--color-action:#2865c6;--color-on-action:#ffffff;--color-green:#88ddb1;--color-orange:#ffc784;--color-red:#ffa1af;--color-fjord:#0e1f26;--color-fjord-light:#1c333d;--color-bronze:#d9a066;--color-metal-light:#e8be8a;--color-bone:#e8e0d0;--color-ember:#d9765a;--color-chrome:#14252d;--color-control:#24404b;--color-control-line:#7e8da3}}
+:root[data-theme="dark"]{--color-bg:#0e1f26;--color-surface:#1c333d;--color-text:#f2f5fa;--color-muted:#a9b8c4;--color-line:#2e4a52;--color-blue:#94bcff;--color-action:#2865c6;--color-on-action:#ffffff;--color-green:#88ddb1;--color-orange:#ffc784;--color-red:#ffa1af;--color-fjord:#0e1f26;--color-fjord-light:#1c333d;--color-bronze:#d9a066;--color-metal-light:#e8be8a;--color-bone:#e8e0d0;--color-ember:#d9765a;--color-chrome:#14252d;--color-control:#24404b;--color-control-line:#7e8da3}
+:root[data-theme="contrast"]{--color-bg:#ffffff;--color-surface:#ffffff;--color-text:#141414;--color-muted:#393939;--color-line:#6b6b6b;--color-blue:#004aab;--color-action:#004aab;--color-on-action:#ffffff;--color-green:#12582e;--color-orange:#713d00;--color-red:#930000;--color-fjord:#16323b;--color-fjord-light:#2a4a55;--color-bronze:#b5763a;--color-metal-light:#d9a066;--color-bone:#e8e0d0;--color-ember:#c65a3a;--color-chrome:#ffffff;--color-control:#ffffff;--color-control-line:#6b6b6b}
+/* No-halla appearance and interaction refinements */
+html[data-doop-theme="dark"] { color-scheme:dark }
+.pop > header {
+  margin:-16px -16px 0;
+  padding:12px 16px 10px;
+  background:var(--color-chrome);
+  border-bottom:1px solid var(--color-line);
+}
+.pop-head { gap:10px; min-height:28px }
+.pop-head h1 { display:flex; align-items:center; gap:7px; font-size:16px }
+.pop-head h1 svg { flex:none; color:var(--color-blue) }
+.pop-head .badge { max-width:229px; line-height:1.21; text-wrap:pretty }
+.lore { padding-top:2px; margin-left:26px; min-height:15px }
+.ledger { margin-top:11px; padding:7px 11px }
+.dl-main { border-bottom:1px solid var(--color-line); margin-bottom:3px; padding-bottom:2px }
+.dl-main .field span:last-child { font-weight:650 }
+.apps-title { margin-top:10px }
+.apps-title h2 { flex:1 }
+.apps-title > a { flex:none; justify-content:flex-end; max-width:48% }
+.apps { border-color:var(--color-line); scrollbar-width:thin }
+.pop-action { margin-top:11px }
+.pop-action .helper { max-width:100%; margin:0 auto }
+.pop-foot { margin:11px -16px -16px; padding:5px 16px 6px; background:var(--color-chrome) }
+.pop-foot .btn-link { color:var(--color-muted); font-weight:550 }
+.pause-menu summary { background:var(--color-control); border-color:var(--color-control-line) }
+.pause-choices { padding:4px; border-color:var(--color-control-line) }
+.pause-choices a + a { margin-top:1px }
+.titlebar { background:var(--color-chrome) }
+.steps { margin-top:16px }
+.steps i { width:18px; height:4px; border-radius:3px }
+.steps i[aria-current] { width:28px }
+.onbody { padding:18px 26px 12px }
+.onbody h1 { font-size:19px; margin-bottom:8px; text-wrap:balance }
+.intro { grid-template-columns:242px minmax(0,1fr); gap:24px; padding-top:20px }
+.intro h1 { font-size:23px; margin-bottom:12px; line-height:1.15 }
+.intro p { line-height:1.48 }
+.illustration { border:1px solid var(--color-fjord-light) }
+.onfoot { background:var(--color-chrome) }
+.ip-panel { background:var(--color-surface); padding:12px 13px }
+.tabbar { gap:5px; padding:6px 12px 7px; background:var(--color-chrome) }
+.tabbar a { width:88px; border:1px solid transparent; min-height:44px }
+.tabbar a[aria-current] { background:var(--color-surface); border-color:var(--color-line) }
+.tabbar a:hover:not([aria-current]) { background:var(--color-control) }
+.prefbody { padding:16px 24px }
+.group { margin-top:12px }
+.group h2 { margin:0 2px 6px; font-size:12px }
+.groupbox { padding:0 12px }
+.prefrow { min-height:38px }
+.prefrow > span:first-child { min-width:0; overflow-wrap:anywhere }
+.prefrow small { margin-top:2px }
+.prefgrid { gap:14px }
+.sheet { padding-top:18px }
+.sheet h1 { font-size:19px; margin-bottom:12px }
+.sheet h2 { font-size:12px; margin:12px 2px 6px }
+.pickrow { gap:10px; min-height:45px }
+.pickrow:has(input:checked) { background:color-mix(in srgb,var(--color-blue) 8%,var(--color-surface)) }
+.alert h1 { font-weight:650 }
+.text-input,select { border-color:var(--color-control-line) }
+.switch input + span { background:var(--color-control); box-shadow:inset 0 0 0 1px var(--color-control-line) }
+.switch input:checked + span { background:var(--color-action); box-shadow:none }
+.pickrow input[type="checkbox"], .prefrow input[type="range"] { accent-color:var(--color-blue) }
+.btn-link:active,.tool:active { background:color-mix(in srgb,var(--color-blue) 17%,transparent) }
+summary:active { background:var(--color-line) }
+.alert .error { color:var(--color-red) }
+.text-input[aria-invalid="true"] { border-color:var(--color-red) }
+@scope (.cmp-Badge) {.badge {box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 18%,transparent);padding-inline:8px;background:color-mix(in srgb,currentColor 11%,transparent)}}
+@scope (.cmp-Button) {button[data-tone=secondary],button[data-tone=destructive] {background:var(--color-control);border-color:var(--color-control-line)} button[data-tone=disabled] {background:var(--color-control);color:var(--color-muted);border-color:var(--color-line)} button:active:not([data-tone=disabled]) {filter:brightness(.88)}}
+@scope (.cmp-AppRow) {.app {padding-inline:10px} .state {font-size:12px} .switch .track {background:var(--color-control);box-shadow:inset 0 0 0 1px var(--color-control-line)} .switch input:checked+.track {box-shadow:none}}
+@scope (.cmp-SearchField) {.search {border-color:var(--color-control-line)} .search svg {flex:none}}
+@scope (.cmp-NetworkField) {.field {font-size:12px;min-height:24px} .field span:first-child {min-width:0;overflow-wrap:anywhere}}
+</style><style>/* Dark-first fjord shell, DESIGN_BRIEF.md §§7 and 10 */
+:root{--font-display:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;--opacity-badge-tint:4%}
+:root[data-theme=dark]{--opacity-badge-tint:11%}
+:root[data-theme=contrast]{--opacity-badge-tint:0%}
+@media(prefers-color-scheme:dark){:root:not([data-theme]){--opacity-badge-tint:11%}}
+.apps {max-height:178px}
+.prefrow input[type="range"] {min-height:28px}
+.pop-head h1,.intro h1,.about-repeat h1 {font-family:var(--font-display)}
+@scope (.cmp-Badge) {.badge{background:color-mix(in srgb,currentColor var(--opacity-badge-tint),transparent)}}
+
+html[data-doop-theme="dark"] body, html[data-theme="dark"] body {
+  background-image:linear-gradient(180deg,var(--color-chrome),var(--color-bg) 23%);
+}
+.pop > header {position:relative;border-bottom-color:transparent}
+.pop-head h1 {font-size:var(--text-title)}
+.gate-boundary {position:absolute;bottom:-4px;left:16px;right:16px;height:8px;pointer-events:none}
+.gate-boundary svg,.about-divider svg,.identity-rule svg {display:block;width:100%;height:8px}
+.apps-title h2,.group h2,.sheet h2 {font-size:var(--text-small);font-weight:650;text-transform:uppercase;letter-spacing:.025em;color:var(--color-muted)}
+.tabbar a[aria-current] {position:relative;padding-bottom:4px}
+.tabbar a[aria-current]::after {content:"";position:absolute;left:calc(50% - 13px);bottom:3px;width:26px;border-bottom:1px solid var(--color-bronze)}
+.gate-hero,.about-visual,.empty-scene {overflow:hidden;background:var(--color-fjord);border:1px solid var(--color-fjord-light)}
+.gate-hero {height:213px;border-radius:var(--radius-window)}
+.gate-hero svg,.about-visual svg,.empty-scene svg {display:block;width:100%;height:100%}
+.intro h1,.about-repeat h1 {font-size:23px;font-weight:650;letter-spacing:.002em;line-height:1.16}
+.empty {padding:11px 12px}
+.empty-scene {width:112px;height:50px;margin:0 auto 7px;border-radius:var(--radius-control)}
+.empty-copy {margin:6px auto 0;text-align:center}
+.empty-copy .empty-scene {width:96px;height:42px;margin-bottom:4px}
+.empty-copy .helper {padding-top:0}
+.about.about-repeat {margin:15px 0 0;display:block;text-align:left}
+.about-lead {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:center}
+.about-identity {display:grid;align-content:center;justify-items:start;gap:5px;padding:0 12px}
+.about-identity h1 {margin-top:3px}
+.about-visual {height:155px;border-radius:var(--radius-card)}
+.about-divider {margin:16px 0 11px}
+.about-description .inline {margin-top:11px}
+.about-description .limitation {max-width:460px}
+.identity-rule {margin-top:16px;color:var(--color-muted)}
+.identity-rule p {margin:4px 0 0}
+.identity .swatch i {border:1px solid var(--color-line)}
+@media(prefers-reduced-transparency:reduce) {html[data-doop-theme="dark"] body,html[data-theme="dark"] body {background-image:none}}
+
+@scope (.cmp-Badge) {.badge {box-shadow:inset 0 0 0 1px var(--color-bronze)}}
+@scope (.cmp-AppRow) {.app[data-tone=frozen] {border-radius:var(--radius-control);box-shadow:inset 0 0 0 1px var(--color-bronze)}}</style></head><body><main class="window"><header class="titlebar"><span class="traffic" aria-hidden="true"><i></i><i></i><i></i></span>No-halla</header><div class="steps" role="group" aria-label="Step 3 of 3"><i></i><i></i><i aria-current="step"></i></div><div class="onbody"><h1>Trust your VPN&#x27;s realm</h1><p class="secondary">Only this IP opens the gate. Add your VPN IP here.</p><div class="ip-panel"><div class="align"><div><div class="helper">Current IP</div><strong class="mono">203.0.113.5</strong></div><div data-href="onboarding-3.html?view=onboarding-trusted"><div class="cmp-Button"><button data-tone="primary" data-size="fit" type="button" data-part="label" data-doop-prop="label">Trust this IP</button></div></div></div><p class="helper">Connect to your VPN before trusting this address.</p></div><div class="trust-form"><label for="manual">Add manually</label><input id="manual" aria-describedby="iphelp" class="text-input mono" placeholder="IPv4, IPv6, CIDR" autocomplete="off" spellcheck="false"><div data-validate><div class="cmp-Button"><button data-tone="secondary" data-size="fit" type="button" data-part="label" data-doop-prop="label">Add</button></div></div></div><p class="helper " id="iphelp" aria-live="polite">Enter an IPv4, IPv6 or CIDR address.</p><label class="toggleline">Launch No-halla at login<span class="switch"><input type="checkbox" aria-label="Launch No-halla at login" checked><span></span></span></label></div><footer class="align onfoot"><div data-href="onboarding-2.html"><div class="cmp-Button"><button data-tone="secondary" data-size="fit" type="button" data-part="label" data-doop-prop="label">Back</button></div></div><div class="cmp-Button"><button data-tone="disabled" data-size="fit" disabled type="button" data-part="label" data-doop-prop="label">Finish</button></div></footer></main><template id="view-onboarding-trusted" data-width="560" data-height="420" data-theme="" data-language="en"><main class="window"><header class="titlebar"><span class="traffic" aria-hidden="true"><i></i><i></i><i></i></span>No-halla</header><div class="steps" role="group" aria-label="Step 3 of 3"><i></i><i></i><i aria-current="step"></i></div><div class="onbody"><h1>Trust your VPN&#x27;s realm</h1><p class="secondary">Only this IP opens the gate. Add your VPN IP here.</p><div class="ip-panel"><div class="align"><div><div class="helper">Current IP</div><strong class="mono">203.0.113.5</strong></div><div class="cmp-Badge"><span data-tone="success" class="badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-3.3 7-10V6l-7-3-7 3v6c0 6.7 7 10 7 10Z"/><path d="m9 12 2 2 4-4"/></svg><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6m4-6v6"/></svg><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-3.3 7-10V6l-7-3-7 3v6c0 6.7 7 10 7 10Z"/><path d="M12 8v4m0 4h.01"/></svg><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 18 18M7 7 5 8v4c0 6 7 10 7 10s3-1 5-4m2-4V6l-7-3-3 1"/></svg><span data-part="label" data-doop-prop="label">Trusted IP saved</span></span></div></div><p class="helper">Connect to your VPN before trusting this address.</p></div><div class="trust-form"><label for="manual">Add manually</label><input id="manual" aria-describedby="iphelp" class="text-input mono" placeholder="IPv4, IPv6, CIDR" autocomplete="off" spellcheck="false"><div data-validate><div class="cmp-Button"><button data-tone="secondary" data-size="fit" type="button" data-part="label" data-doop-prop="label">Add</button></div></div></div><p class="helper " id="iphelp" aria-live="polite">Enter an IPv4, IPv6 or CIDR address.</p><label class="toggleline">Launch No-halla at login<span class="switch"><input type="checkbox" aria-label="Launch No-halla at login" checked><span></span></span></label></div><footer class="align onfoot"><div data-href="onboarding-2.html"><div class="cmp-Button"><button data-tone="secondary" data-size="fit" type="button" data-part="label" data-doop-prop="label">Back</button></div></div><div data-href="popover-protected.html"><div class="cmp-Button"><button data-tone="primary" data-size="fit" type="button" data-part="label" data-doop-prop="label">Finish</button></div></div></footer></main></template>
+<template id="view-onboarding-invalid" data-width="560" data-height="420" data-theme="" data-language="en"><main class="window"><header class="titlebar"><span class="traffic" aria-hidden="true"><i></i><i></i><i></i></span>No-halla</header><div class="steps" role="group" aria-label="Step 3 of 3"><i></i><i></i><i aria-current="step"></i></div><div class="onbody"><h1>Trust your VPN&#x27;s realm</h1><p class="secondary">Only this IP opens the gate. Add your VPN IP here.</p><div class="ip-panel"><div class="align"><div><div class="helper">Current IP</div><strong class="mono">203.0.113.5</strong></div><div data-href="onboarding-3.html?view=onboarding-trusted"><div class="cmp-Button"><button data-tone="primary" data-size="fit" type="button" data-part="label" data-doop-prop="label">Trust this IP</button></div></div></div><p class="helper">Connect to your VPN before trusting this address.</p></div><div class="trust-form"><label for="manual">Add manually</label><input id="manual" aria-describedby="iphelp" class="text-input mono" placeholder="IPv4, IPv6, CIDR" autocomplete="off" spellcheck="false" value="203.0.113.999" aria-invalid="true"><div data-validate><div class="cmp-Button"><button data-tone="secondary" data-size="fit" type="button" data-part="label" data-doop-prop="label">Add</button></div></div></div><p class="helper error" id="iphelp" aria-live="polite">Enter a valid IPv4, IPv6 or CIDR address.</p><label class="toggleline">Launch No-halla at login<span class="switch"><input type="checkbox" aria-label="Launch No-halla at login" checked><span></span></span></label></div><footer class="align onfoot"><div data-href="onboarding-2.html"><div class="cmp-Button"><button data-tone="secondary" data-size="fit" type="button" data-part="label" data-doop-prop="label">Back</button></div></div><div class="cmp-Button"><button data-tone="disabled" data-size="fit" disabled type="button" data-part="label" data-doop-prop="label">Finish</button></div></footer></main></template>
+<script>
+const preview = new URLSearchParams(location.search);
+const state = document.getElementById("view-" + preview.get("view"));
+if (state instanceof HTMLTemplateElement) {
+  document.querySelector("main").replaceWith(state.content.cloneNode(true));
+  const main = document.querySelector("main");
+  const width = state.dataset.width;
+  const height = state.dataset.height;
+  document.body.style.width = "min(100%, " + width + "px)";
+  document.body.style.minHeight = height + "px";
+  if (main.matches(".window,.sheet,.alert,.notification")) main.style.minHeight = height + "px";
+  if (state.dataset.theme) document.documentElement.dataset.theme = state.dataset.theme;
+  document.documentElement.lang = state.dataset.language;
+}
+const previewTheme = preview.get("theme");
+if (previewTheme === "system") document.documentElement.removeAttribute("data-theme");
+if (["light", "dark", "contrast"].includes(previewTheme)) document.documentElement.dataset.theme = previewTheme;
+
+function navigateInAppearance(href) {
+  const next = new URL(href, location.href);
+  const appearance = previewTheme === "system" ? "system" : document.documentElement.dataset.theme;
+  if (appearance && !next.searchParams.has("theme")) next.searchParams.set("theme", appearance);
+  location.href = next.href;
+}
+document.addEventListener("click", event => {
+  const manual = event.target.closest("[data-validate]");
+  if (manual) {
+    const field = document.querySelector("#manual");
+    field.dispatchEvent(new Event("input", {bubbles:true}));
+    if (field.value.trim() && field.getAttribute("aria-invalid") === "false") {
+      navigateInAppearance("onboarding-3.html?view=onboarding-trusted");
+    } else {
+      field.focus();
+    }
+    return;
+  }
+  const link = event.target.closest("[data-href]");
+  if (link && !event.target.disabled) {
+    event.preventDefault();
+    navigateInAppearance(link.dataset.href);
+  }
+});
+document.addEventListener("input", event => {
+  const input = event.target;
+  if (input.type === "range") {
+    const output = input.nextElementSibling;
+    output.textContent = input.value + " " + output.textContent.split(" ")[1];
+  }
+  if (input.type === "search") {
+    const term = input.value.trim().toLowerCase();
+    let count = 0;
+    document.querySelectorAll("[data-search]").forEach(row => {
+      const visible = row.dataset.search.includes(term);
+      row.hidden = !visible;
+      if (visible) count++;
+    });
+    const empty = document.querySelector("[data-no-results]");
+    if (empty) empty.hidden = count !== 0;
+  }
+  if (input.type === "checkbox" && input.closest(".pickrow")) {
+    const choices = document.querySelectorAll(".pickrow input:checked:not(:disabled)").length;
+    const summary = document.querySelector("[data-count]");
+    if (summary) summary.textContent = choices === 1 ? "1 app selected" : choices + " apps selected";
+    const add = document.querySelector(".sheetfoot .cmp-Button[data-placeholder], .sheetfoot > div:last-child button");
+    if (add) {
+      add.disabled = choices === 0;
+      add.dataset.tone = choices === 0 ? "disabled" : "primary";
+    }
+  }
+  if (input.hasAttribute("data-endpoint")) {
+    const valid = URL.canParse(input.value) && new URL(input.value).protocol === "https:";
+    const error = document.querySelector("#endpoint-help");
+    const save = document.querySelector("[data-save-endpoint] button");
+    input.setAttribute("aria-invalid", String(!valid));
+    error.classList.toggle("error", !valid);
+    error.textContent = valid ? "Use an HTTPS endpoint that returns an IP address." : "Enter a valid HTTPS URL.";
+    save.disabled = !valid;
+    save.dataset.tone = valid ? "primary" : "disabled";
+  }
+  if (input.id === "manual") {
+    const value = input.value.trim();
+    const [addr, bits, ...extra] = value.split("/");
+    const ipv4 = /^(?:\d{1,3}\.){3}\d{1,3}$/.test(addr) && addr.split(".").every(n => Number(n) <= 255);
+    const ipv6 = addr.includes(":") && URL.canParse("http://[" + addr + "]/");
+    const valid = !extra.length && (ipv4 || ipv6) && (bits === undefined || (/^\d+$/.test(bits) && Number(bits) <= (ipv4 ? 32 : 128)));
+    const error = value !== "" && !valid;
+    input.setAttribute("aria-invalid", String(error));
+    const help = document.querySelector("#iphelp");
+    help.classList.toggle("error", error);
+    help.textContent = error ? "Enter a valid IPv4, IPv6 or CIDR address." : "Enter an IPv4, IPv6 or CIDR address.";
+  }
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") document.querySelectorAll("details[open]").forEach(item => item.removeAttribute("open"));
+});
+</script></body></html>

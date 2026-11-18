@@ -1,0 +1,578 @@
+{
+  "brand.name": {
+    "en": "No-halla",
+    "ru": "No-halla"
+  },
+  "brand.tagline": {
+    "en": "Valhalla can wait.",
+    "ru": "Вальхалла подождёт."
+  },
+  "status.protected": {
+    "en": "Protected",
+    "ru": "Защищено"
+  },
+  "status.protected.lore": {
+    "en": "The gate holds.",
+    "ru": "Ворота держат."
+  },
+  "status.checking": {
+    "en": "Checking…",
+    "ru": "Проверяем…"
+  },
+  "status.checking.lore": {
+    "en": "Testing the gate.",
+    "ru": "Проверяем ворота."
+  },
+  "status.grace": {
+    "en": "VPN lost — freezing in %ds",
+    "ru": "VPN пропал — заморозка через %d с"
+  },
+  "status.grace.lore": {
+    "en": "The gate is closing.",
+    "ru": "Ворота закрываются."
+  },
+  "status.frozen": {
+    "en": "Frozen",
+    "ru": "Заморожено"
+  },
+  "status.frozen.lore": {
+    "en": "Waiting at the gate.",
+    "ru": "Ждут у ворот."
+  },
+  "status.unknown": {
+    "en": "Can't verify IP",
+    "ru": "Не удаётся проверить IP"
+  },
+  "status.unknown.lore": {
+    "en": "The gate doesn't answer.",
+    "ru": "Ворота не отвечают."
+  },
+  "status.paused": {
+    "en": "Protection off until %@",
+    "ru": "Защита выключена до %@"
+  },
+  "status.paused.lore": {
+    "en": "The gate is open.",
+    "ru": "Ворота открыты."
+  },
+  "status.disabled": {
+    "en": "Protection off",
+    "ru": "Защита выключена"
+  },
+  "status.disabled.lore": {
+    "en": "The gate is open.",
+    "ru": "Ворота открыты."
+  },
+  "status.setup": {
+    "en": "Set up trusted IP",
+    "ru": "Добавьте доверенный IP"
+  },
+  "status.setup.lore": {
+    "en": "No trusted realm yet.",
+    "ru": "У ворот пока нет доверенного мира."
+  },
+  "status.bypass": {
+    "en": "Bypassing until %@",
+    "ru": "Обход до %@"
+  },
+  "status.bypass.lore": {
+    "en": "The gate is ajar.",
+    "ru": "Ворота приоткрыты."
+  },
+  "network.currentIP": {
+    "en": "Current IP",
+    "ru": "Текущий IP"
+  },
+  "network.vpnInterface": {
+    "en": "VPN interface",
+    "ru": "VPN-интерфейс"
+  },
+  "network.trusted": {
+    "en": "Trusted",
+    "ru": "Доверенный"
+  },
+  "network.addCurrentIP": {
+    "en": "Add current IP",
+    "ru": "Добавить текущий IP"
+  },
+  "apps.title": {
+    "en": "Protected apps",
+    "ru": "Защищённые приложения"
+  },
+  "apps.add": {
+    "en": "Add app",
+    "ru": "Добавить приложение"
+  },
+  "apps.empty": {
+    "en": "No one is guarding the gate yet",
+    "ru": "Ворота пока никто не охраняет"
+  },
+  "apps.choose": {
+    "en": "Choose apps",
+    "ru": "Выбрать приложения"
+  },
+  "apps.active": {
+    "en": "Active",
+    "ru": "Активно"
+  },
+  "apps.frozen": {
+    "en": "Frozen",
+    "ru": "Заморожено"
+  },
+  "apps.notRunning": {
+    "en": "Not running",
+    "ru": "Не запущено"
+  },
+  "action.freezeNow": {
+    "en": "Freeze now",
+    "ru": "Заморозить сейчас"
+  },
+  "action.cancel": {
+    "en": "Cancel",
+    "ru": "Отмена"
+  },
+  "action.resumeAll": {
+    "en": "Resume all",
+    "ru": "Возобновить все"
+  },
+  "action.retry": {
+    "en": "Retry",
+    "ru": "Повторить"
+  },
+  "action.pause": {
+    "en": "Pause",
+    "ru": "Пауза"
+  },
+  "action.pause15": {
+    "en": "15 minutes",
+    "ru": "15 минут"
+  },
+  "action.pause60": {
+    "en": "1 hour",
+    "ru": "1 час"
+  },
+  "action.pauseUntilRelaunch": {
+    "en": "Until relaunch",
+    "ru": "До перезапуска"
+  },
+  "action.turnOn": {
+    "en": "Turn on now",
+    "ru": "Включить сейчас"
+  },
+  "action.quit": {
+    "en": "Quit",
+    "ru": "Выйти"
+  },
+  "action.settings": {
+    "en": "Settings",
+    "ru": "Настройки"
+  },
+  "caption.resumeBypass": {
+    "en": "Apps will unfreeze for 5 minutes, then protection resumes.",
+    "ru": "Приложения возобновятся на 5 минут, затем защита включится снова."
+  },
+  "onboarding.1.title": {
+    "en": "Keep the gate closed when the VPN falls",
+    "ru": "Закрывайте ворота, когда падает VPN"
+  },
+  "onboarding.1.body": {
+    "en": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate until your VPN returns.",
+    "ru": "No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, пока VPN не вернётся."
+  },
+  "onboarding.2.title": {
+    "en": "Choose who waits at the gate",
+    "ru": "Выберите, кто будет ждать у ворот"
+  },
+  "onboarding.3.title": {
+    "en": "Trust your VPN's realm",
+    "ru": "Доверьтесь миру вашего VPN"
+  },
+  "onboarding.3.body": {
+    "en": "Only this IP opens the gate. Add your VPN IP here.",
+    "ru": "Только этот IP открывает ворота. Добавьте сюда IP вашего VPN."
+  },
+  "onboarding.launchAtLogin": {
+    "en": "Launch No-halla at login",
+    "ru": "Запускать No-halla при входе"
+  },
+  "onboarding.skip": {
+    "en": "Skip setup",
+    "ru": "Пропустить настройку"
+  },
+  "notification.frozen.title": {
+    "en": "The gate is closed",
+    "ru": "Ворота закрыты"
+  },
+  "notification.frozen.body": {
+    "en": "Your IP changed to %@. %@ are waiting at the gate until your VPN returns.",
+    "ru": "Ваш IP изменился на %@. %@ ждут у ворот, пока VPN не вернётся."
+  },
+  "notification.resumed.title": {
+    "en": "The gate is open",
+    "ru": "Ворота открыты"
+  },
+  "notification.resumed.body": {
+    "en": "Trusted IP is back. %@ are running again.",
+    "ru": "Доверенный IP вернулся. %@ снова работают."
+  },
+  "notification.unknown.title": {
+    "en": "The gate doesn't answer",
+    "ru": "Ворота не отвечают"
+  },
+  "notification.unknown.body": {
+    "en": "No-halla can't reach the IP check services. Protected apps will stay frozen until the check succeeds.",
+    "ru": "No-halla не может связаться с сервисами проверки IP. Защищённые приложения останутся замороженными, пока проверка не пройдёт."
+  },
+  "quit.title": {
+    "en": "Quit No-halla?",
+    "ru": "Выйти из No-halla?"
+  },
+  "quit.body": {
+    "en": "%d frozen apps will be resumed. The gate will open and protection will stop until you launch No-halla again.",
+    "ru": "Замороженные приложения (%d) возобновятся. Ворота откроются, а защита остановится до следующего запуска No-halla."
+  },
+  "quit.confirm": {
+    "en": "Quit and Resume",
+    "ru": "Выйти и возобновить"
+  },
+  "empty.noTrusted": {
+    "en": "No trusted realm yet. Protection can't start.",
+    "ru": "У ворот пока нет доверенного мира. Защита не может начаться."
+  },
+  "empty.offline": {
+    "en": "You're offline. The gate will be checked when the network is back.",
+    "ru": "Вы офлайн. Ворота будут проверены, когда сеть вернётся."
+  },
+  "ui.continue": {
+    "en": "Continue",
+    "ru": "Продолжить"
+  },
+  "ui.back": {
+    "en": "Back",
+    "ru": "Назад"
+  },
+  "ui.finish": {
+    "en": "Finish",
+    "ru": "Готово"
+  },
+  "ui.add-apps": {
+    "en": "Add apps",
+    "ru": "Добавить приложения"
+  },
+  "ui.search-applications": {
+    "en": "Search applications",
+    "ru": "Поиск приложений"
+  },
+  "ui.running": {
+    "en": "Running",
+    "ru": "Запущены"
+  },
+  "ui.applications": {
+    "en": "Applications",
+    "ru": "Приложения"
+  },
+  "ui.added": {
+    "en": "Added",
+    "ru": "Добавлено"
+  },
+  "ui.add": {
+    "en": "Add",
+    "ru": "Добавить"
+  },
+  "ui.add-other-app": {
+    "en": "Add other app…",
+    "ru": "Добавить другое…"
+  },
+  "ui.2-apps-selected": {
+    "en": "2 apps selected",
+    "ru": "Выбрано 2 приложения"
+  },
+  "ui.trust-this-ip": {
+    "en": "Trust this IP",
+    "ru": "Доверять этому IP"
+  },
+  "ui.add-manually": {
+    "en": "Add manually",
+    "ru": "Добавить вручную"
+  },
+  "ui.connect-to-your-vpn-before-trusting-this-address": {
+    "en": "Connect to your VPN before trusting this address.",
+    "ru": "Подключите VPN, прежде чем доверять этому адресу."
+  },
+  "ui.enter-an-ipv4-ipv6-or-cidr-address": {
+    "en": "Enter an IPv4, IPv6 or CIDR address.",
+    "ru": "Введите адрес IPv4, IPv6 или CIDR."
+  },
+  "ui.enter-a-valid-ipv4-ipv6-or-cidr-address": {
+    "en": "Enter a valid IPv4, IPv6 or CIDR address.",
+    "ru": "Проверьте формат IPv4, IPv6 или CIDR."
+  },
+  "ui.launch-at-login": {
+    "en": "Launch at login",
+    "ru": "Запускать при входе"
+  },
+  "ui.notifications": {
+    "en": "Notifications",
+    "ru": "Уведомления"
+  },
+  "ui.language": {
+    "en": "Language",
+    "ru": "Язык"
+  },
+  "ui.system": {
+    "en": "System",
+    "ru": "Системный"
+  },
+  "ui.general": {
+    "en": "General",
+    "ru": "Основные"
+  },
+  "ui.protection": {
+    "en": "Protection",
+    "ru": "Защита"
+  },
+  "ui.advanced": {
+    "en": "Advanced",
+    "ru": "Дополнительно"
+  },
+  "ui.about": {
+    "en": "About",
+    "ru": "О программе"
+  },
+  "ui.startup": {
+    "en": "Startup",
+    "ru": "Запуск"
+  },
+  "ui.preferences": {
+    "en": "Preferences",
+    "ru": "Предпочтения"
+  },
+  "ui.grace-period": {
+    "en": "Grace period",
+    "ru": "Задержка заморозки"
+  },
+  "ui.check-interval": {
+    "en": "Check interval",
+    "ru": "Интервал проверки"
+  },
+  "ui.apps-freeze-after-this-delay-when-the-ip-changes": {
+    "en": "Apps freeze after this delay when the IP changes.",
+    "ru": "Приложения замрут через это время после смены IP."
+  },
+  "ui.freeze-when-ip-can-t-be-verified": {
+    "en": "Freeze when IP can’t be verified",
+    "ru": "Замораживать, если IP не удалось проверить"
+  },
+  "ui.check-ipv6": {
+    "en": "Check IPv6",
+    "ru": "Проверять IPv6"
+  },
+  "ui.require-active-vpn-interface": {
+    "en": "Require active VPN interface",
+    "ru": "Требовать активный VPN-интерфейс"
+  },
+  "ui.protection-requires-an-active-tunnel-when-this-is-on": {
+    "en": "Protection requires an active tunnel when this is on.",
+    "ru": "При включении защите нужен активный туннель."
+  },
+  "ui.trusted-ips": {
+    "en": "Trusted IPs",
+    "ru": "Доверенные IP"
+  },
+  "ui.edit": {
+    "en": "Edit",
+    "ru": "Изменить"
+  },
+  "ui.remove": {
+    "en": "Remove",
+    "ru": "Удалить"
+  },
+  "ui.ip-check-endpoints": {
+    "en": "IP check endpoints",
+    "ru": "Сервисы проверки IP"
+  },
+  "ui.reset-to-defaults": {
+    "en": "Reset to defaults",
+    "ru": "Вернуть исходные"
+  },
+  "ui.manual-resume-bypass": {
+    "en": "Manual resume bypass",
+    "ru": "Обход после возобновления"
+  },
+  "ui.log-level": {
+    "en": "Log level",
+    "ru": "Уровень журнала"
+  },
+  "ui.export-diagnostics": {
+    "en": "Export diagnostics…",
+    "ru": "Экспорт диагностики…"
+  },
+  "ui.reset-all-settings": {
+    "en": "Reset all settings?",
+    "ru": "Сбросить все настройки?"
+  },
+  "ui.free-and-open-source-mit-license": {
+    "en": "Free and open source. MIT License.",
+    "ru": "Бесплатно и с открытым кодом. Лицензия MIT."
+  },
+  "ui.repository": {
+    "en": "Repository",
+    "ru": "Репозиторий"
+  },
+  "ui.copy-version-info": {
+    "en": "Copy version info",
+    "ru": "Копировать данные о версии"
+  },
+  "ui.open-system-settings": {
+    "en": "Open System Settings",
+    "ru": "Открыть системные настройки"
+  },
+  "ui.notifications-are-off-in-system-settings": {
+    "en": "Notifications are off in System Settings.",
+    "ru": "Уведомления отключены в системных настройках."
+  },
+  "ui.couldn-t-enable-launch-at-login-try-again": {
+    "en": "Couldn’t enable launch at login. Try again.",
+    "ru": "Не удалось настроить запуск при входе. Повторите попытку."
+  },
+  "ui.resume-protection": {
+    "en": "Resume protection",
+    "ru": "Возобновить защиту"
+  },
+  "ui.turn-on": {
+    "en": "Turn on",
+    "ru": "Включить"
+  },
+  "ui.yes": {
+    "en": "Yes",
+    "ru": "Да"
+  },
+  "ui.no": {
+    "en": "No",
+    "ru": "Нет"
+  },
+  "ui.checking-resumes-at-14-32": {
+    "en": "Checking resumes at 14:32.",
+    "ru": "Проверка возобновится в 14:32."
+  },
+  "ui.refresh-current-ip": {
+    "en": "Refresh current IP",
+    "ru": "Обновить текущий IP"
+  },
+  "ui.apps-are-running-until-protection-resumes": {
+    "en": "Apps are running until protection resumes.",
+    "ru": "Приложения работают до возобновления защиты."
+  },
+  "ui.no-matching-applications": {
+    "en": "No matching applications",
+    "ru": "Подходящих приложений нет"
+  },
+  "ui.freezing-terminal-may-interrupt-active-commands": {
+    "en": "Freezing Terminal may interrupt active commands.",
+    "ru": "Заморозка Terminal может прервать активные команды."
+  },
+  "ui.system-app-can-t-be-protected": {
+    "en": "System app. Can’t be protected.",
+    "ru": "Системное приложение. Его нельзя защитить."
+  },
+  "ui.no-halla-protected": {
+    "en": "No-halla, protected",
+    "ru": "No-halla, защищено"
+  },
+  "ui.no-halla-apps-frozen": {
+    "en": "No-halla, apps frozen",
+    "ru": "No-halla, приложения заморожены"
+  },
+  "ui.no-halla-checking-ip": {
+    "en": "No-halla, checking IP",
+    "ru": "No-halla, проверяем IP"
+  },
+  "ui.no-halla-protection-off": {
+    "en": "No-halla, protection off",
+    "ru": "No-halla, защита выключена"
+  },
+  "ui.no-halla-can-t-verify-ip": {
+    "en": "No-halla, can’t verify IP",
+    "ru": "No-halla, не удаётся проверить IP"
+  },
+  "ui.no-halla-vpn-lost": {
+    "en": "No-halla, VPN lost",
+    "ru": "No-halla, VPN пропал"
+  },
+  "ui.no-halla-add-a-trusted-ip": {
+    "en": "No-halla, add a trusted IP",
+    "ru": "No-halla, добавьте доверенный IP"
+  },
+  "ui.no-halla-bypassing": {
+    "en": "No-halla, bypassing",
+    "ru": "No-halla, обход защиты"
+  },
+  "ui.open-no-halla": {
+    "en": "Open No-halla",
+    "ru": "Открыть No-halla"
+  },
+  "ui.reset-settings": {
+    "en": "Reset settings",
+    "ru": "Сбросить настройки"
+  },
+  "ui.frozen-apps-will-resume-and-your-preferences-will-return-to-their-defaults": {
+    "en": "Frozen apps will resume and your preferences will return to their defaults.",
+    "ru": "Замороженные приложения возобновятся, а настройки вернутся к исходным."
+  },
+  "ui.protection-is-enabled-for-app": {
+    "en": "Protection is enabled for {app}",
+    "ru": "Защита приложения {app}"
+  },
+  "ui.edit-trusted-ip": {
+    "en": "Edit trusted IP",
+    "ru": "Изменить доверенный IP"
+  },
+  "ui.apply-language-change": {
+    "en": "Apply language change",
+    "ru": "Применить язык"
+  },
+  "ui.version-0-1-0": {
+    "en": "Version 0.1.0",
+    "ru": "Версия 0.1.0"
+  },
+  "ui.trusted-ip-saved": {
+    "en": "Trusted IP saved",
+    "ru": "Доверенный IP сохранён"
+  },
+  "ui.save": {
+    "en": "Save",
+    "ru": "Сохранить"
+  },
+  "ui.use-an-https-endpoint-that-returns-an-ip-address": {
+    "en": "Use an HTTPS endpoint that returns an IP address.",
+    "ru": "Укажите HTTPS-адрес сервиса, который возвращает IP."
+  },
+  "ui.no-halla-waiting-for-vpn": {
+    "en": "No-halla, waiting for VPN",
+    "ru": "No-halla, ждём VPN"
+  },
+  "ui.sigstop-pauses-app-execution-macos-can-still-send-buffered-data-or-finish-existing-connections": {
+    "en": "SIGSTOP pauses app execution. macOS can still send buffered data or finish existing connections.",
+    "ru": "SIGSTOP приостанавливает выполнение приложения. macOS может отправить данные из буфера или завершить работу существующих соединений."
+  },
+  "ui.enter-a-valid-https-url": {
+    "en": "Enter a valid HTTPS URL.",
+    "ru": "Введите корректный HTTPS-адрес."
+  },
+  "ui.protect-app": {
+    "en": "Protect {app}",
+    "ru": "Защищать {app}"
+  },
+  "ui.edit-family-endpoint": {
+    "en": "Edit {family} endpoint",
+    "ru": "Изменить адрес проверки {family}"
+  },
+  "ui.included-in-protection": {
+    "en": "Included in protection",
+    "ru": "Включено в защиту"
+  },
+  "ui.login-registration-failed": {
+    "en": "Login registration failed",
+    "ru": "Не удалось настроить запуск при входе"
+  }
+}
