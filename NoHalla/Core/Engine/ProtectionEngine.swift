@@ -108,6 +108,8 @@ actor ProtectionEngine {
     private var pauseTimer: DispatchSourceTimer?
     private var periodicTimer: DispatchSourceTimer?
     private var reconcileTimer: DispatchSourceTimer?
+    private var checkRetryTimer: DispatchSourceTimer?
+    private var pendingCheck = false
     private var wakeObserver: NSObjectProtocol?
     private var launchObserver: NSObjectProtocol?
     private var started = false
@@ -154,6 +156,11 @@ actor ProtectionEngine {
         startReconcileTimer()
 
         await applyEvent(.appStarted(configValid: true))
+        // R5: honor a persisted disabled protection at startup (D27); do not
+        // run checking → grace → freeze against a master switch that is off.
+        if !config.protection.enabled {
+            await applyEvent(.protectionDisabled)
+        }
         publishSnapshot()
     }
 
@@ -205,7 +212,7 @@ actor ProtectionEngine {
         case .turnOnNow:
             await applyEvent(.turnOnNowTapped)
         case .retryCheck:
-            await runCheck()
+            requestImmediateCheck()
         case .addCurrentIP:
             await addCurrentIP()
         case .setProtectionEnabled(let enabled):
@@ -227,16 +234,16 @@ actor ProtectionEngine {
         // FR-12: recreate timers (no catch-up) and check immediately.
         startPeriodicTimer()
         startReconcileTimer()
-        await runCheck()
+        requestImmediateCheck()
     }
 
     // MARK: - Verification
 
-    private func runCheck() async {
+    private func runCheck() async -> Bool {
         let online = monitor.isOnline
         guard let result = await verifier.check(config: config, online: online) else {
             // Throttled or backed off: keep current state.
-            return
+            return false
         }
         lastCheck = Date()
         currentIPv4 = result.currentIPv4
@@ -245,6 +252,15 @@ actor ProtectionEngine {
 
         let verdict = composeVerdict(result)
         lastVerdictAllowed = (verdict == .allowed)
+
+        // R2: an active manual-resume bypass suppresses freezing (FR-22). The
+        // apps keep running until the window expires; only refresh IP/snapshot,
+        // never feed a disallowed/unknown verdict into grace/freeze.
+        if let bypassDeadline = bypassDeadline, bypassDeadline > Date() {
+            publishSnapshot()
+            return true
+        }
+
         let event: ProtectionEvent
         switch verdict {
         case .allowed: event = .ipAllowed
@@ -252,6 +268,7 @@ actor ProtectionEngine {
         case .unknown: event = .noQuorum
         }
         await applyEvent(event)
+        return true
     }
 
     private enum Verdict { case allowed, disallowed, unknown }
@@ -326,8 +343,40 @@ actor ProtectionEngine {
         }
         publishSnapshot()
         if needsCheck {
-            Task { await self.runCheck() }
+            requestImmediateCheck()
         }
+    }
+
+    // MARK: - Immediate check with retry (R6)
+
+    /// Requests a check that must actually run. If the verifier is throttled or
+    /// backed off (returns nil), retry after the 3 s minimum batch interval so a
+    /// cancelled grace / bypass / pause never leaves a silent multi-second hole.
+    private func requestImmediateCheck() {
+        pendingCheck = true
+        Task { await self.runPendingCheck() }
+    }
+
+    private func runPendingCheck() async {
+        let ran = await runCheck()
+        if ran {
+            pendingCheck = false
+            checkRetryTimer?.cancel()
+            checkRetryTimer = nil
+        } else if pendingCheck {
+            scheduleCheckRetry()
+        }
+    }
+
+    private func scheduleCheckRetry() {
+        checkRetryTimer?.cancel()
+        let timer = DispatchSource.makeTimerSource(queue: timerQueue)
+        timer.schedule(deadline: .now() + 3)
+        timer.setEventHandler { [weak self] in
+            Task { await self?.runPendingCheck() }
+        }
+        timer.resume()
+        checkRetryTimer = timer
     }
 
     // MARK: - Freeze / resume (sequential on this actor)
@@ -395,7 +444,7 @@ actor ProtectionEngine {
         } else if newConfig.protection.enabled && !wasEnabled {
             await applyEvent(.protectionEnabled)
         } else {
-            await runCheck()
+            requestImmediateCheck()
         }
         publishSnapshot()
     }
@@ -419,7 +468,7 @@ actor ProtectionEngine {
         if changed {
             try? configStore.save(config)
         }
-        await runCheck()
+        requestImmediateCheck()
     }
 
     // MARK: - Timers
@@ -430,7 +479,7 @@ actor ProtectionEngine {
         let timer = DispatchSource.makeTimerSource(queue: timerQueue)
         timer.schedule(deadline: .now() + interval, repeating: interval)
         timer.setEventHandler { [weak self] in
-            Task { await self?.runCheck() }
+            Task { _ = await self?.runCheck() }
         }
         timer.resume()
         periodicTimer = timer
@@ -489,6 +538,8 @@ actor ProtectionEngine {
 
     private func startBypass(_ minutes: Int) {
         cancelBypass()
+        // R2: a bypass window must not coexist with a running grace countdown.
+        cancelGrace()
         guard minutes > 0 else {
             Task { await self.applyEvent(.bypassExpired) }
             return

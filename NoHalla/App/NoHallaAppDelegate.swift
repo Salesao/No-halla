@@ -15,6 +15,7 @@ import Darwin
 final class NoHallaAppDelegate: NSObject, NSApplicationDelegate {
     let appState = AppState()
     private var lockFileDescriptor: Int32 = -1
+    private var isPrimaryInstance = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard acquireSingleInstanceLock() else {
@@ -22,18 +23,26 @@ final class NoHallaAppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        isPrimaryInstance = true
         appState.start()
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
-        // Resume everything and clear state before exiting (FR-4). S2 adds the
-        // confirmation dialog and watchdog stop.
-        let semaphore = DispatchSemaphore(value: 0)
-        Task {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // A secondary instance never touched the engine or state; exit at once.
+        guard isPrimaryInstance else { return .terminateNow }
+        // R3: never block the main thread waiting on a MainActor Task (it would
+        // deadlock). Resume asynchronously, then reply to complete termination.
+        // s2-lifecycle reuses this path for the quit confirmation + watchdog.
+        Task { @MainActor in
             await appState.engine.stop()
-            semaphore.signal()
+            releaseSingleInstanceLock()
+            NSApp.reply(toApplicationShouldTerminate: true)
         }
-        _ = semaphore.wait(timeout: .now() + 5)
+        return .terminateLater
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Backup cleanup; the resume already ran in applicationShouldTerminate.
         releaseSingleInstanceLock()
     }
 

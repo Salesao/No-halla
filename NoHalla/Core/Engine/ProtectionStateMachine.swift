@@ -211,7 +211,10 @@ struct ProtectionStateMachine {
             status = .paused
             return [.resumeAll, .startPause(duration), .clearFrozenState]
         case .networkChanged:
-            status = .checking
+            // R1: stay frozen; the immediate re-check resolves to allowed
+            // (resumeAll + clearFrozenState) or keeps frozen. Leaving to
+            // .checking here would strand SIGSTOP processes on the next
+            // allowed verdict (which has no resume effect in .checking).
             return [.immediateCheck]
         case .ipDisallowed, .noQuorum:
             // Stay frozen; a later allowed verdict or Resume all releases.

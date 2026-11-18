@@ -5,16 +5,25 @@
 //  Public-IP verification (implementation brief §8.2, FR-8/9/13, NFR-8).
 //  Each address family is checked in parallel across its HTTPS endpoints; a
 //  family is `verified` only when at least `quorum` endpoints agree on the same
-//  valid IP. Disagreement or too few answers yields `noQuorum`. IPv6 is skipped
-//  (`notApplicable`) when disabled or when there is no IPv6 egress. Offline
-//  produces `noQuorum` without any request. Batches are throttled to one per
-//  3 s and backed off 5→60 s while endpoints keep failing. Only HTTPS is used
-//  and cross-host redirects are blocked. Logs mask IPs (FR-39).
+//  valid IP of that family. Disagreement or too few answers yields `noQuorum`.
+//  IPv6 is skipped (`notApplicable`) when disabled or when there is no IPv6
+//  egress. Offline produces `noQuorum` without any request. Batches are
+//  throttled to one per 3 s and backed off 5→60 s while endpoints keep failing.
+//  Only HTTPS is used and cross-host redirects are blocked. Logs mask IPs
+//  (FR-39).
+//
+//  R4: each branch is queried over its own address family. The hostname is
+//  resolved with getaddrinfo restricted to AF_INET/AF_INET6 and the request
+//  targets that numeric address (Host header keeps the original name; TLS trust
+//  is evaluated against it). Answers of the wrong family are discarded before
+//  quorum, so a dual-stack endpoint reached over IPv6 can never masquerade as
+//  the IPv4 verdict.
 //
 
 import Darwin
 import Foundation
 import OSLog
+import Security
 
 /// Per-family verification outcome.
 enum FamilyResult {
@@ -33,9 +42,10 @@ struct IPVerificationResult {
     let currentIPv6: IPAddress?
 }
 
-/// Blocks redirects to a different host (NFR-8). IP-check endpoints must answer
-/// directly; a cross-host bounce is rejected rather than followed.
-private final class RedirectGuard: NSObject, URLSessionTaskDelegate {
+/// Session delegate: blocks cross-host redirects (NFR-8) and evaluates TLS
+/// trust against the original hostname when we connect via a numeric IP literal
+/// to force the address family (R4).
+private final class IPCheckSessionDelegate: NSObject, URLSessionTaskDelegate {
     func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
@@ -43,13 +53,38 @@ private final class RedirectGuard: NSObject, URLSessionTaskDelegate {
         newRequest request: URLRequest,
         completionHandler: @escaping (URLRequest?) -> Void
     ) {
-        let originalHost = task.originalRequest?.url?.host?.lowercased()
-        let newHost = request.url?.host?.lowercased()
-        if originalHost == newHost {
+        let originalHost = task.originalRequest?.value(forHTTPHeaderField: "Host")
+            ?? task.originalRequest?.url?.host
+        let newHost = request.url?.host
+        if originalHost?.lowercased() == newHost?.lowercased() {
             completionHandler(request)
         } else {
             AppLog.network.debug("Blocked cross-host redirect for IP check")
             completionHandler(nil)
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        let host = task.originalRequest?.value(forHTTPHeaderField: "Host")
+            ?? challenge.protectionSpace.host
+        let policy = SecPolicyCreateSSL(true, host as CFString)
+        SecTrustSetPolicies(serverTrust, policy)
+        var error: CFError?
+        if SecTrustEvaluateWithError(serverTrust, &error) {
+            completionHandler(.useCredential, URLCredential(trust: serverTrust))
+        } else {
+            AppLog.network.debug("IP check TLS trust failed for \(host, privacy: .public)")
+            completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }
 }
@@ -71,7 +106,7 @@ actor IPVerifier {
         configuration.timeoutIntervalForRequest = 2.5
         configuration.timeoutIntervalForResource = 4
         configuration.waitsForConnectivity = false
-        self.session = URLSession(configuration: configuration, delegate: RedirectGuard(), delegateQueue: nil)
+        self.session = URLSession(configuration: configuration, delegate: IPCheckSessionDelegate(), delegateQueue: nil)
     }
 
     /// Runs one verification batch, or returns nil when throttled/backed off so
@@ -100,12 +135,12 @@ actor IPVerifier {
         let quorum = max(1, config.ipCheck.quorum)
         let timeout = config.ipCheck.timeoutSeconds > 0 ? config.ipCheck.timeoutSeconds : 2.5
 
-        async let ipv4 = verifyFamily(endpoints: config.ipCheck.endpointsV4, quorum: quorum, timeout: timeout)
+        async let ipv4 = verifyFamily(endpoints: config.ipCheck.endpointsV4, family: .v4, quorum: quorum, timeout: timeout)
         async let ipv6 = verifyIPv6(config: config, quorum: quorum, timeout: timeout)
         let (v4Result, v4Address) = await ipv4
         let (v6Result, v6Address) = await ipv6
 
-        applyBackoff(v4Address: v4Address, v6Address: v6Address, v6Result: v6Result, now: now)
+        applyBackoff(v4Address: v4Address, v6Address: v6Address, v6Result: v6Result)
 
         return IPVerificationResult(ipv4: v4Result, ipv6: v6Result, currentIPv4: v4Address, currentIPv6: v6Address)
     }
@@ -118,10 +153,10 @@ actor IPVerifier {
             AppLog.network.debug("IPv6 enabled but no egress; marking notApplicable")
             return (.notApplicable, nil)
         }
-        return await verifyFamily(endpoints: config.ipCheck.endpointsV6, quorum: quorum, timeout: timeout)
+        return await verifyFamily(endpoints: config.ipCheck.endpointsV6, family: .v6, quorum: quorum, timeout: timeout)
     }
 
-    private func verifyFamily(endpoints: [String], quorum: Int, timeout: Double) async -> (FamilyResult, IPAddress?) {
+    private func verifyFamily(endpoints: [String], family: IPFamily, quorum: Int, timeout: Double) async -> (FamilyResult, IPAddress?) {
         let httpsEndpoints = endpoints.filter { endpoint in
             guard let url = URL(string: endpoint) else { return false }
             return url.scheme?.lowercased() == "https"
@@ -130,7 +165,7 @@ actor IPVerifier {
 
         let answers: [IPAddress] = await withTaskGroup(of: IPAddress?.self) { group in
             for endpoint in httpsEndpoints {
-                group.addTask { await self.fetchIP(from: endpoint, timeout: timeout) }
+                group.addTask { await self.fetchIP(from: endpoint, family: family, timeout: timeout) }
             }
             var collected: [IPAddress] = []
             for await answer in group {
@@ -139,22 +174,35 @@ actor IPVerifier {
             return collected
         }
 
-        let first = answers.first
-        guard answers.count >= quorum, let reference = answers.first else {
+        // R4: only answers of the expected family count toward quorum.
+        let matching = answers.filter { $0.family == family }
+        let first = matching.first
+        guard matching.count >= quorum, let reference = matching.first else {
             return (.noQuorum, first)
         }
         // Quorum reached: any disagreement between successful answers is unknown
         // (split tunnel / anycast), per brief §8.2.
-        let agrees = answers.allSatisfy { $0 == reference }
+        let agrees = matching.allSatisfy { $0 == reference }
         return agrees ? (.verified(reference), first) : (.noQuorum, first)
     }
 
-    private func fetchIP(from endpoint: String, timeout: Double) async -> IPAddress? {
-        guard let url = URL(string: endpoint), url.scheme?.lowercased() == "https" else { return nil }
-        var request = URLRequest(url: url)
+    private func fetchIP(from endpoint: String, family: IPFamily, timeout: Double) async -> IPAddress? {
+        guard let url = URL(string: endpoint),
+              url.scheme?.lowercased() == "https",
+              let host = url.host else { return nil }
+
+        // Force the address family by connecting to a numeric address resolved
+        // for that family (R4). Keep the original hostname in the Host header.
+        guard let numericHost = resolveAddress(host: host, family: family) else { return nil }
+        let hostPart = family == .v6 ? "[\(numericHost)]" : numericHost
+        let queryPart = url.query.map { "?\($0)" } ?? ""
+        guard let targetURL = URL(string: "https://\(hostPart)\(url.path)\(queryPart)") else { return nil }
+
+        var request = URLRequest(url: targetURL)
         request.httpMethod = "GET"
         request.timeoutInterval = timeout
         request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue(host, forHTTPHeaderField: "Host")
 
         do {
             let (data, response) = try await session.data(for: request)
@@ -166,21 +214,56 @@ actor IPVerifier {
                 return nil
             }
             // Plain-text IP first, then a JSON object with an `ip` field.
-            if let address = IPAddress(text) {
-                AppLog.network.debug("IP check \(url.host ?? "", privacy: .public) -> \(address.masked, privacy: .public)")
+            if let address = IPAddress(text), address.family == family {
+                AppLog.network.debug("IP check \(host, privacy: .public) -> \(address.masked, privacy: .public)")
                 return address
             }
             if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let ipString = object["ip"] as? String,
-               let address = IPAddress(ipString.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                AppLog.network.debug("IP check \(url.host ?? "", privacy: .public) -> \(address.masked, privacy: .public)")
+               let address = IPAddress(ipString.trimmingCharacters(in: .whitespacesAndNewlines)),
+               address.family == family {
+                AppLog.network.debug("IP check \(host, privacy: .public) -> \(address.masked, privacy: .public)")
                 return address
             }
             return nil
         } catch {
-            AppLog.network.debug("IP check \(url.host ?? "", privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            AppLog.network.debug("IP check \(host, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }
+    }
+
+    // MARK: - DNS resolution restricted to a family
+
+    /// Resolves a hostname to the first numeric address of the requested family
+    /// using getaddrinfo (AF_INET or AF_INET6), forcing the verification stack.
+    private func resolveAddress(host: String, family: IPFamily) -> String? {
+        var hints = addrinfo()
+        hints.ai_family = family == .v4 ? AF_INET : AF_INET6
+        hints.ai_socktype = SOCK_STREAM
+        var result: UnsafeMutablePointer<addrinfo>?
+        guard getaddrinfo(host, nil, &hints, &result) == 0, let head = result else { return nil }
+        defer { freeaddrinfo(head) }
+
+        var cursor: UnsafeMutablePointer<addrinfo>? = head
+        while let current = cursor {
+            let entry = current.pointee
+            cursor = entry.ai_next
+            guard let addr = entry.ai_addr else { continue }
+            let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: Int(INET6_ADDRSTRLEN))
+            defer { buffer.deallocate() }
+            var rendered: UnsafePointer<CChar>?
+            if entry.ai_family == AF_INET {
+                addr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { sa in
+                    rendered = inet_ntop(AF_INET, &sa.pointee.sin_addr, buffer, socklen_t(INET_ADDRSTRLEN))
+                }
+            } else if entry.ai_family == AF_INET6 {
+                addr.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) { sa in
+                    rendered = inet_ntop(AF_INET6, &sa.pointee.sin6_addr, buffer, socklen_t(INET6_ADDRSTRLEN))
+                }
+            }
+            if rendered != nil { return String(cString: buffer) }
+        }
+        return nil
     }
 
     // MARK: - IPv6 egress probe
@@ -193,6 +276,7 @@ actor IPVerifier {
         defer { close(sock) }
 
         var address = sockaddr_in6()
+        address.sin6_len = UInt8(MemoryLayout<sockaddr_in6>.stride)
         address.sin6_family = sa_family_t(AF_INET6)
         address.sin6_port = UInt16(53).bigEndian
         guard inet_pton(AF_INET6, "2001:4860:4860::8888", &address.sin6_addr) == 1 else { return false }
@@ -208,16 +292,19 @@ actor IPVerifier {
     // MARK: - Backoff
 
     /// Grow backoff while no endpoint answered at all; reset on any success.
-    private func applyBackoff(v4Address: IPAddress?, v6Address: IPAddress?, v6Result: FamilyResult, now: Date) {
+    /// R13: measure the pause from batch completion, not from the pre-batch
+    /// timestamp, so timeouts do not shorten the declared backoff.
+    private func applyBackoff(v4Address: IPAddress?, v6Address: IPAddress?, v6Result: FamilyResult) {
         let v6Applicable: Bool
         if case .notApplicable = v6Result { v6Applicable = false } else { v6Applicable = true }
         let anyAnswer = v4Address != nil || (v6Applicable && v6Address != nil)
+        let completed = Date()
 
         if anyAnswer {
             backoffSeconds = initialBackoff
             backoffUntil = nil
         } else {
-            backoffUntil = now.addingTimeInterval(backoffSeconds)
+            backoffUntil = completed.addingTimeInterval(backoffSeconds)
             backoffSeconds = min(backoffSeconds * 2, maximumBackoff)
             AppLog.network.debug("IP check backoff \(self.backoffSeconds, privacy: .public)s")
         }
