@@ -168,8 +168,8 @@
     "ru": "Настройки"
   },
   "caption.resumeBypass": {
-    "en": "Apps will unfreeze for 5 minutes, then protection resumes.",
-    "ru": "Приложения возобновятся на 5 минут, затем защита включится снова."
+    "en": "Apps will unfreeze for %d minutes, then protection resumes.",
+    "ru": "Приложения возобновятся на %d минут, затем защита включится снова."
   },
   "onboarding.1.title": {
     "en": "Keep the gate closed when the VPN falls",
@@ -284,8 +284,8 @@
     "ru": "Добавить другое…"
   },
   "ui.2-apps-selected": {
-    "en": "2 apps selected",
-    "ru": "Выбрано 2 приложения"
+    "en": "%d apps selected",
+    "ru": "Выбрано %d приложения"
   },
   "ui.trust-this-ip": {
     "en": "Trust this IP",
@@ -452,8 +452,8 @@
     "ru": "Нет"
   },
   "ui.checking-resumes-at-14-32": {
-    "en": "Checking resumes at 14:32.",
-    "ru": "Проверка возобновится в 14:32."
+    "en": "Checking resumes at %@.",
+    "ru": "Проверка возобновится в %@."
   },
   "ui.refresh-current-ip": {
     "en": "Refresh current IP",
@@ -520,8 +520,8 @@
     "ru": "Замороженные приложения возобновятся, а настройки вернутся к исходным."
   },
   "ui.protection-is-enabled-for-app": {
-    "en": "Protection is enabled for {app}",
-    "ru": "Защита приложения {app}"
+    "en": "Protection is enabled for %@",
+    "ru": "Защита приложения %@"
   },
   "ui.edit-trusted-ip": {
     "en": "Edit trusted IP",
@@ -532,8 +532,8 @@
     "ru": "Применить язык"
   },
   "ui.version-0-1-0": {
-    "en": "Version 0.1.0",
-    "ru": "Версия 0.1.0"
+    "en": "Version %@",
+    "ru": "Версия %@"
   },
   "ui.trusted-ip-saved": {
     "en": "Trusted IP saved",
@@ -560,12 +560,12 @@
     "ru": "Введите корректный HTTPS-адрес."
   },
   "ui.protect-app": {
-    "en": "Protect {app}",
-    "ru": "Защищать {app}"
+    "en": "Protect %@",
+    "ru": "Защищать %@"
   },
   "ui.edit-family-endpoint": {
-    "en": "Edit {family} endpoint",
-    "ru": "Изменить адрес проверки {family}"
+    "en": "Edit %@ endpoint",
+    "ru": "Изменить адрес проверки %@"
   },
   "ui.included-in-protection": {
     "en": "Included in protection",
@@ -574,5 +574,41 @@
   "ui.login-registration-failed": {
     "en": "Login registration failed",
     "ru": "Не удалось настроить запуск при входе"
+  },
+  "ui.corrupt-config-title": {
+    "en": "Settings were reset",
+    "ru": "Настройки сброшены"
+  },
+  "ui.corrupt-config-body": {
+    "en": "No-halla couldn't read your settings and restored the defaults.",
+    "ru": "No-halla не смог прочитать настройки и восстановил исходные."
+  },
+  "ui.log-level-info": {
+    "en": "Info",
+    "ru": "Инфо"
+  },
+  "ui.log-level-debug": {
+    "en": "Debug",
+    "ru": "Отладка"
+  },
+  "ui.unit-seconds": {
+    "en": "s",
+    "ru": "с"
+  },
+  "ui.unit-minutes": {
+    "en": "min",
+    "ru": "мин"
+  },
+  "ui.protection-toggle-helper": {
+    "en": "Turn protection on or off. Turning it off resumes all frozen apps.",
+    "ru": "Включите или выключите защиту. Выключение возобновит все замороженные приложения."
+  },
+  "ui.language-english": {
+    "en": "English",
+    "ru": "English"
+  },
+  "ui.language-russian": {
+    "en": "Русский",
+    "ru": "Русский"
   }
 }
