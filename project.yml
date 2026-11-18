@@ -1,0 +1,60 @@
+name: NoHalla
+options:
+  bundleIdPrefix: dev.nohalla
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    ARCHS: "arm64 x86_64"
+    ONLY_ACTIVE_ARCH: NO
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_IDENTITY: "-"
+    ENABLE_HARDENED_RUNTIME: YES
+    DEAD_CODE_STRIPPING: YES
+targets:
+  NoHalla:
+    type: application
+    platform: macOS
+    sources:
+      - path: NoHalla
+    settings:
+      base:
+        PRODUCT_NAME: No-halla
+        PRODUCT_MODULE_NAME: NoHalla
+        PRODUCT_BUNDLE_IDENTIFIER: dev.nohalla.NoHalla
+        INFOPLIST_FILE: NoHalla/App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: NoHalla/NoHalla.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_IDENTITY: "-"
+        SWIFT_VERSION: "5.0"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../Frameworks"
+    dependencies:
+      - target: NoHallaWatchdog
+        embed: true
+        codeSign: true
+        copy:
+          destination: executables
+  NoHallaWatchdog:
+    type: tool
+    platform: macOS
+    sources:
+      - path: NoHallaWatchdog
+    settings:
+      base:
+        PRODUCT_NAME: NoHallaWatchdog
+        PRODUCT_BUNDLE_IDENTIFIER: dev.nohalla.NoHallaWatchdog
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_HARDENED_RUNTIME: YES
+        SWIFT_VERSION: "5.0"
+schemes:
+  NoHalla:
+    build:
+      targets:
+        NoHalla: all
+    run:
+      config: Release
+    archive:
+      config: Release
