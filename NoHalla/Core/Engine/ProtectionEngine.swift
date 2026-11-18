@@ -73,6 +73,16 @@ actor ProtectionEngine {
     var onSnapshot: ((EngineSnapshot) -> Void)?
     var onNotification: ((NotificationEvent) -> Void)?
 
+    /// Wiring setters: cross-actor mutation of the callback properties goes
+    /// through these methods (the UI bridge installs them before `start`).
+    func setOnSnapshot(_ handler: ((EngineSnapshot) -> Void)?) {
+        onSnapshot = handler
+    }
+
+    func setOnNotification(_ handler: ((NotificationEvent) -> Void)?) {
+        onNotification = handler
+    }
+
     // MARK: - State
 
     private var config: AppConfig
