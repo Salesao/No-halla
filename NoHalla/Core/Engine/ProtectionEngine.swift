@@ -109,7 +109,7 @@ actor ProtectionEngine {
     private var periodicTimer: DispatchSourceTimer?
     private var reconcileTimer: DispatchSourceTimer?
     private var checkRetryTimer: DispatchSourceTimer?
-    private var pendingCheck = false
+    private var pendingChecks = 0
     private var wakeObserver: NSObjectProtocol?
     private var launchObserver: NSObjectProtocol?
     private var started = false
@@ -176,6 +176,9 @@ actor ProtectionEngine {
         periodicTimer = nil
         reconcileTimer?.cancel()
         reconcileTimer = nil
+        checkRetryTimer?.cancel()
+        checkRetryTimer = nil
+        pendingChecks = 0
         if let wakeObserver = wakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
         }
@@ -352,18 +355,27 @@ actor ProtectionEngine {
     /// Requests a check that must actually run. If the verifier is throttled or
     /// backed off (returns nil), retry after the 3 s minimum batch interval so a
     /// cancelled grace / bypass / pause never leaves a silent multi-second hole.
+    /// R6: a counter, not a single flag — a request arriving while a batch is in
+    /// flight increments the count and must survive that batch's completion.
     private func requestImmediateCheck() {
-        pendingCheck = true
+        pendingChecks += 1
         Task { await self.runPendingCheck() }
     }
 
     private func runPendingCheck() async {
         let ran = await runCheck()
         if ran {
-            pendingCheck = false
-            checkRetryTimer?.cancel()
-            checkRetryTimer = nil
-        } else if pendingCheck {
+            // One completed batch satisfies exactly one pending request. Only
+            // stop retrying when no requests remain; otherwise re-plan so a
+            // request made during the batch still gets a fresh verdict.
+            pendingChecks = max(0, pendingChecks - 1)
+            if pendingChecks == 0 {
+                checkRetryTimer?.cancel()
+                checkRetryTimer = nil
+            } else {
+                scheduleCheckRetry()
+            }
+        } else if pendingChecks > 0 {
             scheduleCheckRetry()
         }
     }

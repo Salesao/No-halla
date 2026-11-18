@@ -12,18 +12,19 @@
 //  Only HTTPS is used and cross-host redirects are blocked. Logs mask IPs
 //  (FR-39).
 //
-//  R4: each branch is queried over its own address family. The hostname is
-//  resolved with getaddrinfo restricted to AF_INET/AF_INET6 and the request
-//  targets that numeric address (Host header keeps the original name; TLS trust
-//  is evaluated against it). Answers of the wrong family are discarded before
-//  quorum, so a dual-stack endpoint reached over IPv6 can never masquerade as
-//  the IPv4 verdict.
+//  R4: requests keep the endpoint hostname in the URL so URLSession performs
+//  normal SNI and certificate name validation. Families are separated by the
+//  family of the RESPONSE: an answer whose family differs from the branch is
+//  discarded before quorum (a dual-stack endpoint reached over IPv6 can never
+//  masquerade as the IPv4 verdict). An empty family answer set is `noQuorum`,
+//  which composes to `unknown` in the engine lattice (spec D28) — honest, not a
+//  false `disallowed`. Forcing the transport family via a numeric IP literal was
+//  rejected because it breaks SNI/name validation (see DECISIONS.md).
 //
 
 import Darwin
 import Foundation
 import OSLog
-import Security
 
 /// Per-family verification outcome.
 enum FamilyResult {
@@ -42,9 +43,9 @@ struct IPVerificationResult {
     let currentIPv6: IPAddress?
 }
 
-/// Session delegate: blocks cross-host redirects (NFR-8) and evaluates TLS
-/// trust against the original hostname when we connect via a numeric IP literal
-/// to force the address family (R4).
+/// Session delegate: blocks cross-host and non-HTTPS redirects (NFR-8, R27).
+/// TLS server-trust validation uses URLSession's default handling against the
+/// endpoint hostname (SNI and name check stay intact).
 private final class IPCheckSessionDelegate: NSObject, URLSessionTaskDelegate {
     func urlSession(
         _ session: URLSession,
@@ -53,38 +54,14 @@ private final class IPCheckSessionDelegate: NSObject, URLSessionTaskDelegate {
         newRequest request: URLRequest,
         completionHandler: @escaping (URLRequest?) -> Void
     ) {
-        let originalHost = task.originalRequest?.value(forHTTPHeaderField: "Host")
-            ?? task.originalRequest?.url?.host
-        let newHost = request.url?.host
-        if originalHost?.lowercased() == newHost?.lowercased() {
+        let originalHost = task.originalRequest?.url?.host?.lowercased()
+        let newHost = request.url?.host?.lowercased()
+        let isHTTPS = request.url?.scheme?.lowercased() == "https"
+        if isHTTPS && originalHost == newHost {
             completionHandler(request)
         } else {
-            AppLog.network.debug("Blocked cross-host redirect for IP check")
+            AppLog.network.debug("Blocked cross-host or non-HTTPS redirect for IP check")
             completionHandler(nil)
-        }
-    }
-
-    func urlSession(
-        _ session: URLSession,
-        task: URLSessionTask,
-        didReceive challenge: URLAuthenticationChallenge,
-        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
-    ) {
-        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-              let serverTrust = challenge.protectionSpace.serverTrust else {
-            completionHandler(.performDefaultHandling, nil)
-            return
-        }
-        let host = task.originalRequest?.value(forHTTPHeaderField: "Host")
-            ?? challenge.protectionSpace.host
-        let policy = SecPolicyCreateSSL(true, host as CFString)
-        SecTrustSetPolicies(serverTrust, policy)
-        var error: CFError?
-        if SecTrustEvaluateWithError(serverTrust, &error) {
-            completionHandler(.useCredential, URLCredential(trust: serverTrust))
-        } else {
-            AppLog.network.debug("IP check TLS trust failed for \(host, privacy: .public)")
-            completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }
 }
@@ -174,7 +151,8 @@ actor IPVerifier {
             return collected
         }
 
-        // R4: only answers of the expected family count toward quorum.
+        // R4: only answers of the expected family count toward quorum. An empty
+        // matching set is noQuorum (→ unknown in the lattice, spec D28).
         let matching = answers.filter { $0.family == family }
         let first = matching.first
         guard matching.count >= quorum, let reference = matching.first else {
@@ -187,22 +165,13 @@ actor IPVerifier {
     }
 
     private func fetchIP(from endpoint: String, family: IPFamily, timeout: Double) async -> IPAddress? {
-        guard let url = URL(string: endpoint),
-              url.scheme?.lowercased() == "https",
-              let host = url.host else { return nil }
-
-        // Force the address family by connecting to a numeric address resolved
-        // for that family (R4). Keep the original hostname in the Host header.
-        guard let numericHost = resolveAddress(host: host, family: family) else { return nil }
-        let hostPart = family == .v6 ? "[\(numericHost)]" : numericHost
-        let queryPart = url.query.map { "?\($0)" } ?? ""
-        guard let targetURL = URL(string: "https://\(hostPart)\(url.path)\(queryPart)") else { return nil }
-
-        var request = URLRequest(url: targetURL)
+        // Keep the hostname in the URL: URLSession performs normal SNI and
+        // certificate name validation (R4). The response family is checked below.
+        guard let url = URL(string: endpoint), url.scheme?.lowercased() == "https" else { return nil }
+        var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.timeoutInterval = timeout
         request.cachePolicy = .reloadIgnoringLocalCacheData
-        request.setValue(host, forHTTPHeaderField: "Host")
 
         do {
             let (data, response) = try await session.data(for: request)
@@ -213,6 +182,7 @@ actor IPVerifier {
                 .trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
                 return nil
             }
+            let host = url.host ?? ""
             // Plain-text IP first, then a JSON object with an `ip` field.
             if let address = IPAddress(text), address.family == family {
                 AppLog.network.debug("IP check \(host, privacy: .public) -> \(address.masked, privacy: .public)")
@@ -227,43 +197,9 @@ actor IPVerifier {
             }
             return nil
         } catch {
-            AppLog.network.debug("IP check \(host, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            AppLog.network.debug("IP check \(url.host ?? "", privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }
-    }
-
-    // MARK: - DNS resolution restricted to a family
-
-    /// Resolves a hostname to the first numeric address of the requested family
-    /// using getaddrinfo (AF_INET or AF_INET6), forcing the verification stack.
-    private func resolveAddress(host: String, family: IPFamily) -> String? {
-        var hints = addrinfo()
-        hints.ai_family = family == .v4 ? AF_INET : AF_INET6
-        hints.ai_socktype = SOCK_STREAM
-        var result: UnsafeMutablePointer<addrinfo>?
-        guard getaddrinfo(host, nil, &hints, &result) == 0, let head = result else { return nil }
-        defer { freeaddrinfo(head) }
-
-        var cursor: UnsafeMutablePointer<addrinfo>? = head
-        while let current = cursor {
-            let entry = current.pointee
-            cursor = entry.ai_next
-            guard let addr = entry.ai_addr else { continue }
-            let buffer = UnsafeMutablePointer<CChar>.allocate(capacity: Int(INET6_ADDRSTRLEN))
-            defer { buffer.deallocate() }
-            var rendered: UnsafePointer<CChar>?
-            if entry.ai_family == AF_INET {
-                addr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { sa in
-                    rendered = inet_ntop(AF_INET, &sa.pointee.sin_addr, buffer, socklen_t(INET_ADDRSTRLEN))
-                }
-            } else if entry.ai_family == AF_INET6 {
-                addr.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) { sa in
-                    rendered = inet_ntop(AF_INET6, &sa.pointee.sin6_addr, buffer, socklen_t(INET6_ADDRSTRLEN))
-                }
-            }
-            if rendered != nil { return String(cString: buffer) }
-        }
-        return nil
     }
 
     // MARK: - IPv6 egress probe
