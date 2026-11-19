@@ -12,8 +12,8 @@
     "ru": "Защищено"
   },
   "status.protected.lore": {
-    "en": "The gate holds.",
-    "ru": "Ворота держат."
+    "en": "The gate is open.",
+    "ru": "Ворота открыты."
   },
   "status.checking": {
     "en": "Checking…",
@@ -36,8 +36,8 @@
     "ru": "Заморожено"
   },
   "status.frozen.lore": {
-    "en": "Waiting at the gate.",
-    "ru": "Ждут у ворот."
+    "en": "The gate is closed.",
+    "ru": "Ворота закрыты."
   },
   "status.unknown": {
     "en": "Can't verify IP",
@@ -123,6 +123,26 @@
     "en": "Not running",
     "ru": "Не запущено"
   },
+  "apps.freeze-scope": {
+    "en": "Freeze",
+    "ru": "Заморозка"
+  },
+  "apps.scope-app": {
+    "en": "App",
+    "ru": "Приложение"
+  },
+  "apps.scope-agent-terminals": {
+    "en": "Agent terminals",
+    "ru": "Терминалы агентов"
+  },
+  "apps.scope-agent-terminals-help": {
+    "en": "Keeps the app running. Stops AI agent sessions started in its terminals — Claude Code, Codex, Antigravity, Gemini, Grok, Copilot, Cursor and similar — with their tool calls.",
+    "ru": "Приложение продолжает работать. Останавливаются только сессии AI-агентов, запущенные в его терминалах, — Claude Code, Codex, Antigravity, Gemini, Grok, Copilot, Cursor и подобные — вместе с вызовами инструментов."
+  },
+  "apps.scope-agent-terminals-caveat": {
+    "en": "A model request already sent still completes on the server.",
+    "ru": "Уже отправленный запрос к модели всё равно завершится на сервере."
+  },
   "action.freezeNow": {
     "en": "Freeze now",
     "ru": "Заморозить сейчас"
@@ -176,8 +196,8 @@
     "ru": "Закрывайте ворота, когда падает VPN"
   },
   "onboarding.1.body": {
-    "en": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate until your VPN returns.",
-    "ru": "No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, пока VPN не вернётся."
+    "en": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate and blocked sites stop resolving until your VPN returns.",
+    "ru": "No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, а заблокированные сайты перестают резолвиться, пока VPN не вернётся."
   },
   "onboarding.2.title": {
     "en": "Choose who waits at the gate",
@@ -188,12 +208,28 @@
     "ru": "Доверьтесь миру вашего VPN"
   },
   "onboarding.3.body": {
-    "en": "Only this IP opens the gate. Add your VPN IP here.",
-    "ru": "Только этот IP открывает ворота. Добавьте сюда IP вашего VPN."
+    "en": "Choose how trust is decided. In IP mode, add the address your VPN exposes.",
+    "ru": "Выберите, как определяется доверие. В режиме IP добавьте адрес, который выдаёт ваш VPN."
+  },
+  "onboarding.3.need-ip": {
+    "en": "Add at least one trusted IP to continue.",
+    "ru": "Добавьте хотя бы один доверенный IP, чтобы продолжить."
   },
   "onboarding.launchAtLogin": {
     "en": "Launch No-halla at login",
     "ru": "Запускать No-halla при входе"
+  },
+  "onboarding.4.title": {
+    "en": "Blocked sites",
+    "ru": "Заблокированные сайты"
+  },
+  "onboarding.4.body": {
+    "en": "Optional: these hostnames will not resolve while protection is active and your IP is untrusted.",
+    "ru": "Необязательно: эти хосты не будут резолвиться, пока защита активна и IP недоверенный."
+  },
+  "onboarding.4.helper": {
+    "en": "Shared packages can be imported later in Settings → Protection.",
+    "ru": "Общие пакеты можно импортировать позже в Settings → Protection."
   },
   "onboarding.skip": {
     "en": "Skip setup",
@@ -291,21 +327,29 @@
     "en": "Trust this IP",
     "ru": "Доверять этому IP"
   },
+  "ui.trusted": {
+    "en": "Trusted",
+    "ru": "Доверен"
+  },
   "ui.add-manually": {
     "en": "Add manually",
     "ru": "Добавить вручную"
   },
-  "ui.connect-to-your-vpn-before-trusting-this-address": {
-    "en": "Connect to your VPN before trusting this address.",
-    "ru": "Подключите VPN, прежде чем доверять этому адресу."
+  "ui.couldn-t-detect-your-ip": {
+    "en": "Couldn't detect your IP. Check the VPN connection and try again, or add it manually.",
+    "ru": "Не удалось определить IP. Проверьте VPN и попробуйте ещё раз или добавьте вручную."
   },
-  "ui.enter-an-ipv4-ipv6-or-cidr-address": {
-    "en": "Enter an IPv4, IPv6 or CIDR address.",
-    "ru": "Введите адрес IPv4, IPv6 или CIDR."
+  "ui.detect-ip": {
+    "en": "Detect IP again",
+    "ru": "Определить IP заново"
   },
-  "ui.enter-a-valid-ipv4-ipv6-or-cidr-address": {
-    "en": "Enter a valid IPv4, IPv6 or CIDR address.",
-    "ru": "Проверьте формат IPv4, IPv6 или CIDR."
+  "ui.enter-an-ipv4-or-cidr-address": {
+    "en": "Enter an IPv4 or CIDR address.",
+    "ru": "Введите адрес IPv4 или CIDR."
+  },
+  "ui.enter-a-valid-ipv4-or-cidr-address": {
+    "en": "Enter a valid IPv4 or CIDR address.",
+    "ru": "Проверьте формат IPv4 или CIDR."
   },
   "ui.launch-at-login": {
     "en": "Launch at login",
@@ -362,10 +406,6 @@
   "ui.freeze-when-ip-can-t-be-verified": {
     "en": "Freeze when IP can’t be verified",
     "ru": "Замораживать, если IP не удалось проверить"
-  },
-  "ui.check-ipv6": {
-    "en": "Check IPv6",
-    "ru": "Проверять IPv6"
   },
   "ui.require-active-vpn-interface": {
     "en": "Require active VPN interface",
@@ -464,8 +504,8 @@
     "ru": "Приложения работают до возобновления защиты."
   },
   "ui.no-matching-applications": {
-    "en": "No matching applications",
-    "ru": "Подходящих приложений нет"
+    "en": "Application not found. Try another name or add it manually.",
+    "ru": "Приложение не найдено. Попробуйте другое имя или добавьте его вручную."
   },
   "ui.freezing-terminal-may-interrupt-active-commands": {
     "en": "Freezing Terminal may interrupt active commands.",
@@ -563,9 +603,9 @@
     "en": "Protect %@",
     "ru": "Защищать %@"
   },
-  "ui.edit-family-endpoint": {
-    "en": "Edit %@ endpoint",
-    "ru": "Изменить адрес проверки %@"
+  "ui.edit-ip-check-endpoint": {
+    "en": "Edit IP-check endpoint",
+    "ru": "Изменить адрес проверки IP"
   },
   "ui.included-in-protection": {
     "en": "Included in protection",
@@ -599,9 +639,169 @@
     "en": "min",
     "ru": "мин"
   },
-  "ui.protection-toggle-helper": {
-    "en": "Turn protection on or off. Turning it off resumes all frozen apps.",
-    "ru": "Включите или выключите защиту. Выключение возобновит все замороженные приложения."
+  "ui.domain-guard": {
+    "en": "Blocked sites",
+    "ru": "Заблокированные сайты"
+  },
+  "ui.domain-guard-add": {
+    "en": "Add domain",
+    "ru": "Добавить домен"
+  },
+  "ui.domain-list-drop-hint": {
+    "en": "Drop a domain list (.txt or .json) here.",
+    "ru": "Перетащите сюда список доменов (.txt или .json)."
+  },
+  "ui.domain-list-added": {
+    "en": "%d domains added.",
+    "ru": "Добавлено доменов: %d."
+  },
+  "ui.domain-list-added-skipped": {
+    "en": "%d added, %d skipped.",
+    "ru": "Добавлено %d, пропущено %d."
+  },
+  "ui.domain-list-none-new": {
+    "en": "No new domains.",
+    "ru": "Новых доменов нет."
+  },
+  "ui.domain-list-import-failed": {
+    "en": "Couldn't read that list.",
+    "ru": "Не удалось прочитать список."
+  },
+  "ui.domain-list-empty": {
+    "en": "No valid hostnames found.",
+    "ru": "Валидных хостов не найдено."
+  },
+  "ui.domain-list-too-large": {
+    "en": "That list is too large.",
+    "ru": "Список слишком большой."
+  },
+  "ui.domain-guard-helper": {
+    "en": "While protection is active and the IP is not trusted, these hostnames resolve to 0.0.0.0/::1. Exact hostnames; www. is added automatically. Browsers using DNS-over-HTTPS bypass this.",
+    "ru": "Пока защита активна и IP недоверенный, эти хосты резолвятся в 0.0.0.0/::1. Точные имена; www. добавляется автоматически. Браузеры с DNS-over-HTTPS это обходят."
+  },
+  "ui.domain-guard-not-installed": {
+    "en": "The root helper is not installed, so this list has no effect yet.",
+    "ru": "Root-helper не установлен, поэтому список пока не действует."
+  },
+  "ui.domain-guard-install": {
+    "en": "Install…",
+    "ru": "Установить…"
+  },
+  "ui.domain-guard-copy-command": {
+    "en": "Copy command",
+    "ru": "Скопировать команду"
+  },
+  "ui.domain-guard-copied": {
+    "en": "Copied",
+    "ru": "Скопировано"
+  },
+  "ui.domain-guard-installed": {
+    "en": "Root helper installed.",
+    "ru": "Root-helper установлен."
+  },
+  "ui.domain-guard-install-failed": {
+    "en": "Installation failed. Copy the command and run it in Terminal.",
+    "ru": "Установка не удалась. Скопируйте команду и выполните её в Terminal."
+  },
+  "ui.domain-guard-uninstall": {
+    "en": "Uninstall…",
+    "ru": "Удалить…"
+  },
+  "ui.domain-guard-uninstall-failed": {
+    "en": "Couldn't remove the helper.",
+    "ru": "Не удалось удалить root-helper."
+  },
+  "ui.domain-guard-edit": {
+    "en": "Blocked site",
+    "ru": "Заблокированный сайт"
+  },
+  "ui.domain-guard-placeholder": {
+    "en": "example.com",
+    "ru": "example.com"
+  },
+  "ui.domain-guard-invalid": {
+    "en": "Enter a hostname like example.com",
+    "ru": "Введите имя хоста, например example.com"
+  },
+  "ui.domain-packages": {
+    "en": "Shared packages",
+    "ru": "Общие пакеты"
+  },
+  "ui.domain-packages-import": {
+    "en": "Import package…",
+    "ru": "Импортировать пакет…"
+  },
+  "ui.domain-packages-export": {
+    "en": "Export package",
+    "ru": "Экспортировать пакет"
+  },
+  "ui.domain-packages-export-list": {
+    "en": "Export list…",
+    "ru": "Экспортировать список…"
+  },
+  "ui.domain-packages-helper": {
+    "en": "Packages are JSON files with a domain list. Drag a package out to share it, or drop a .json file here to import. Disable a package without deleting it.",
+    "ru": "Пакеты — это JSON-файлы со списком доменов. Перетащите пакет, чтобы поделиться, или бросьте сюда .json-файл для импорта. Пакет можно отключить, не удаляя."
+  },
+  "ui.domain-packages-drag": {
+    "en": "Drag to share this package",
+    "ru": "Перетащите, чтобы поделиться пакетом"
+  },
+  "ui.domain-packages-empty": {
+    "en": "No packages yet.",
+    "ru": "Пакетов пока нет."
+  },
+  "ui.domain-packages-domain-count": {
+    "en": "%d domains",
+    "ru": "%d доменов"
+  },
+  "ui.domain-packages-enabled": {
+    "en": "Enabled",
+    "ru": "Включён"
+  },
+  "ui.domain-packages-import-failed": {
+    "en": "Import failed",
+    "ru": "Импорт не удался"
+  },
+  "ui.domain-packages-invalid": {
+    "en": "Not a valid No-halla package.",
+    "ru": "Это не пакет No-halla."
+  },
+  "ui.domain-packages-too-large": {
+    "en": "Package is too large.",
+    "ru": "Пакет слишком большой."
+  },
+  "ui.domain-packages-unsupported": {
+    "en": "Unsupported package version.",
+    "ru": "Неподдерживаемая версия пакета."
+  },
+  "ui.domain-packages-limit": {
+    "en": "Too many packages (max 32).",
+    "ru": "Слишком много пакетов (максимум 32)."
+  },
+  "ui.domain-packages-preview-title": {
+    "en": "Import package",
+    "ru": "Импорт пакета"
+  },
+  "ui.domain-packages-preview-count": {
+    "en": "%d domains, %d new",
+    "ru": "%d доменов, %d новых"
+  },
+  "ui.domain-packages-preview-duplicates": {
+    "en": "%d already blocked",
+    "ru": "%d уже заблокированы"
+  },
+  "ui.domain-packages-preview-author": {
+    "en": "by %@",
+    "ru": "автор: %@"
+  },
+  "ui.domain-packages-import-action": {
+    "en": "Import",
+    "ru": "Импортировать"
+  },
+  "ui.ok": {
+    "en": "OK",
+    "ru": "ОК"
   },
   "ui.language-english": {
     "en": "English",
@@ -624,8 +824,8 @@
     "ru": "Защита выключена до перезапуска"
   },
   "onboarding.step": {
-    "en": "Step %d of 3",
-    "ru": "Шаг %d из 3"
+    "en": "Step %d of 4",
+    "ru": "Шаг %d из 4"
   },
   "ui.protection-mode": {
     "en": "Protection mode",

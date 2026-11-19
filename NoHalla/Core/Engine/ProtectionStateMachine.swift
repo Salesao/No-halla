@@ -11,6 +11,9 @@
 //   - D25: Cancel during grace triggers an immediate re-check, no hidden bypass.
 //   - D27: the master Protection switch resumes everything and disables, or
 //     re-enables into checking.
+//   - D31: editing the trusted IP list restarts evaluation — countdowns and
+//     bypass windows are dropped, a fresh check runs, and a frozen set stays
+//     frozen until the verdict. Pause and the master switch still win.
 //   - Manual Resume all from frozen starts a bypass window; its expiry forces
 //     an immediate check. Pause resumes everything and suspends freezing.
 //
@@ -35,6 +38,12 @@ enum ProtectionEvent {
     case protectionEnabled
     case protectionDisabled
     case bypassExpired
+    /// D31: the trusted IP/CIDR list was edited. Protection restarts from the
+    /// new configuration: countdowns and bypass windows are dropped and a
+    /// fresh check runs; a frozen set stays frozen until the verdict, so
+    /// SIGSTOP processes are never stranded in `.checking`. Pause and the
+    /// master switch remain explicit overrides.
+    case trustedListChanged
 }
 
 /// Side effects the engine must perform, in order, after a transition.
@@ -111,6 +120,11 @@ struct ProtectionStateMachine {
             status = .checking
             return [.immediateCheck]
         }
+        // D31: a list edit before the first check still restarts evaluation.
+        if case .trustedListChanged = event {
+            status = .checking
+            return [.immediateCheck]
+        }
         // No freeze before the first check; an invalid config keeps initializing.
         return []
     }
@@ -129,8 +143,8 @@ struct ProtectionStateMachine {
             guard !env.trustedEmpty else { return [] }
             status = .unknown
             return env.freezeWhenUnknown ? [.startGrace(seconds: env.graceSeconds)] : []
-        case .networkChanged:
-            return [.immediateCheck]
+        case .networkChanged, .trustedListChanged:
+            return [.cancelGrace, .cancelBypass, .immediateCheck]
         case .pauseRequested(let duration):
             return pause(duration)
         case .protectionEnabled:
@@ -156,6 +170,10 @@ struct ProtectionStateMachine {
         case .bypassExpired:
             status = .checking
             return [.cancelBypass, .immediateCheck]
+        case .trustedListChanged:
+            // D31: the list edit ends any bypass window and re-evaluates now.
+            status = .checking
+            return [.cancelGrace, .cancelBypass, .immediateCheck]
         case .pauseRequested(let duration):
             return pause(duration)
         case .ipAllowed:
@@ -183,6 +201,10 @@ struct ProtectionStateMachine {
         case .networkChanged:
             status = .checking
             return [.cancelGrace, .immediateCheck]
+        case .trustedListChanged:
+            // D31: cancel the countdown so a stale verdict cannot freeze.
+            status = .checking
+            return [.cancelGrace, .cancelBypass, .immediateCheck]
         case .noQuorum:
             status = .unknown
             return env.freezeWhenUnknown
@@ -216,6 +238,10 @@ struct ProtectionStateMachine {
             // .checking here would strand SIGSTOP processes on the next
             // allowed verdict (which has no resume effect in .checking).
             return [.immediateCheck]
+        case .trustedListChanged:
+            // D31: same R1 hazard — stay frozen until the fresh verdict, but
+            // drop any bypass window so the UI reflects the new list.
+            return [.cancelBypass, .immediateCheck]
         case .ipDisallowed, .noQuorum:
             // Stay frozen; a later allowed verdict or Resume all releases.
             return []
@@ -246,6 +272,10 @@ struct ProtectionStateMachine {
         case .networkChanged:
             status = .checking
             return [.cancelGrace, .immediateCheck]
+        case .trustedListChanged:
+            // D31: re-evaluate against the edited list immediately.
+            status = .checking
+            return [.cancelGrace, .cancelBypass, .immediateCheck]
         case .pauseRequested(let duration):
             status = .paused
             return [.cancelGrace, .resumeAll, .startPause(duration)]

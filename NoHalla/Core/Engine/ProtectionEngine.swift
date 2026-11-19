@@ -4,7 +4,7 @@
 //
 //  Actor orchestrating the protection loop (implementation brief §5.2,
 //  FR-7…14, FR-20…25). It wires NetworkMonitor events and a periodic timer into
-//  IPVerifier, composes the IPv4/IPv6 trust lattice (spec D28), feeds the pure
+//  IPVerifier, composes the IPv4 trust verdict (spec D28), feeds the pure
 //  ProtectionStateMachine and executes its effects: grace/bypass/pause timers,
 //  sequential freeze/resume through ProcessControlling, atomic state persistence
 //  and snapshot publication. `setup` and `bypassing` are derived UI statuses.
@@ -24,7 +24,6 @@ struct EngineSnapshot {
     let status: ProtectionStatus
     let uiStatus: UIStatus
     let currentIPv4: String?
-    let currentIPv6: String?
     let vpnInterface: String?
     let trusted: Bool
     let graceRemaining: Int?
@@ -33,6 +32,9 @@ struct EngineSnapshot {
     let frozenBundleIDs: Set<String>
     let runningBundleIDs: Set<String>
     let lastCheck: Date?
+    /// True while a user-requested IP refresh is still pending (the verifier
+    /// may be throttled/backed off), so the network card can show progress.
+    let isRefreshing: Bool
 }
 
 /// User intents forwarded from the UI bridge.
@@ -44,6 +46,9 @@ enum UserAction {
     case turnOnNow
     case retryCheck
     case addCurrentIP
+    /// D35: fetch the public IPv4 for display (onboarding "trust this IP")
+    /// without feeding a verdict into the state machine.
+    case detectCurrentIP
     case setProtectionEnabled(Bool)
     case configChanged(AppConfig)
     /// R55: end a manual-resume bypass early and re-check immediately.
@@ -70,6 +75,8 @@ actor ProtectionEngine {
     private let controller: ProcessControlling
     private let verifier: IPVerifier
     private let monitor: NetworkMonitor
+    /// D32: publishes the block/allow state the root helper applies to hosts.
+    private let domainGuard: DomainGuardWriting
 
     // MARK: - Published callbacks
 
@@ -94,10 +101,13 @@ actor ProtectionEngine {
     private var frozenSince: Date?
     private var freezeReason: FreezeReason?
     private var currentIPv4: IPAddress?
-    private var currentIPv6: IPAddress?
-    private var lastIPv6Verified = false
+    /// Every address observed by the last batch, used by "Add current IP" so
+    /// split-tunnel hosts can trust all of their egress addresses at once.
+    private var lastIPv4Answers: [IPAddress] = []
     private var lastCheck: Date?
     private var lastVerdictAllowed = false
+    /// True from an explicit refresh tap until the next check actually runs.
+    private var manualRefreshInFlight = false
 
     private var graceDeadline: Date?
     private var graceTotal: Int = 0
@@ -122,14 +132,23 @@ actor ProtectionEngine {
         stateStore: StateStore,
         controller: ProcessControlling,
         verifier: IPVerifier,
-        monitor: NetworkMonitor
+        monitor: NetworkMonitor,
+        domainGuard: DomainGuardWriting? = nil
     ) {
         self.configStore = configStore
         self.stateStore = stateStore
         self.controller = controller
         self.verifier = verifier
         self.monitor = monitor
+        self.domainGuard = domainGuard ?? DomainGuardWriter(directory: configStore.directoryURL)
         self.config = configStore.load()
+    }
+
+    /// D36: "setup" means the IP-whitelist mode has no trusted address yet.
+    /// VPN-tunnel mode is configured by the interface itself and must keep
+    /// protecting without any IP entry.
+    private var setupIncomplete: Bool {
+        config.protection.mode == .ipWhitelist && config.trustedAddresses.isEmpty
     }
 
     // MARK: - Lifecycle
@@ -191,6 +210,9 @@ actor ProtectionEngine {
         wakeObserver = nil
         launchObserver = nil
         await performResumeAll()
+        // D32: a graceful quit must not leave sites blocked. A crash keeps the
+        // last state (fail-closed) until the next launch republishes it.
+        domainGuard.update(active: false, domains: config.effectiveDomainBlocklist)
     }
 
     /// Startup recovery of stale frozen records (FR-6/42). Resumes directly
@@ -205,7 +227,7 @@ actor ProtectionEngine {
     /// stale record never causes harm nor claims ownership of another's stop.
     /// D29 (spec-v2, owner-approved): identity-checked intent recovery — G1
     /// (FR-41/42) prioritized; the narrow G2 ownership window is an accepted
-    /// residual risk (see DECISIONS.md D29 / README "Crash recovery").
+    /// residual risk (see project memory D29 / README "Crash recovery").
     func recoverStaleFrozen() async {
         guard let state = stateStore.load(), !state.frozen.isEmpty else { return }
         AppLog.engine.info("Recovering \(state.frozen.count, privacy: .public) stale frozen records")
@@ -237,9 +259,15 @@ actor ProtectionEngine {
         case .turnOnNow:
             await applyEvent(.turnOnNowTapped)
         case .retryCheck:
+            // Visible feedback: the request may wait behind the 3 s throttle or
+            // endpoint backoff, so publish the in-progress state immediately.
+            manualRefreshInFlight = true
             requestImmediateCheck()
+            publishSnapshot()
         case .addCurrentIP:
             await addCurrentIP()
+        case .detectCurrentIP:
+            await detectCurrentIP()
         case .resumeProtection:
             // End the bypass window and force an immediate re-check (R55).
             await applyEvent(.bypassExpired)
@@ -279,9 +307,9 @@ actor ProtectionEngine {
             return false
         }
         lastCheck = Date()
+        manualRefreshInFlight = false
         currentIPv4 = result.currentIPv4
-        currentIPv6 = result.currentIPv6
-        if case .verified = result.ipv6 { lastIPv6Verified = true } else { lastIPv6Verified = false }
+        lastIPv4Answers = result.allIPv4
 
         let verdict = composeVerdict(result)
         lastVerdictAllowed = (verdict == .allowed)
@@ -310,9 +338,11 @@ actor ProtectionEngine {
     private func runVPNInterfaceCheck() async -> Bool {
         let vpn = monitor.activeVPNInterface()
         lastCheck = Date()
-        currentIPv4 = nil
-        currentIPv6 = nil
-        lastIPv6Verified = false
+        manualRefreshInFlight = false
+        // D35: keep any explicitly detected public IPv4 for display. The VPN
+        // verdict is local, so the address is informational only — but
+        // onboarding polls it right after a detect, and clearing it here made
+        // the "trust this IP" step flicker back to "—".
         lastVerdictAllowed = (vpn != nil)
         if let bypassDeadline = bypassDeadline, bypassDeadline > Date() {
             publishSnapshot()
@@ -324,30 +354,24 @@ actor ProtectionEngine {
 
     private enum Verdict { case allowed, disallowed, unknown }
 
-    /// Trust lattice (spec D28): any disallowed → disallowed; else any unknown →
-    /// unknown; else allowed. A required-but-absent VPN tunnel forces disallowed.
+    /// Trust verdict (spec D28): every observed IPv4 address must be trusted;
+    /// any untrusted observation → disallowed, no answers → unknown. A
+    /// required-but-absent VPN tunnel forces disallowed.
     private func composeVerdict(_ result: IPVerificationResult) -> Verdict {
         if config.protection.requireVPNInterface && monitor.vpnInterfaceName() == nil {
             return .disallowed
         }
-        let trusted = config.trustedAddresses.compactMap { CIDRRange($0) }
-
-        func familyVerdict(_ family: FamilyResult) -> Verdict? {
-            switch family {
-            case .verified(let address):
-                return trusted.contains { $0.contains(address) } ? .allowed : .disallowed
-            case .noQuorum:
-                return .unknown
-            case .notApplicable:
-                return nil
+        switch result.ipv4 {
+        case .answers(let addresses):
+            guard !addresses.isEmpty else { return .unknown }
+            let trusted = config.trustedAddresses.compactMap { CIDRRange($0) }
+            let allTrusted = addresses.allSatisfy { address in
+                trusted.contains { $0.contains(address) }
             }
+            return allTrusted ? .allowed : .disallowed
+        case .noQuorum:
+            return .unknown
         }
-
-        let verdicts = [familyVerdict(result.ipv4), familyVerdict(result.ipv6)].compactMap { $0 }
-        if verdicts.contains(.disallowed) { return .disallowed }
-        if verdicts.contains(.unknown) { return .unknown }
-        if verdicts.isEmpty { return .unknown }
-        return .allowed
     }
 
     // MARK: - State machine bridge
@@ -358,7 +382,7 @@ actor ProtectionEngine {
             freezeWhenUnknown: config.protection.freezeWhenUnknown,
             graceSeconds: config.protection.graceSeconds,
             bypassMinutes: config.protection.manualResumeBypassMinutes,
-            trustedEmpty: config.trustedAddresses.isEmpty
+            trustedEmpty: setupIncomplete
         )
         let effects = machine.reduce(event, env: environment)
 
@@ -445,15 +469,17 @@ actor ProtectionEngine {
 
     private func performFreeze(_ reason: FreezeReason) async {
         // C1: effect-boundary guard — never freeze while protection is inactive
-        // (empty trusted list or master switch off), even if a stale effect arrives.
-        guard !config.trustedAddresses.isEmpty, config.protection.enabled else { return }
+        // (setup in IP mode or master switch off), even if a stale effect arrives.
+        guard config.protection.enabled, !setupIncomplete else { return }
         let apps = config.protectedApps.filter { $0.enabled }
         // User preference: minimize frozen apps' windows to the Dock so they do
         // not sit on screen looking hung. Window actions must precede SIGSTOP (a
         // frozen app cannot process them); prompt for Accessibility once (hide
         // fallback without it) and let the minimize settle before freezing.
+        // D30: an app frozen only at agent-terminal scope keeps its window —
+        // the app itself is never stopped.
         WindowMinimizer.promptAccessibilityOnce()
-        for app in apps { WindowMinimizer.minimizeApp(bundleID: app.bundleID) }
+        for app in apps where app.freezeScope == .app { WindowMinimizer.minimizeApp(bundleID: app.bundleID) }
         try? await Task.sleep(nanoseconds: 400_000_000)
         // C2: set metadata and configure durable per-process persistence BEFORE
         // the controller signals, so each stopped process is recorded first. The
@@ -515,7 +541,7 @@ actor ProtectionEngine {
 
     private func reconcile() async {
         // C1: never freeze new instances while the trusted list is empty (setup).
-        guard machine.status == .frozen, !config.trustedAddresses.isEmpty else { return }
+        guard machine.status == .frozen, !setupIncomplete else { return }
         let apps = config.protectedApps.filter { $0.enabled }
         // C2: controller queue owns the journal (persistNow after prune/freeze);
         // no engine save/clear here that could overwrite a newer record.
@@ -529,13 +555,16 @@ actor ProtectionEngine {
 
     private func configChanged(_ newConfig: AppConfig) async {
         let wasEnabled = config.protection.enabled
+        // D31: a trusted-list edit restarts protection from the new
+        // configuration instead of waiting for the next timer tick.
+        let trustedListChanged = newConfig.trustedAddresses != config.trustedAddresses
         config = newConfig
         startPeriodicTimer()
         // C1: an empty trusted list means INACTIVE protection (FR-10), not just a
         // different UI label. Resume our own processes, cancel any pending freeze
         // (grace/bypass/pause) and reset to checking so reconcile won't freeze new
         // instances. Adding an address later re-activates protection via a check.
-        if newConfig.trustedAddresses.isEmpty {
+        if newConfig.protection.mode == .ipWhitelist && newConfig.trustedAddresses.isEmpty {
             // C1: invalidate pending effects SYNCHRONOUSLY before the first await,
             // so an expired grace/bypass cannot issue a freeze during the resume
             // suspension. Reset the machine so stale grace/freeze effects are inert.
@@ -553,6 +582,12 @@ actor ProtectionEngine {
             publishSnapshot()
             return
         }
+        if trustedListChanged {
+            // D31: drop grace/bypass, re-check now, keep a frozen set until the
+            // verdict. The empty-list case above already reset everything.
+            await applyEvent(.trustedListChanged)
+            return
+        }
         if !newConfig.protection.enabled && wasEnabled {
             await applyEvent(.protectionDisabled)
         } else if newConfig.protection.enabled && !wasEnabled {
@@ -563,31 +598,39 @@ actor ProtectionEngine {
         publishSnapshot()
     }
 
+    /// D35: explicit detection for the UI (onboarding "trust this IP"). It never
+    /// feeds a verdict into the machine: IP mode's periodic check still decides
+    /// trust, and VPN mode remains local. Only the displayed address changes.
+    private func detectCurrentIP() async {
+        manualRefreshInFlight = true
+        publishSnapshot()
+        if let result = await fetchCurrentIPOnDemand() {
+            currentIPv4 = result.currentIPv4
+            lastIPv4Answers = result.allIPv4
+        }
+        manualRefreshInFlight = false
+        publishSnapshot()
+    }
+
     private func addCurrentIP() async {
-        var ipv4 = currentIPv4
-        var ipv6 = lastIPv6Verified ? currentIPv6 : nil
+        var addresses = lastIPv4Answers
         // VPN-tunnel mode keeps no cached public IP (its checks are purely
         // local), and an IP-mode check may not have answered yet. "Add current
         // IP" is an explicit user request, so learn the address with a one-off
         // endpoint query instead of silently doing nothing. No verdict is fed
         // into the machine here: VPN mode stays local, IP mode re-checks below
         // with the updated trusted list.
-        if ipv4 == nil && ipv6 == nil {
+        if addresses.isEmpty {
             if let result = await fetchCurrentIPOnDemand() {
-                ipv4 = result.currentIPv4
-                if case .verified = result.ipv6 { ipv6 = result.currentIPv6 }
+                addresses = result.allIPv4
             }
         }
         var changed = false
-        if let ipv4 {
-            let raw = ipv4.description
-            if !config.trustedAddresses.contains(raw) {
-                config.trustedAddresses.append(raw)
-                changed = true
-            }
-        }
-        if let ipv6 {
-            let raw = ipv6.description
+        // Split-tunnel hosts can expose several current public IPs; trust every
+        // one the last batch observed so the next check does not fail on a
+        // legitimate egress address that simply was not added yet.
+        for address in addresses {
+            let raw = address.description
             if !config.trustedAddresses.contains(raw) {
                 config.trustedAddresses.append(raw)
                 changed = true
@@ -595,19 +638,23 @@ actor ProtectionEngine {
         }
         if changed {
             try? configStore.save(config)
+            // D31: the list just changed, so restart evaluation immediately.
+            await applyEvent(.trustedListChanged)
+        } else {
+            requestImmediateCheck()
         }
-        requestImmediateCheck()
     }
 
     /// One-off public-IP lookup for the explicit "Add current IP" action.
     /// Retries once past the verifier's 3 s minimum batch interval so a press
     /// right after a running or backed-off batch still resolves.
     private func fetchCurrentIPOnDemand() async -> IPVerificationResult? {
-        if let result = await verifier.check(config: config, online: monitor.isOnline) {
+        if let result = await verifier.check(config: config, online: monitor.isOnline, force: true) {
             return result
         }
-        try? await Task.sleep(nanoseconds: 3_100_000_000)
-        return await verifier.check(config: config, online: monitor.isOnline)
+        // Only an in-flight batch can refuse a forced request; wait it out once.
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        return await verifier.check(config: config, online: monitor.isOnline, force: true)
     }
 
     // MARK: - Timers
@@ -767,12 +814,26 @@ actor ProtectionEngine {
         return Set(running.compactMap { $0.bundleIdentifier }.filter { protectedIDs.contains($0) })
     }
 
+    /// D32: the guard blocks unless the current state proves a trusted IP.
+    private var domainGuardActive: Bool {
+        guard config.protection.enabled, !setupIncomplete else { return false }
+        switch machine.status {
+        case .protected, .paused, .disabled:
+            return false
+        case .initializing, .checking, .grace, .frozen, .unknown:
+            return true
+        }
+    }
+
     private func publishSnapshot() {
+        // D32: block only while protection is active and the IP is not proven
+        // trusted. Pause and the master switch are explicit user overrides;
+        // setup (empty trusted list) is inactive (FR-10).
+        domainGuard.update(active: domainGuardActive, domains: config.effectiveDomainBlocklist)
         let snapshot = EngineSnapshot(
             status: machine.status,
             uiStatus: deriveUIStatus(),
             currentIPv4: currentIPv4?.description,
-            currentIPv6: currentIPv6?.description,
             vpnInterface: monitor.activeVPNInterface(),
             trusted: lastVerdictAllowed,
             graceRemaining: graceRemaining(),
@@ -780,7 +841,8 @@ actor ProtectionEngine {
             pauseUntil: pauseDeadline,
             frozenBundleIDs: Set(frozenProcesses.map { $0.bundleID }),
             runningBundleIDs: runningBundleIDs(),
-            lastCheck: lastCheck
+            lastCheck: lastCheck,
+            isRefreshing: manualRefreshInFlight
         )
         onSnapshot?(snapshot)
     }

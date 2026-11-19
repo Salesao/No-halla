@@ -241,6 +241,22 @@
         }
       }
     },
+    "apps.freeze-scope": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freeze"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заморозка"
+          }
+        }
+      }
+    },
     "apps.frozen": {
       "localizations": {
         "en": {
@@ -269,6 +285,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не запущено"
+          }
+        }
+      }
+    },
+    "apps.scope-agent-terminals": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent terminals"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Терминалы агентов"
+          }
+        }
+      }
+    },
+    "apps.scope-agent-terminals-caveat": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A model request already sent still completes on the server."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уже отправленный запрос к модели всё равно завершится на сервере."
+          }
+        }
+      }
+    },
+    "apps.scope-agent-terminals-help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keeps the app running. Stops AI agent sessions started in its terminals — Claude Code, Codex, Antigravity, Gemini, Grok, Copilot, Cursor and similar — with their tool calls."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложение продолжает работать. Останавливаются только сессии AI-агентов, запущенные в его терминалах, — Claude Code, Codex, Antigravity, Gemini, Grok, Copilot, Cursor и подобные — вместе с вызовами инструментов."
+          }
+        }
+      }
+    },
+    "apps.scope-app": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложение"
           }
         }
       }
@@ -614,13 +694,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate until your VPN returns."
+            "value": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate and blocked sites stop resolving until your VPN returns."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, пока VPN не вернётся."
+            "value": "No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, а заблокированные сайты перестают резолвиться, пока VPN не вернётся."
           }
         }
       }
@@ -662,13 +742,29 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Only this IP opens the gate. Add your VPN IP here."
+            "value": "Choose how trust is decided. In IP mode, add the address your VPN exposes."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Только этот IP открывает ворота. Добавьте сюда IP вашего VPN."
+            "value": "Выберите, как определяется доверие. В режиме IP добавьте адрес, который выдаёт ваш VPN."
+          }
+        }
+      }
+    },
+    "onboarding.3.need-ip": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add at least one trusted IP to continue."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавьте хотя бы один доверенный IP, чтобы продолжить."
           }
         }
       }
@@ -685,6 +781,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Доверьтесь миру вашего VPN"
+          }
+        }
+      }
+    },
+    "onboarding.4.body": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional: these hostnames will not resolve while protection is active and your IP is untrusted."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Необязательно: эти хосты не будут резолвиться, пока защита активна и IP недоверенный."
+          }
+        }
+      }
+    },
+    "onboarding.4.helper": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shared packages can be imported later in Settings → Protection."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Общие пакеты можно импортировать позже в Settings → Protection."
+          }
+        }
+      }
+    },
+    "onboarding.4.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocked sites"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заблокированные сайты"
           }
         }
       }
@@ -726,13 +870,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Step %d of 3"
+            "value": "Step %d of 4"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Шаг %d из 3"
+            "value": "Шаг %d из 4"
           }
         }
       }
@@ -902,13 +1046,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Waiting at the gate."
+            "value": "The gate is closed."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ждут у ворот."
+            "value": "Ворота закрыты."
           }
         }
       }
@@ -1014,13 +1158,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The gate holds."
+            "value": "The gate is open."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ворота держат."
+            "value": "Ворота открыты."
           }
         }
       }
@@ -1313,22 +1457,6 @@
         }
       }
     },
-    "ui.check-ipv6": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Check IPv6"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Проверять IPv6"
-          }
-        }
-      }
-    },
     "ui.checking-resumes-at-14-32": {
       "localizations": {
         "en": {
@@ -1341,22 +1469,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Проверка возобновится в %@."
-          }
-        }
-      }
-    },
-    "ui.connect-to-your-vpn-before-trusting-this-address": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connect to your VPN before trusting this address."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Подключите VPN, прежде чем доверять этому адресу."
           }
         }
       }
@@ -1425,6 +1537,22 @@
         }
       }
     },
+    "ui.couldn-t-detect-your-ip": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't detect your IP. Check the VPN connection and try again, or add it manually."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось определить IP. Проверьте VPN и попробуйте ещё раз или добавьте вручную."
+          }
+        }
+      }
+    },
     "ui.couldn-t-enable-launch-at-login-try-again": {
       "localizations": {
         "en": {
@@ -1437,6 +1565,662 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось настроить запуск при входе. Повторите попытку."
+          }
+        }
+      }
+    },
+    "ui.detect-ip": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detect IP again"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Определить IP заново"
+          }
+        }
+      }
+    },
+    "ui.domain-guard": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocked sites"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заблокированные сайты"
+          }
+        }
+      }
+    },
+    "ui.domain-guard-add": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add domain"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить домен"
+          }
+        }
+      }
+    },
+    "ui.domain-guard-copied": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопировано"
+          }
+        }
+      }
+    },
+    "ui.domain-guard-copy-command": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy command"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопировать команду"
+          }
+        }
+      }
+    },
+    "ui.domain-guard-edit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocked site"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заблокированный сайт"
+          }
+        }
+      }
+    },
+    "ui.domain-guard-helper": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "While protection is active and the IP is not trusted, these hostnames resolve to 0.0.0.0/::1. Exact hostnames; www. is added automatically. Browsers using DNS-over-HTTPS bypass this."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока защита активна и IP недоверенный, эти хосты резолвятся в 0.0.0.0/::1. Точные имена; www. добавляется автоматически. Браузеры с DNS-over-HTTPS это обходят."
+          }
+        }
+      }
+    },
+    "ui.domain-guard-install": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установить…"
+          }
+        }
+      }
+    },
+    "ui.domain-guard-install-failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installation failed. Copy the command and run it in Terminal."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установка не удалась. Скопируйте команду и выполните её в Terminal."
+          }
+        }
+      }
+    },
+    "ui.domain-guard-installed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Root helper installed."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Root-helper установлен."
+          }
+        }
+      }
+    },
+    "ui.domain-guard-invalid": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a hostname like example.com"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введите имя хоста, например example.com"
+          }
+        }
+      }
+    },
+    "ui.domain-guard-not-installed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The root helper is not installed, so this list has no effect yet."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Root-helper не установлен, поэтому список пока не действует."
+          }
+        }
+      }
+    },
+    "ui.domain-guard-placeholder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "example.com"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "example.com"
+          }
+        }
+      }
+    },
+    "ui.domain-guard-uninstall": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uninstall…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить…"
+          }
+        }
+      }
+    },
+    "ui.domain-guard-uninstall-failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't remove the helper."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось удалить root-helper."
+          }
+        }
+      }
+    },
+    "ui.domain-list-added": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d domains added."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавлено доменов: %d."
+          }
+        }
+      }
+    },
+    "ui.domain-list-added-skipped": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d added, %d skipped."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавлено %d, пропущено %d."
+          }
+        }
+      }
+    },
+    "ui.domain-list-drop-hint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drop a domain list (.txt or .json) here."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перетащите сюда список доменов (.txt или .json)."
+          }
+        }
+      }
+    },
+    "ui.domain-list-empty": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No valid hostnames found."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Валидных хостов не найдено."
+          }
+        }
+      }
+    },
+    "ui.domain-list-import-failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't read that list."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось прочитать список."
+          }
+        }
+      }
+    },
+    "ui.domain-list-none-new": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No new domains."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новых доменов нет."
+          }
+        }
+      }
+    },
+    "ui.domain-list-too-large": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That list is too large."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Список слишком большой."
+          }
+        }
+      }
+    },
+    "ui.domain-packages": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shared packages"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Общие пакеты"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-domain-count": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d domains"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d доменов"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-drag": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag to share this package"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перетащите, чтобы поделиться пакетом"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-empty": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No packages yet."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пакетов пока нет."
+          }
+        }
+      }
+    },
+    "ui.domain-packages-enabled": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enabled"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включён"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-export": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export package"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Экспортировать пакет"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-export-list": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export list…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Экспортировать список…"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-helper": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Packages are JSON files with a domain list. Drag a package out to share it, or drop a .json file here to import. Disable a package without deleting it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пакеты — это JSON-файлы со списком доменов. Перетащите пакет, чтобы поделиться, или бросьте сюда .json-файл для импорта. Пакет можно отключить, не удаляя."
+          }
+        }
+      }
+    },
+    "ui.domain-packages-import": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import package…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Импортировать пакет…"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-import-action": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Импортировать"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-import-failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import failed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Импорт не удался"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-invalid": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not a valid No-halla package."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это не пакет No-halla."
+          }
+        }
+      }
+    },
+    "ui.domain-packages-limit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many packages (max 32)."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слишком много пакетов (максимум 32)."
+          }
+        }
+      }
+    },
+    "ui.domain-packages-preview-author": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "by %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "автор: %@"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-preview-count": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d domains, %d new"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d доменов, %d новых"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-preview-duplicates": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d already blocked"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d уже заблокированы"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-preview-title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import package"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Импорт пакета"
+          }
+        }
+      }
+    },
+    "ui.domain-packages-too-large": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Package is too large."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пакет слишком большой."
+          }
+        }
+      }
+    },
+    "ui.domain-packages-unsupported": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsupported package version."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неподдерживаемая версия пакета."
           }
         }
       }
@@ -1457,18 +2241,18 @@
         }
       }
     },
-    "ui.edit-family-endpoint": {
+    "ui.edit-ip-check-endpoint": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Edit %@ endpoint"
+            "value": "Edit IP-check endpoint"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Изменить адрес проверки %@"
+            "value": "Изменить адрес проверки IP"
           }
         }
       }
@@ -1505,34 +2289,34 @@
         }
       }
     },
-    "ui.enter-a-valid-ipv4-ipv6-or-cidr-address": {
+    "ui.enter-a-valid-ipv4-or-cidr-address": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enter a valid IPv4, IPv6 or CIDR address."
+            "value": "Enter a valid IPv4 or CIDR address."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Проверьте формат IPv4, IPv6 или CIDR."
+            "value": "Проверьте формат IPv4 или CIDR."
           }
         }
       }
     },
-    "ui.enter-an-ipv4-ipv6-or-cidr-address": {
+    "ui.enter-an-ipv4-or-cidr-address": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enter an IPv4, IPv6 or CIDR address."
+            "value": "Enter an IPv4 or CIDR address."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Введите адрес IPv4, IPv6 или CIDR."
+            "value": "Введите адрес IPv4 или CIDR."
           }
         }
       }
@@ -2070,13 +2854,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No matching applications"
+            "value": "Application not found. Try another name or add it manually."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Подходящих приложений нет"
+            "value": "Приложение не найдено. Попробуйте другое имя или добавьте его вручную."
           }
         }
       }
@@ -2109,6 +2893,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Уведомления отключены в системных настройках."
+          }
+        }
+      }
+    },
+    "ui.ok": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ОК"
           }
         }
       }
@@ -2237,22 +3037,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "При включении защите нужен активный туннель."
-          }
-        }
-      }
-    },
-    "ui.protection-toggle-helper": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Turn protection on or off. Turning it off resumes all frozen apps."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Включите или выключите защиту. Выключение возобновит все замороженные приложения."
           }
         }
       }
@@ -2509,6 +3293,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Доверять этому IP"
+          }
+        }
+      }
+    },
+    "ui.trusted": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trusted"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доверен"
           }
         }
       }
