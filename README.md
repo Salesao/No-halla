@@ -1,168 +1,29 @@
+**English** · [Русский](README.ru.md)
+
 # No-halla
 
 *Valhalla can wait.*
 
-No-halla is a free, open-source macOS menu bar agent that **pauses selected apps when your public IP leaves a trusted realm** and resumes them when a trusted IP returns. It is built for the moment your VPN drops: instead of letting apps quietly talk over an untrusted connection, No-halla puts them on hold (`SIGSTOP`) until your VPN is back.
+**When your VPN drops, No-halla can pause a whole Mac app or just the terminal sessions running AI agents.** Say you have Codex working in Orca and Claude Code in macOS Terminal. Enable **Agent terminals** for both apps and those sessions pause together, including the commands the agents started. A build or SSH session in another tab keeps running. When the VPN returns, both agents resume.
 
-## What it is — and what it is not
+**[Download for macOS](dist/No-halla-0.1.0.dmg?raw=1)** · [First launch](#first-launch) · [Build from source](docs/USER_GUIDE.md#build-from-source) · [Troubleshooting](docs/USER_GUIDE.md#troubleshooting)
 
-No-halla pauses **user-space execution** of the apps you choose. It is **not a network firewall and not a system kill switch**.
+## Protection in action
 
-> **`SIGSTOP` ≠ firewall.** While an app is paused, macOS can still send buffered data or finish already-established connections. No-halla does not promise "zero leak". It is a UX-level pause of selected apps, not a packet filter. It does not block the whole network, touch system processes, or protect processes owned by other users or root. The optional **Blocked sites** guard blocks *hostname resolution* from a user list while the IP is untrusted — still not a packet filter: DNS-over-HTTPS, IP literals and already-resolved connections bypass it.
+| VPN connected | Public IP outside the trusted list |
+| :--- | :--- |
+| [![VPN connected. Terminal, Linear and ChatGPT are active.](docs/images/protected-en.png)](docs/images/protected-en.png) | [![The IP check marks the address as untrusted. Linear and ChatGPT are frozen while Terminal stays active.](docs/images/frozen-en.png)](docs/images/frozen-en.png) |
 
-### Terminal agents (Claude Code, Codex)
+## Install
 
-Each protected app has a **Freeze** choice: **App** (v1 behaviour — the app's own processes, helpers and XPC services) or **Agent terminals**. The second keeps the app running and stops only the terminal sessions that host a supported CLI agent. No-halla walks the app's process tree, finds an agent attached to a controlling terminal, and freezes the shell session hosting it (`host → login → zsh → agent`) together with the agent's tool calls. That tab becomes inert; the app window, other tabs, builds, ssh and dev servers keep running.
+Open the DMG, drag **No-halla** to **Applications**, then open it. Version 0.1.0 runs on **macOS 13 or later**, on Apple silicon and Intel. The download is ad-hoc signed. If macOS asks for approval, use **System Settings → Privacy & Security**. [ZIP](dist/No-halla-0.1.0.zip?raw=1) · [SHA-256 checksums](dist/SHA256SUMS.txt)
 
-Supported CLIs (`AgentDetector.catalog`): Claude Code (`claude`), OpenAI Codex CLI (`codex`), Google Antigravity CLI (`agy`) and the legacy Gemini CLI (`gemini`), xAI Grok Build (`grok`), GitHub Copilot CLI (`copilot`), Cursor CLI (`cursor-agent`), Factory Droid (`droid`), Amp (`amp`), Kiro CLI (`kiro-cli`), plus the model-agnostic Aider, OpenCode, Crush, Goose and OpenHands.
+## First launch
 
-Why this list: the first group is US vendors that restrict Russia and China, and a CLI inherits its vendor's block — exactly the case where an agent must not keep running on a local IP. As of November 2026: ChatGPT/Codex is unavailable in Russia, mainland China, Belarus, Cuba, Iran, North Korea, Syria and Venezuela (plus Hong Kong and Macau); Claude is unavailable in Russia and mainland China under [Anthropic's supported-regions policy](https://www.anthropic.com/legal/supported-regions); Gemini is unavailable in Russia, Belarus, Iran, Syria, Cuba, North Korea and Afghanistan, with mainland China Workspace-only for personal accounts; Grok is missing from the China and Russia App Stores; [GitHub does not sell or export Copilot to Russia or Belarus](https://docs.github.com/en/site-policy/other-site-policies/github-and-trade-controls); Cursor is reported blocked in Russia. Sources also include the October 2026 availability audits at whizi.io and [x.ai/cli](https://x.ai/cli).
+1. **Choose what pauses for each app.** Select **App** to freeze the whole Claude desktop app. To protect a CLI agent, add the app you run it in, such as Orca or macOS Terminal, and select **Agent terminals**. [Supported agents](docs/USER_GUIDE.md#terminal-agents)
+2. **Choose what you trust.** **VPN tunnel** (default) watches for an active tunnel on your Mac. Choose **IP whitelist** if you need a specific public IPv4 address or range. Connect to your VPN before selecting **Trust this IP**.
+3. **Finish setup.** Skip **Blocked sites** for app-only protection. Open the menu bar icon or the Dock window to see the result. To try it, disconnect and reconnect your VPN with a selected app open. In VPN tunnel mode you should see **Frozen**, then **Protected**.
 
-Detection does not rely on the executable name alone: Node-based installs report `node`, so argv is read through `KERN_PROCARGS2`, and a controlling tty is required — Codex's `app-server daemon` and other background helpers are therefore ignored. Agent sessions started while the IP is already untrusted are picked up by the 5 s reconcile pass.
+**What a pause covers.** No-halla uses `SIGSTOP` to pause user-space execution. macOS can still send buffered data or finish existing connections, and an AI request already sent can finish on the server. Packet-level blocking requires a firewall.
 
-Limits: a frozen client cannot cancel work the server already started — an in-flight model request keeps generating on the provider's side, is billed, and its response is buffered in the kernel socket until `SIGCONT`; `SIGSTOP` prevents the **next** request and the **next** tool call. Agents inside `tmux`/`screen` are not detected, because their process tree hangs off the multiplexer, not the tab's shell.
-
-### Blocked sites (optional domain guard)
-
-Settings → Protection → **Blocked sites** holds domain suffixes: one entry blocks the domain and every subdomain, and a leading `www.` is dropped. Domains can be typed in, imported from a shared package, or dropped as a `.txt`/`.json` list onto the section — the same drop target exists on the onboarding step, invalid entries are skipped, and the result is reported inline. While protection is on and the IP is not proven trusted (`checking`, `grace`, `frozen`, `unknown`), the root helper runs a loopback HTTP/HTTPS proxy: requests for a blocked suffix get `403`, everything else is tunnelled byte-for-byte, and the system web/secure proxy is pointed at `127.0.0.1:8844`. A trusted IP, pause, off, or a graceful quit restore the saved proxy state from a manifest and remove the marked `/etc/hosts` section, which stays as an exact-name fallback. A crash keeps the block (fail-closed).
-
-The app itself stays unprivileged. Install the helper once:
-
-```bash
-sudo bash "/Applications/No-halla.app/Contents/Resources/install-domain-guard.sh"
-```
-
-When the helper is missing, Settings → Protection and the onboarding Blocked sites step show **Install…** (runs the bundled script through the system admin prompt) and **Copy command**; after installation they report that the helper is installed. Settings also offers **Uninstall…**, which runs the bundled uninstaller and strips the hosts section; onboarding never removes the helper.
-
-The script copies `NoHallaDomainGuard` to `/usr/local/libexec`, writes `/Library/Application Support/NoHalla/guard.plist` and `/Library/LaunchDaemons/dev.nohalla.NoHallaDomainGuard.plist`, and bootstraps it. `uninstall-domain-guard.sh` restores the saved proxy state, removes the daemon, the helper and the hosts section. Only the console user is supported; re-run the installer after moving the app or rebuilding so the helper is refreshed. Settings shows Reinstall when the installed helper predates suffix support.
-
-Limits: the block uses the system proxy, so apps that ignore it (some native clients, `curl`) and connections already open bypass it; the proxy is a fail-closed dependency for covered apps. If the proxy cannot bind port 8844, only exact hosts names are blocked and the status file reports suffix mode as unavailable. It is not a packet filter and does not inspect TLS or block per app.
-
-**Proxy guard acceptance (2026-11-20, Happ connected).** Trusted IP: no hosts markers, web/secure proxy off and empty, sites load. Untrusted IP: hosts markers present, web and secure proxy enabled at `127.0.0.1:8844`, Vivaldi blocks `m.youtube.com`, `google.com` loads. Back to trusted: proxy restored to off/empty, hosts removed, Vivaldi loads YouTube again. Not exercised: pause/off through the UI, helper `kill -9` + launchd restart, a network change while active, and uninstall. The reconcile throttle was added after the installed helper build; it takes effect on the next helper reinstall.
-
-**Shared packages.** A list can be sent to another person as a JSON package: **Import package…** validates the file and shows a preview (name, note, author, how many domains are new versus already blocked) before adding it as a toggleable package; a package can be disabled without deleting it. Drag a package row onto Finder or a chat window to share it, or drop a `.json` file onto the packages section to import — both paths use the same validation and preview. The share button on a package row and **Export list…** for manual entries write the same format:
-
-```json
-{
-  "schemaVersion": 1,
-  "name": "AI services",
-  "note": "Blocked in RU/CN",
-  "author": "someone",
-  "domains": ["chatgpt.com", "claude.ai"]
-}
-```
-
-Import is treated as untrusted: 1 MB cap, schema check, at most 32 packages and 256 domains each, and every hostname is re-normalized by the app and again by the root helper. A package can only add hosts entries — it carries no executable content and no paths.
-
-Out of scope (v1): VPN client, `pf`/Network Extension/kext kill switch, packet-level filtering, whole-network blocking, Windows/Linux, accounts/cloud/telemetry/auto-update, App Store/sandbox. The hosts-based domain guard above is a name-resolution block, not a packet filter.
-
-## Requirements
-
-- macOS 13.0 or later (Apple Silicon and Intel).
-- To build: Xcode (15+, tested with 27.2) and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
-- Runs as the current user; **no root required**. App Sandbox is off; Hardened Runtime is on; builds are ad-hoc signed. The optional domain guard needs one `sudo` install of its LaunchDaemon.
-
-## Build and run
-
-```bash
-./scripts/build.sh   # xcodegen generate + xcodebuild Release (universal arm64+x86_64, ad-hoc)
-./scripts/run.sh     # open build/Build/Products/Release/No-halla.app
-./scripts/package.sh # build + dist/No-halla-<version>.dmg and .zip (with SHA-256)
-```
-
-Packaging requires a graphical Finder session and permission to automate Finder
-so that the disk image's layout can be saved. Open the DMG and drag No-halla to
-Applications. The local build is ad-hoc signed and not notarized, so macOS may
-require you to approve the first launch in Privacy & Security.
-
-The watchdog binary is embedded at `No-halla.app/Contents/MacOS/NoHallaWatchdog`.
-
-To repeat the first-run experience, build the current version and run:
-
-```bash
-./scripts/reset-app.py            # stop, clear user data, and reopen onboarding
-./scripts/reset-app.py --dry-run  # preview without changing anything
-```
-
-The reset disables launch at login and clears No-halla's configuration, recovery state, preferences, caches and saved window state. It waits for the app and watchdog to stop and refuses to remove a recovery state that still lists frozen processes. The lock file is kept. The optional system domain guard remains installed, and macOS notification permission is not reset.
-
-> **First launch is manual.** This project was implemented without automated tests by owner decision. Run the manual matrix below on a real machine before relying on it. The build is verified statically (compiler typecheck + structural checks); runtime behavior is validated by you.
-
-## How it works
-
-1. On first launch, a four-step onboarding lets you choose how trust is decided (IP whitelist or VPN tunnel), pick apps and what each freezes (the app itself or only the agent terminal sessions it hosts), trust your VPN's IP (or skip it in VPN mode), optionally add blocked hostnames (typed or dropped as a list), and enable launch at login.
-2. No-halla watches the network (`NWPathMonitor`, `SCDynamicStore`, wake) and periodically learns your public IPv4 through configurable HTTPS endpoints (default: `https://ipinfo.io/ip`). IPv6 is not checked (owner decision). On split-tunnel hosts several endpoints may see different public addresses; every observed address is checked against your trusted list — so every configured endpoint must route through your VPN tunnel, otherwise its answer leaks the real IP and freezes the apps. The refresh icon in the network card forces an immediate check; a spinner is shown while it is pending, even if the resulting IP and status do not change.
-3. If all observed IPs are trusted → **Protected**. If any observed IP is not trusted → a configurable **grace** countdown (factory default 1 s) → **Frozen**. Per app, *Freeze* is either **App** (`SIGSTOP` to the app's processes, helpers and children inside its `.app` bundle) or **Agent terminals** (the app keeps running; only terminal sessions hosting Claude Code/Codex are stopped). If no IP can be verified → **Unknown** (freezes after grace when *Freeze when unknown* is on). Editing the trusted list (add, remove, or *Add current IP*) restarts protection immediately: countdowns and manual-resume bypass windows are dropped and a fresh check runs, while a frozen set stays frozen until the verdict. The master Protection switch lives on the dashboard.
-4. When a trusted IP returns → apps resume (`SIGCONT`). Manual **Resume all** opens a bypass window; **Pause** suspends protection for 15 min / 1 hour / until relaunch.
-5. Safety: every signal verifies the process id **and start time** (PID-reuse guard); a deny-list (self, watchdog, PID 1, system processes, other users' processes) and a strict `.app` path-prefix are enforced before each signal. Agent-terminal targets are the exception to the path rule: they are authorized by a live process-tree edge from a process inside the bundle, and still pass the deny-list and identity checks.
-6. Reliability: a `kqueue` watchdog resumes frozen apps within ~2 s if No-halla crashes; startup recovers stale frozen records; quit / `SIGTERM` / `SIGINT` resume everything and clear state.
-
-Config and state live in `~/Library/Application Support/NoHalla/` (`config.json`, `state.json`, atomic writes).
-
-## Appearance and freeze behavior
-
-No-halla opens a **main window** (like a regular app) on launch and from the Dock: it shows onboarding first, then the protection dashboard (status, network, protected apps, actions) with a Settings button. A shield also stays in the menu bar for quick popover access. Clicking the Dock icon shows the main window. When an app is frozen, its windows are **minimized to the Dock** so it does not sit on screen looking hung, and restored when resumed.
-
-Minimizing another app's windows needs **Accessibility permission**: on the first freeze macOS prompts you to grant it (System Settings → Privacy & Security → Accessibility → enable No-halla). No-halla records that it asked and does not repeat the prompt on later launches. A local rebuild is ad-hoc signed, so macOS treats it as a new app and may drop the grant — re-enable No-halla manually in System Settings if you want window minimizing back. Without it, No-halla falls back to hiding the app instead of minimizing, and you can still use the app fully.
-
-A note on the freeze principle: an app can freeze even when your current IP is trusted, if the IP cannot be *verified* (no endpoint answered → `unknown`) and *Freeze when unknown* is on. The trusted IP must be successfully observed to stay Protected; you can turn off *Freeze when unknown* in Settings → Protection if you prefer. Endpoints disagreeing with each other is not an error: on a split-tunnel host they may legitimately see different egress addresses, and every one of them must be in the trusted list.
-
-## Crash recovery and its limitation
-
-No-halla records each process it intends to freeze **before** sending `SIGSTOP`, so a crash cannot leave a stopped app unrecorded. If No-halla crashes, the embedded watchdog resumes the recorded apps within ~2 s; the next launch also recovers any stale records. Both paths verify the process id **and start time** before sending `SIGCONT`, so a reused pid is never signaled (D29, FR-41/42).
-
-**Ownership limitation (accepted).** The record proves *which* process was frozen, not *who* paused it. In a narrow window — No-halla wrote the record but crashed before issuing `SIGSTOP`, and another agent (for example a debugger) independently paused the same process inside a protected app bundle — recovery may resume a pause No-halla did not create. This residual risk is accepted by design (full recovery is prioritized). It is narrowed by the safety rules (only processes owned by you that live inside a selected `.app` or descend from a process inside it, not system/deny-listed). **Recommendation:** avoid using debuggers or other third-party pauses on protected apps while No-halla is active.
-
-## Launch at login
-
-Settings → General → *Launch at login* uses `SMAppService.mainApp`. With an ad-hoc signature macOS may refuse registration; the error is shown inline and the toggle is not changed silently.
-
-## Manual verification matrix (run and check off)
-
-| # | Scenario | Expected | ✓ |
-|---|---|---|---|
-| 1 | VPN on, trusted IP | Protected, apps active | ☐ |
-| 2 | Disable VPN, IP changes | Grace → Frozen, `ps` shows `T` | ☐ |
-| 3 | Restore VPN | Protected, apps resumed | ☐ |
-| 4 | Launch a new instance while Frozen | Frozen within 2 s | ☐ |
-| 5 | Quit while frozen | Confirmation, then resume all | ☐ |
-| 6 | `kill -9` No-halla while frozen | Watchdog resumes apps | ☐ |
-| 7 | Sleep / wake | Check after wake, no false freeze | ☐ |
-| 8 | Wi-Fi → Ethernet, same IP | No freeze | ☐ |
-| 9 | All endpoints unreachable | Unknown, then freeze after grace (default) | ☐ |
-| 10 | Add current IP while frozen | Apps resume | ☐ |
-| 11 | Pause 1 hour | No freeze, status shows end time | ☐ |
-| 12 | Resume all on a bad IP | Bypass 5 min, then freeze again | ☐ |
-| 13 | Endpoint bypassing the tunnel (split-tunnel DIRECT rule) | Its answer is untrusted → grace → freeze | ☐ |
-| 14 | Run without admin | Works without root | ☐ |
-| 15 | Cursor/Claude with helpers | Helper processes also `T` | ☐ |
-| 16 | Remove an app from the list while frozen | Its process resumes | ☐ |
-| 17 | Corrupt the config manually | Defaults, banner, app keeps working | ☐ |
-| 18 | About | No-halla, tagline, version, MIT shown | ☐ |
-| 19 | Menu bar | 5 states distinguishable, template rendering in light/dark | ☐ |
-| 20 | Switch language EN/RU | All strings incl. lore switch without clipping | ☐ |
-
-Also verify accessibility on the live build: VoiceOver labels, keyboard focus order, Increase Contrast / Reduce Transparency / Reduce Motion (see `design/ACCESSIBILITY.md`).
-
-## Troubleshooting
-
-- **An app stays paused after No-halla is gone.** Resume it manually: `kill -CONT <pid>` (find the pid in Activity Monitor; a paused process shows state `T`). The watchdog and startup recovery normally handle this automatically.
-- **Apps freeze on a trusted network.** One of the public addresses observed by the endpoints may not be in the trusted list — with domain-routed split tunneling, an endpoint whose domain matches a DIRECT rule (commonly `api.ipify.org`, `ifconfig.me`) sees your real IP instead of the VPN's. Use an endpoint that routes through the tunnel (the default `https://ipinfo.io/ip` does on typical rule sets), or fix the VPN client's rules so all IP-check domains go through the tunnel. **Add current IP** trusts every observed address, but trusting a dynamic real IP is fragile.
-- **IP check services blocked (e.g. regional).** Replace the endpoint in Settings → Advanced with your own HTTPS URL that returns a plain-text IP or JSON `{"ip": ...}` — and make sure its domain routes through your VPN tunnel.
-- **Launch at login won't enable.** Ad-hoc signing may be rejected by `SMAppService`; the inline error explains it. Re-sign with a valid identity if needed.
-- **Esc does not close the popover.** `MenuBarExtra(.window)` has limited Esc handling on macOS 13; this is a known accessibility gap (D23). Click the menu bar icon to toggle.
-
-## Privacy
-
-No telemetry, analytics, accounts or auto-update. The only outbound traffic is to the configured HTTPS IP-check endpoints. IP addresses are masked in logs outside debug level (`203.0.113.x`). Diagnostics export (Settings → Advanced) is local and user-initiated; nothing is sent automatically.
-
-## Removal
-
-1. Quit No-halla (it resumes any frozen apps first).
-2. Turn off *Launch at login* in Settings → General (or remove the login item in System Settings → General → Login Items).
-3. Delete `No-halla.app`.
-4. Optionally remove `~/Library/Application Support/NoHalla/`.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+For site blocking, the packaged build supports exact hostnames. Build from source for subdomain coverage. [Site blocker setup](docs/USER_GUIDE.md#blocked-sites) · [Recovery and privacy](docs/USER_GUIDE.md#recovery-and-privacy) · [Removal](docs/USER_GUIDE.md#removal) · [MIT license](LICENSE)
