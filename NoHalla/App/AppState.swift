@@ -146,6 +146,7 @@ final class AppState: ObservableObject {
         frozen: Set<String> = [],
         running: Set<String> = ["com.anthropic.claudefordesktop", "com.todesktop.230313mzl4w4u92"],
         trustedAddresses: [String] = ["203.0.113.5"],
+        protectionEnabled: Bool = true,
         apps: [ProtectedApp] = [
             ProtectedApp(bundleID: "com.anthropic.claudefordesktop", name: "Claude", enabled: true),
             ProtectedApp(bundleID: "com.todesktop.230313mzl4w4u92", name: "Cursor", enabled: true),
@@ -157,6 +158,7 @@ final class AppState: ObservableObject {
         config.onboardingCompleted = true
         config.trustedAddresses = trustedAddresses
         config.protectedApps = apps
+        config.protection.enabled = protectionEnabled
         state.config = config
         let machineStatus: ProtectionStatus
         switch status {

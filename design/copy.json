@@ -159,22 +159,6 @@
     "en": "Retry",
     "ru": "Повторить"
   },
-  "action.pause": {
-    "en": "Pause",
-    "ru": "Пауза"
-  },
-  "action.pause15": {
-    "en": "15 minutes",
-    "ru": "15 минут"
-  },
-  "action.pause60": {
-    "en": "1 hour",
-    "ru": "1 час"
-  },
-  "action.pauseUntilRelaunch": {
-    "en": "Until relaunch",
-    "ru": "До перезапуска"
-  },
   "action.turnOn": {
     "en": "Turn on now",
     "ru": "Включить сейчас"

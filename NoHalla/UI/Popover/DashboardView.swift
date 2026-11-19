@@ -20,6 +20,19 @@ struct DashboardView: View {
     private var apps: [ProtectedApp] { appState.config.protectedApps }
     private var vpnMode: Bool { appState.config.protection.mode == .vpnInterface }
 
+    /// Resume all is rendered only where it releases stopped processes: the
+    /// frozen state, or an unknown check that still reports frozen apps.
+    /// Protection off (`.disabled`) resumes everything in the engine, so no
+    /// resume control is rendered for it.
+    private var showsResumeAll: Bool {
+        guard appState.config.protection.enabled else { return false }
+        switch status {
+        case .frozen: return true
+        case .unknown: return !snapshot.frozenBundleIDs.isEmpty
+        default: return false
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
             header
@@ -158,7 +171,9 @@ struct DashboardView: View {
     private var actionSection: some View {
         switch status {
         case .protected:
-            pauseMenu
+            // Pause was removed from the dashboard (owner request): protection
+            // stays on until the master toggle or a network verdict changes it.
+            EmptyView()
         case .grace:
             VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
                 if let remaining = snapshot.graceRemaining {
@@ -173,19 +188,23 @@ struct DashboardView: View {
                 }
             }
         case .frozen:
-            VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
-                Button(L10n.string("action.resumeAll")) { appState.send(.resumeAll) }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity)
-                Text(L10n.string("caption.resumeBypass", appState.config.protection.manualResumeBypassMinutes))
-                    .font(.system(size: DesignTokens.typeSmall))
-                    .foregroundStyle(DesignTokens.muted)
-                    .fixedSize(horizontal: false, vertical: true)
+            if showsResumeAll {
+                VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
+                    Button(L10n.string("action.resumeAll")) { appState.send(.resumeAll) }
+                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity)
+                    Text(L10n.string("caption.resumeBypass", appState.config.protection.manualResumeBypassMinutes))
+                        .font(.system(size: DesignTokens.typeSmall))
+                        .foregroundStyle(DesignTokens.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         case .unknown:
             HStack {
-                Button(L10n.string("action.resumeAll")) { appState.send(.resumeAll) }
-                    .buttonStyle(.bordered)
+                if showsResumeAll {
+                    Button(L10n.string("action.resumeAll")) { appState.send(.resumeAll) }
+                        .buttonStyle(.bordered)
+                }
                 Spacer()
                 Button(L10n.string("action.retry")) { appState.send(.retryCheck) }
                     .buttonStyle(.borderedProminent)
@@ -230,19 +249,6 @@ struct DashboardView: View {
                 .disabled(true)
                 .frame(maxWidth: .infinity)
         }
-    }
-
-    private var pauseMenu: some View {
-        Menu {
-            Button(L10n.string("action.pause15")) { appState.send(.pause(.minutes15)) }
-            Button(L10n.string("action.pause60")) { appState.send(.pause(.hour1)) }
-            Button(L10n.string("action.pauseUntilRelaunch")) { appState.send(.pause(.untilRelaunch)) }
-        } label: {
-            Text(L10n.string("action.pause"))
-                .frame(maxWidth: .infinity)
-        }
-        .menuStyle(.borderedButton)
-        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Helpers
@@ -302,3 +308,31 @@ struct DashboardView: View {
         .padding()
         .frame(width: 480)
 }
+#Preview("Protection off — no Resume all") {
+    DashboardView()
+        .environmentObject(AppState.preview(.disabled, protectionEnabled: false))
+        .padding()
+        .frame(width: 480)
+}
+
+#Preview("Unknown — Retry only") {
+    DashboardView()
+        .environmentObject(AppState.preview(.unknown, ipv4: nil, vpn: nil, trusted: false))
+        .padding()
+        .frame(width: 480)
+}
+
+#Preview("Unknown — frozen apps") {
+    DashboardView()
+        .environmentObject(AppState.preview(
+            .unknown,
+            ipv4: nil,
+            vpn: nil,
+            trusted: false,
+            frozen: ["com.anthropic.claudefordesktop"]
+        ))
+        .padding()
+        .frame(width: 480)
+}
+
+
