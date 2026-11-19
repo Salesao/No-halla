@@ -4,11 +4,11 @@
 
 - Read [the implementation brief](docs/IMPLEMENTATION_BRIEF.md) for behavior, scope, architecture, and acceptance criteria. Use §4 for the target repository layout and §10 for milestone order. If the app scaffold is absent, start with M1 when asked to implement the app.
 - Read [the design brief](docs/DESIGN_BRIEF.md) for UI, copy, brand, and accessibility. Use `design/BRAND.md`, `design/HANDOFF.md`, and `design/ACCESSIBILITY.md` where available. For gaps, use the [design specification](design/DESIGN_SPEC.md), `design/mockups/`, [tokens](design/tokens.json), [copy](design/copy.json), and `design/exports/` alongside the design brief.
-- Record deviations and ambiguous implementation decisions with their rationale in `DECISIONS.md`.
+- Record deviations and durable implementation decisions with their rationale in Orca pod memory (`.orca-pod/memory/`). Do not create or maintain a separate `DECISIONS.md`; memory is the single decision and history source. Follow the memory instructions at the bottom of this file.
 
 ## Platform and scope
 
-- No-halla is a macOS 13+ menu bar agent (`LSUIElement`) that pauses selected apps when the public IP is untrusted and resumes them when a trusted IP returns. Keep v1 within the scope in §2. In the README and About, explain that `SIGSTOP` pauses user-space execution and macOS can still send buffered data or finish existing connections.
+- No-halla is a macOS 13+ menu bar agent with a Dock icon and main window (`LSUIElement=false`, owner decision) that pauses selected apps when the public IP is untrusted and resumes them when a trusted IP returns. Keep v1 within the scope in §2. In the README and About, explain that `SIGSTOP` pauses user-space execution and macOS can still send buffered data or finish existing connections.
 - Use Swift 5.9+ in Swift 5 language mode, SwiftUI with AppKit where needed, and system frameworks only. Build for `arm64` and `x86_64` using XcodeGen and the `NoHalla` scheme. Use ad-hoc signing for local builds, enable Hardened Runtime, keep App Sandbox off, and run as the current user.
 - Use `No-halla` in user-facing text and `NoHalla` in Swift names, the project, and the module. Preserve app bundle ID `dev.nohalla.NoHalla` and watchdog bundle ID `dev.nohalla.NoHallaWatchdog`. Embed the watchdog at `No-halla.app/Contents/MacOS/NoHallaWatchdog`.
 - Write code and documentation in English. Use native macOS controls, the supplied design tokens and assets, and an EN/RU String Catalog populated from `design/copy.json`. Include SwiftUI previews with mock states and cover keyboard navigation and VoiceOver.
@@ -22,9 +22,9 @@
 
 ## Build and verification
 
-- `project.yml` is the XcodeGen source of truth for `NoHalla.xcodeproj`. Once the scaffold is in place, run `./scripts/build.sh` for the build and `./scripts/test.sh` for tests. Verify the watchdog's location inside the resulting app bundle.
-- Write unit tests before or alongside core logic. Use a dedicated test process for integration checks covering freeze, resume, watchdog recovery after `SIGKILL`, and startup recovery from persisted state. Follow §9 for the full test strategy.
-- At release acceptance, check FR-1 through FR-46 and record the results of the 20-scenario manual matrix in the README or PR. Apply the Definition of Done in §9 and record any requirement deferrals in `DECISIONS.md` (at most three).
+- `project.yml` is the XcodeGen source of truth for `NoHalla.xcodeproj`. Once the scaffold is in place, run `./scripts/build.sh` for the universal Release build. Verify the watchdog's location inside the resulting app bundle.
+- Automated tests are not part of this project by owner decision; no test target, `scripts/test.sh`, or TDD workflow is created. Verify core logic through review and the 20-scenario manual matrix, including freeze, resume, watchdog recovery after `SIGKILL`, and startup recovery from persisted state.
+- At release acceptance, check FR-1 through FR-46 and record the results of the 20-scenario manual matrix in the README or PR. Apply the Definition of Done in §9 and record any requirement deferrals in Orca pod memory (at most three).
 
 ## Git commits
 

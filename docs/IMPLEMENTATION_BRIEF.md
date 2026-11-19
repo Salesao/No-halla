@@ -1,6 +1,6 @@
 # Бриф для кодинг-агента: No-halla — per-app kill switch для macOS
 
-> **Как использовать.** Передай этот файл целиком кодинг-агенту в репозиторий, где уже лежит папка `design/` (результат `DESIGN_BRIEF.md`). Агент должен реализовать приложение, собрать его и прогнать тесты. Если `design/` отсутствует — реализуй UI по этому брифу и macOS HIG, а отклонения запиши в `DECISIONS.md`.
+> **Как использовать.** Передай этот файл целиком кодинг-агенту в репозиторий, где уже лежит папка `design/` (результат `DESIGN_BRIEF.md`). Агент должен реализовать приложение, собрать его и прогнать тесты. Если `design/` отсутствует — реализуй UI по этому брифу и macOS HIG, а отклонения запиши в Orca pod memory (`.orca-pod/memory/`).
 >
 > **Роль.** Ты — senior macOS-инженер (Swift, SwiftUI, AppKit, libproc, launchd-адъяценты). Ты пишешь production-код, тесты и документацию. Ты не расширяешь scope и не добавляешь фичи, которых нет в этом документе.
 
@@ -152,7 +152,7 @@ scripts/
 └── run.sh
 README.md
 LICENSE                         # MIT
-DECISIONS.md                    # отклонения и решения
+.orca-pod/memory/               # отклонения и решения
 ```
 
 После генерации проекта проверь, что `NoHallaWatchdog` оказался в `No-halla.app/Contents/MacOS/`; если XcodeGen разместил его иначе — добавь copy-files phase.
@@ -375,7 +375,7 @@ paused / disabled — ортогональные режимы: engine не ин�
 ### E. Бренд и визуал
 
 - **FR-33.** `CFBundleDisplayName` и `CFBundleName` = `No-halla`; в поповере, About, уведомлениях и README использовать `No-halla`; в коде — `NoHalla`.
-- **FR-34.** Иконка приложения — из `design/exports/appicon-1024.png` и `appicon.svg` (все размеры 16…1024), menu bar glyph — 5 images внутри `MenuBarIcon.imageset` из `design/exports/menubar-icons.svg` с именами из §0 и `.renderingMode(.template)`.
+- **FR-34.** Иконка приложения — из `design/exports/appicon-1024.png` (все размеры 16…1024), menu bar glyph — 5 images внутри `MenuBarIcon.imageset` из `design/exports/menubar-icons.svg` с именами из §0 и `.renderingMode(.template)`.
 - **FR-35.** Брендовая палитра и иллюстрации используются только там, где указано в `design/BRAND.md`; системные контролы, статусы и кнопки остаются нативными. Никаких кастомных шрифтов, фонов и текстур.
 - **FR-36.** Все lore-подписи и tagline берутся из `copy.json`; функциональные статусы (`Protected`, `Frozen`, `Resume all`) не заменяются метафорами.
 
@@ -651,7 +651,7 @@ xcodebuild -project NoHalla.xcodeproj -scheme NoHalla \
 
 - [ ] `./scripts/build.sh` проходит без ошибок.
 - [ ] `./scripts/test.sh` зелёный.
-- [ ] Все FR-1…FR-46 реализованы или явно отмечены как отложенные в `DECISIONS.md` (не больше 3).
+- [ ] Все FR-1…FR-46 реализованы или явно отмечены как отложенные в Orca pod memory (не больше 3).
 - [ ] Ручная матрица 20/20 пройдена.
 - [ ] UI соответствует `design/HANDOFF.md`; отклонения согласованы и записаны.
 - [ ] EN/RU строки на месте, нет хардкода.
@@ -703,7 +703,7 @@ xcodebuild -project NoHalla.xcodeproj -scheme NoHalla \
 3. Не добавляй фичи вне scope (история IP, графики, VPN-подключение, системный firewall, Windows/Linux).
 4. Не используй сторонние зависимости.
 5. Пиши unit-тесты до/вместе с core-логикой; UI — с Preview.
-6. Все отклонения и неоднозначные решения — в `DECISIONS.md` с обоснованием.
+6. Все отклонения и неоднозначные решения — в Orca pod memory с обоснованием.
 7. Держи код простым: без преждевременных абстракций, без «на будущее».
 8. Коммиты — логическими блоками; сообщения по существу.
 9. Не оставляй `TODO` в critical path (freeze/resume/watchdog).
