@@ -24,6 +24,9 @@ final class ProcessController: ProcessControlling {
     private let watchdogPIDProvider: () -> Int32?
     /// Tracked frozen processes keyed by pid (idempotence + identity records).
     private var frozen: [Int32: FrozenProcess] = [:]
+    /// C2: set when a rollback write failed; the journal may hold a stale record
+    /// until the next successful persistNow reconciles it. Queue-confined.
+    private var journalNeedsSync = false
     /// C2: durable persistence hook. The controller's serial queue is the single
     /// serialized owner of the frozen journal; the hook is set by the engine
     /// (actor) and read on the queue, so access is lock-synchronized. Metadata is
@@ -122,8 +125,7 @@ final class ProcessController: ProcessControlling {
         // I/O above (the pid could have been reused during the write).
         guard let current = ProcessEnumerator.startTime(of: pid),
               current.sec == start.sec, current.usec == start.usec else {
-            frozen.removeValue(forKey: pid)
-            _ = persistNow()
+            rollbackRecord(pid, context: "Identity changed before SIGSTOP; not freezing")
             return
         }
         if kill(pid, SIGSTOP) == 0 {
@@ -132,10 +134,23 @@ final class ProcessController: ProcessControlling {
             // C2: a failed STOP (e.g. EPERM) means the process is NOT stopped;
             // roll back the pre-write in memory and journal so it is not treated
             // as our frozen process nor skipped on later attempts.
-            let err = errno
-            frozen.removeValue(forKey: pid)
-            _ = persistNow()
-            AppLog.process.warning("SIGSTOP failed for pid \(pid, privacy: .public) errno \(err, privacy: .public); rolled back")
+            rollbackRecord(pid, context: "SIGSTOP failed (errno \(errno)); not frozen")
+        }
+    }
+
+    /// C2: remove a pre-written record and persist the rollback. If the journal
+    /// write fails, mark it for re-sync (the next operation reconciles) and log
+    /// the true status — never claim "rolled back" when the disk kept the stale
+    /// record. An unconfirmed record is safe at recovery: identity-checked
+    /// SIGCONT is a benign no-op on a still-running process, and a reused pid is
+    /// skipped — never a claim of owning someone else's stop.
+    private func rollbackRecord(_ pid: Int32, context: String) {
+        frozen.removeValue(forKey: pid)
+        if persistNow() {
+            AppLog.process.warning("\(context, privacy: .public) pid \(pid, privacy: .public); rolled back")
+        } else {
+            journalNeedsSync = true
+            AppLog.process.warning("\(context, privacy: .public) pid \(pid, privacy: .public); rollback NOT persisted, journal needs sync")
         }
     }
 
@@ -213,7 +228,9 @@ final class ProcessController: ProcessControlling {
         let handler = persistHandler
         persistLock.unlock()
         guard let handler = handler else { return false }
-        return handler(Array(frozen.values))
+        let ok = handler(Array(frozen.values))
+        if ok { journalNeedsSync = false }
+        return ok
     }
 
     // MARK: - Helpers

@@ -197,7 +197,12 @@ actor ProtectionEngine {
     /// from the persisted records: the controller's in-memory tracking is empty
     /// after a restart, so each state.json entry is identity-checked (pid +
     /// start time) and sent SIGCONT here, then the state is cleared. A reused
-    /// or vanished pid is never signaled.
+    /// or vanished pid is never signaled. This startup clear is safe: it runs
+    /// before the controller is active (no concurrent queue writes).
+    /// Unconfirmed records (a pre-write whose STOP failed or whose rollback write
+    /// did not reach disk) are treated safely: SIGCONT is a benign no-op on a
+    /// still-running process, and an identity mismatch skips a reused pid — so a
+    /// stale record never causes harm nor claims ownership of another's stop.
     func recoverStaleFrozen() async {
         guard let state = stateStore.load(), !state.frozen.isEmpty else { return }
         AppLog.engine.info("Recovering \(state.frozen.count, privacy: .public) stale frozen records")
@@ -353,8 +358,10 @@ actor ProtectionEngine {
             case .immediateCheck:
                 needsCheck = true
             case .clearFrozenState:
+                // C2: no independent state write here. This effect always follows
+                // .resumeAll, whose controller queue already persisted the emptied
+                // journal; an actor-side clear could delete a newer record.
                 frozenProcesses = []
-                try? stateStore.clear()
             }
         }
 
