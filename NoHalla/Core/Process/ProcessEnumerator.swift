@@ -121,17 +121,22 @@ enum ProcessEnumerator {
     }
 
     /// Fills a PID buffer through a libproc listing call. These calls return
-    /// the NUMBER OF PIDS (not bytes): on success the count placed in the
-    /// buffer, or the total count needed when the buffer is too small. The
-    /// buffer size argument is in bytes. When the returned count exceeds the
-    /// capacity the buffer is grown and the call retried (bounded).
+    /// the NUMBER OF PIDS placed in the buffer (not bytes), capped at the
+    /// buffer capacity — the kernel does NOT report the required size when the
+    /// buffer is too small. To detect truncation we allocate a `capacity + 1`
+    /// sentinel slot: if the returned count exceeds `capacity` the kernel
+    /// filled the sentinel, so more pids exist and the buffer is grown and the
+    /// call retried (bounded). The buffer size argument is in bytes. This works
+    /// for both proc_listallpids and proc_listchildpids (the NULL-size hint is
+    /// valid only for proc_listallpids, so it is not used here).
     private static func listPIDs(
         initialCapacity: Int,
         list: (UnsafeMutableRawPointer?, Int32) -> Int32
     ) -> [Int32] {
         var capacity = max(initialCapacity, 1)
-        for _ in 0..<6 {
-            var buffer = [pid_t](repeating: 0, count: capacity)
+        for _ in 0..<16 {
+            // One extra sentinel slot so a full buffer is detectable.
+            var buffer = [pid_t](repeating: 0, count: capacity + 1)
             let result = buffer.withUnsafeMutableBytes { raw in
                 list(raw.baseAddress, Int32(raw.count))
             }
@@ -140,9 +145,9 @@ enum ProcessEnumerator {
             if count <= capacity {
                 return Array(buffer.prefix(count)).filter { $0 > 0 }
             }
-            // Overflow: the kernel reported the total pid count needed.
-            // Grow past it (and at least double) to absorb table growth.
-            capacity = max(count + 64, capacity * 2)
+            // count == capacity + 1: the kernel filled the sentinel, so the
+            // table is larger than capacity. Grow and retry.
+            capacity *= 2
         }
         return []
     }
