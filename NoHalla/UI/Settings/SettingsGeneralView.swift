@@ -16,9 +16,10 @@ struct SettingsGeneralView: View {
     @State private var selectedLanguage: AppLanguage = .system
 
     var body: some View {
-        Form {
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
             if appState.corruptConfigBanner {
-                Section {
+                SettingsSection {
                     VStack(alignment: .leading, spacing: DesignTokens.spacing1) {
                         Text(L10n.string("ui.corrupt-config-title"))
                             .font(.system(size: DesignTokens.typeBody, weight: .semibold))
@@ -30,15 +31,16 @@ struct SettingsGeneralView: View {
                 }
             }
 
-            Section(L10n.string("ui.startup")) {
+            SettingsSection(L10n.string("ui.startup")) {
                 SettingRowView(label: L10n.string("ui.launch-at-login"), helper: appState.launchAtLoginError) {
                     Toggle("", isOn: $launchAtLogin)
                         .labelsHidden()
+                        .accessibilityLabel(L10n.string("ui.launch-at-login"))
                         .onChange(of: launchAtLogin) { newValue in setLaunchAtLogin(newValue) }
                 }
             }
 
-            Section(L10n.string("ui.notifications")) {
+            SettingsSection(L10n.string("ui.notifications")) {
                 SettingRowView(label: L10n.string("ui.notifications")) {
                     Toggle("", isOn: Binding(
                         get: { appState.config.notifications },
@@ -49,6 +51,7 @@ struct SettingsGeneralView: View {
                         }
                     ))
                     .labelsHidden()
+                    .accessibilityLabel(L10n.string("ui.notifications"))
                 }
                 if appState.notificationsDenied {
                     VStack(alignment: .leading, spacing: DesignTokens.spacing1) {
@@ -62,21 +65,31 @@ struct SettingsGeneralView: View {
                 }
             }
 
-            Section(L10n.string("ui.language")) {
+            SettingsSection(L10n.string("ui.language")) {
                 SettingRowView(label: L10n.string("ui.language")) {
-                    Picker("", selection: $selectedLanguage) {
-                        Text(L10n.string("ui.system")).tag(AppLanguage.system)
-                        Text(L10n.string("ui.language-english")).tag(AppLanguage.en)
-                        Text(L10n.string("ui.language-russian")).tag(AppLanguage.ru)
+                    HStack(spacing: DesignTokens.spacing2) {
+                        Picker("", selection: $selectedLanguage) {
+                            Text(L10n.string("ui.system")).tag(AppLanguage.system)
+                            Text(L10n.string("ui.language-english")).tag(AppLanguage.en)
+                            Text(L10n.string("ui.language-russian")).tag(AppLanguage.ru)
+                        }
+                        .labelsHidden()
+                        .accessibilityLabel(L10n.string("ui.language"))
+                        .frame(width: 140)
+                        Button(L10n.string("ui.apply-language-change")) { applyLanguage() }
+                            .buttonStyle(.bordered)
+                            .tint(DesignTokens.blue)
+                            .disabled(selectedLanguage == appState.config.language)
                     }
-                    .labelsHidden()
-                    .frame(width: 160)
                 }
-                Button(L10n.string("ui.apply-language-change")) { applyLanguage() }
-                    .buttonStyle(.bordered)
             }
+            }
+            .padding(DesignTokens.spacing5)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .formStyle(.grouped)
+        .background(DesignTokens.bg)
+        .tint(DesignTokens.action)
+        .toggleStyle(.switch)
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
             selectedLanguage = appState.config.language

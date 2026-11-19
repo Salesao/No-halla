@@ -21,7 +21,8 @@ struct GateSceneView: View {
         Image("GateScene")
             .resizable()
             .scaledToFit()
-            .frame(height: height)
+            .frame(width: height, height: height)
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.radiusCard))
             .accessibilityHidden(true)
     }
 

@@ -13,19 +13,35 @@ import SwiftUI
 
 struct SettingsButton: View {
     var label: String = L10n.string("action.settings")
+    var iconOnly = false
+
+    @ViewBuilder private var buttonLabel: some View {
+        if iconOnly {
+            Image(systemName: "gearshape")
+                .font(.system(size: 18, weight: .medium))
+                .frame(width: 40, height: 32)
+                .contentShape(Rectangle())
+        } else {
+            Label(label, systemImage: "gearshape")
+        }
+    }
 
     var body: some View {
         if #available(macOS 14.0, *) {
             SettingsLink {
-                Text(label)
+                buttonLabel
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel(label)
         } else {
-            Button(label) {
+            Button {
                 NSApp.activate(ignoringOtherApps: true)
                 NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            } label: {
+                buttonLabel
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel(label)
         }
     }
 }

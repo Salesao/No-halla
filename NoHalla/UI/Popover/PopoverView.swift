@@ -14,12 +14,17 @@ struct PopoverView: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
+        VStack(alignment: .leading, spacing: 0) {
             DashboardView()
+                .padding(DesignTokens.spacing4)
             footer
+                .padding(.horizontal, DesignTokens.spacing4)
+                .padding(.vertical, DesignTokens.spacing2)
+                .background(DesignTokens.chrome)
         }
-        .padding(DesignTokens.spacing4)
         .frame(width: DesignTokens.popoverWidth)
+        .background(DesignTokens.bg)
+        .tint(DesignTokens.action)
     }
 
     private var footer: some View {
@@ -30,6 +35,7 @@ struct PopoverView: View {
                 .buttonStyle(.borderless)
         }
         .font(.system(size: DesignTokens.typeSmall))
+        .foregroundStyle(DesignTokens.muted)
     }
 }
 

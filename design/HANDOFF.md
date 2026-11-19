@@ -70,7 +70,7 @@ Each section has a light and dark page with matching frame positions. Both appea
 
 | Asset | Import |
 |---|---|
-| [App icon](exports/appicon-1024.png) and [editable source](exports/appicon.svg) | Asset catalog `AppIcon.appiconset`. Create each required macOS marketing and application size from the source. |
+| [App icon](exports/appicon-1024.png) | Asset catalog `AppIcon.appiconset`. Create each required macOS size from the selected Doop gateway artwork. |
 | [Menu bar SVG](exports/menubar-icons.svg) | Five template images. Names and symbol IDs are in [ICONS.md](ICONS.md). |
 | [Brand reference](exports/brand-sheet.svg) | Reference art for the gate and About ornament. The brand source and fallback rules are in [BRAND.md](BRAND.md). |
 | Application icons | Obtain them through NSWorkspace in the SwiftUI app. |

@@ -45,17 +45,17 @@ struct SettingsRootView: View {
         }
         .frame(width: DesignTokens.settingsWidth, height: DesignTokens.settingsHeight)
         .background(DesignTokens.bg)
+        .tint(DesignTokens.action)
     }
 
     private var tabBar: some View {
-        HStack(spacing: DesignTokens.spacing5) {
+        HStack(spacing: DesignTokens.spacing1) {
             ForEach(SettingsTab.allCases) { item in
                 tabButton(item)
             }
-            Spacer()
         }
-        .padding(.horizontal, DesignTokens.spacing4)
-        .padding(.top, DesignTokens.spacing3)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DesignTokens.spacing1)
         .background(DesignTokens.chrome)
     }
 
@@ -64,18 +64,20 @@ struct SettingsRootView: View {
         return Button {
             tab = item
         } label: {
-            VStack(spacing: DesignTokens.spacing1) {
-                HStack(spacing: DesignTokens.spacing1) {
-                    Image(systemName: item.symbol)
-                    Text(L10n.string(item.titleKey))
-                }
-                .font(.system(size: DesignTokens.typeBody, weight: selected ? .semibold : .regular))
-                .foregroundStyle(selected ? DesignTokens.blue : DesignTokens.muted)
+            VStack(spacing: 2) {
+                Image(systemName: item.symbol)
+                    .font(.system(size: 15))
+                Text(L10n.string(item.titleKey))
+                    .font(.system(size: DesignTokens.typeSmall, weight: selected ? .semibold : .regular))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Rectangle()
                     .fill(selected ? DesignTokens.bronze : Color.clear)
-                    .frame(height: DesignTokens.ornamentStroke)
+                    .frame(width: 30, height: DesignTokens.ornamentStroke)
             }
-            .frame(minHeight: DesignTokens.targetMin)
+            .foregroundStyle(selected ? DesignTokens.blue : DesignTokens.muted)
+            .frame(width: 100, height: 48)
+            .background(selected ? DesignTokens.surface : Color.clear, in: RoundedRectangle(cornerRadius: DesignTokens.radiusControl))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(L10n.string(item.titleKey))

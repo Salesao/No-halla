@@ -12,36 +12,43 @@ import SwiftUI
 
 struct SettingsAboutView: View {
     var body: some View {
-        VStack(spacing: DesignTokens.spacing3) {
-            GateSceneView(variant: .about)
-            Image("AppIcon")
-                .resizable()
-                .frame(width: 64, height: 64)
-            Text(L10n.string("brand.name"))
-                .font(.system(size: DesignTokens.typeTitle, weight: .semibold))
-                .foregroundStyle(DesignTokens.text)
-            Text(L10n.string("brand.tagline"))
-                .font(.system(size: DesignTokens.typeBody))
-                .foregroundStyle(DesignTokens.muted)
-            Text(L10n.string("ui.version-0-1-0", "0.1.0"))
-                .font(.system(size: DesignTokens.typeSmall))
-                .foregroundStyle(DesignTokens.muted)
+        VStack(alignment: .leading, spacing: DesignTokens.spacing4) {
+            HStack(alignment: .center, spacing: DesignTokens.spacing5) {
+                VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
+                    Image(nsImage: NSApplication.shared.applicationIconImage)
+                        .resizable()
+                        .frame(width: 86, height: 86)
+                        .accessibilityHidden(true)
+                    Text(L10n.string("brand.name"))
+                        .font(.system(size: DesignTokens.typeHero, weight: .semibold))
+                        .foregroundStyle(DesignTokens.text)
+                    Text(L10n.string("brand.tagline"))
+                        .font(.system(size: DesignTokens.typeBody))
+                        .foregroundStyle(DesignTokens.text)
+                    Text(L10n.string("ui.version-0-1-0", "0.1.0"))
+                        .font(.system(size: DesignTokens.typeSmall))
+                        .foregroundStyle(DesignTokens.muted)
+                }
+                GateSceneView(variant: .about)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            GateRuleView()
             Text(L10n.string("ui.free-and-open-source-mit-license"))
-                .font(.system(size: DesignTokens.typeSmall))
+                .font(.system(size: DesignTokens.typeBody))
                 .foregroundStyle(DesignTokens.muted)
             Text(L10n.string("ui.sigstop-pauses-app-execution-macos-can-still-send-buffered-data-or-finish-existing-connections"))
                 .font(.system(size: DesignTokens.typeSmall))
                 .foregroundStyle(DesignTokens.muted)
-                .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             Button(L10n.string("ui.copy-version-info")) { copyVersionInfo() }
                 .buttonStyle(.bordered)
-            GateRuleView()
-                .frame(width: 200)
-            Spacer()
+                .tint(DesignTokens.blue)
+            Spacer(minLength: 0)
         }
-        .padding(DesignTokens.spacing5)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 72)
+        .padding(.top, DesignTokens.spacing5)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
     }
 
     private func copyVersionInfo() {

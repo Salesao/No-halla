@@ -1,25 +1,12 @@
 {
   "images": [
     {
-      "filename": "GateScene.svg",
+      "filename": "gate-scene.png",
       "idiom": "universal"
-    },
-    {
-      "filename": "GateSceneDark.svg",
-      "idiom": "universal",
-      "appearances": [
-        {
-          "appearance": "luminosity",
-          "value": "dark"
-        }
-      ]
     }
   ],
   "info": {
     "author": "xcode",
     "version": 1
-  },
-  "properties": {
-    "preserves-vector-representation": true
   }
 }

@@ -36,7 +36,7 @@ struct SettingRowView<Content: View>: View {
 
 #Preview("Setting rows") {
     VStack(spacing: 8) {
-        SettingRowView(label: L10n.string("ui.notifications"), helper: L10n.string("ui.protection-toggle-helper")) {
+        SettingRowView(label: L10n.string("ui.notifications")) {
             Toggle("", isOn: .constant(true)).labelsHidden()
         }
         SettingRowView(label: L10n.string("ui.grace-period"), helper: L10n.string("ui.apps-freeze-after-this-delay-when-the-ip-changes")) {

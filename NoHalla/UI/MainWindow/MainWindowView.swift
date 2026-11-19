@@ -27,22 +27,17 @@ struct MainWindowView: View {
     }
 
     private var dashboard: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(L10n.string("brand.name"))
-                    .font(.system(size: DesignTokens.typeTitle, weight: .semibold))
-                    .foregroundStyle(DesignTokens.text)
-                Spacer()
-                SettingsButton()
-            }
-            .padding(.horizontal, DesignTokens.spacing4)
-            .padding(.vertical, DesignTokens.spacing3)
-            .background(DesignTokens.chrome)
-            Divider()
-            ScrollView {
-                DashboardView()
-                    .padding(DesignTokens.spacing4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        ScrollView {
+            DashboardView()
+                .padding(DesignTokens.spacing4)
+                .frame(maxWidth: 960, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .background(DesignTokens.bg)
+        .tint(DesignTokens.action)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                SettingsButton(iconOnly: true)
             }
         }
     }

@@ -18,12 +18,12 @@ struct TrustedAddressEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
-            Text(L10n.string("ui.edit-trusted-ip"))
+            Text(L10n.string(original == nil ? "status.setup" : "ui.edit-trusted-ip"))
                 .font(.system(size: DesignTokens.typeTitle, weight: .semibold))
                 .foregroundStyle(DesignTokens.text)
-            TextField(L10n.string("ui.enter-an-ipv4-ipv6-or-cidr-address"), text: $value)
+            TextField(L10n.string("ui.enter-an-ipv4-or-cidr-address"), text: $value)
                 .textFieldStyle(.roundedBorder)
-                .frame(width: 320)
+                .frame(maxWidth: .infinity)
             if let error = error {
                 Text(error)
                     .font(.system(size: DesignTokens.typeSmall))
@@ -33,19 +33,22 @@ struct TrustedAddressEditor: View {
                 Spacer()
                 Button(L10n.string("action.cancel"), action: onCancel)
                     .buttonStyle(.bordered)
+                    .tint(DesignTokens.text)
                 Button(L10n.string("ui.save")) { save() }
                     .buttonStyle(.borderedProminent)
             }
         }
         .padding(DesignTokens.spacing4)
         .frame(width: 400)
+        .background(DesignTokens.bg)
+        .tint(DesignTokens.action)
         .onAppear { value = original ?? "" }
     }
 
     private func save() {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard CIDRRange(trimmed) != nil else {
-            error = L10n.string("ui.enter-a-valid-ipv4-ipv6-or-cidr-address")
+            error = L10n.string("ui.enter-a-valid-ipv4-or-cidr-address")
             return
         }
         onSave(trimmed)

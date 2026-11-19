@@ -37,9 +37,10 @@
 |---|---|
 | Ворота (the gate) | VPN-туннель, точка выхода в интернет |
 | Доверенный мир (trusted realm) | доверенные IP/CIDR |
-| Ждут у ворот (waiting at the gate) | приложения заморожены |
-| Ворота открыты (the gate is open) | защита выключена или на паузе |
-| Ворота держат (the gate holds) | всё защищено, IP доверенный |
+| Ворота открыты (the gate is open) | трафик разрешён: IP доверенный, защита на паузе или выключена |
+| Ворота закрыты (the gate is closed) | приложения заморожены: IP недоверенный или не подтверждён |
+| Ворота приоткрыты (the gate is ajar) | ручной обход: заморозка снята до конца окна |
+| Ждут у ворот (waiting at the gate) | образ для онбординга и уведомлений: приложения заморожены |
 | Стража (the watch) | сам No-halla и его фоновый watchdog |
 
 Правила словаря:
@@ -149,9 +150,9 @@ Notifications (Frozen / Resumed / Can't verify IP)
 | Состояние | Значение | Иконка menu bar | Пилюля статуса | Lore-подпись | Главное действие |
 |---|---|---|---|---|---|
 | `checking` | Идёт первая/очередная проверка IP | shield + spinner | Checking… | Testing the gate. | нет (disabled) |
-| `protected` | IP доверенный, приложения активны | shield | Protected | The gate holds. | Pause |
+| `protected` | IP доверенный, приложения активны | shield | Protected | The gate is open. | Pause |
 | `grace` | IP недоверенный, идёт отсчёт до заморозки | shield + clock | VPN lost — freezing in Ns | The gate is closing. | Freeze now |
-| `frozen` | Приложения заморожены | pause.circle | Frozen | Waiting at the gate. | Resume all |
+| `frozen` | Приложения заморожены | pause.circle | Frozen | The gate is closed. | Resume all |
 | `unknown` | Не удалось проверить IP (нет кворума) | exclamationmark.shield | Can't verify IP | The gate doesn't answer. | Retry / Resume all |
 | `paused` | Защита на паузе по команде пользователя | shield.slash | Protection off until 14:32 | The gate is open. | Turn on now |
 | `disabled` | Защита выключена в настройках | shield.slash | Protection off | The gate is open. | Turn on |
@@ -193,7 +194,7 @@ protected   checking/grace   frozen   unknown   off
 ```
 ┌──────────────────────────────────────────────┐
 │ No-halla                        [ Protected ]│
-│ The gate holds.                              │
+│ The gate is open.                            │
 │                                              │
 │ ┌──────────────────────────────────────────┐ │
 │ │ Current IP        203.0.113.5      [↻]   │ │
@@ -244,7 +245,7 @@ protected   checking/grace   frozen   unknown   off
 
 **Шаг 1 — The gate.**
 - Заголовок: «Keep the gate closed when the VPN falls». Hero-заголовок: SF Pro Display 22–24 pt semibold.
-- Короткое объяснение: «No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate until your VPN returns.»
+- Короткое объяснение: «No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate and blocked sites stop resolving until your VPN returns.»
 - Иллюстрация (hero): геометрические ворота/щит на горизонте фьорда, 1.5 px line art, бронза/кость на фьорде, тональный фьорд-градиент фона, слоистая глубина (дальний хребет + ворота). Без лиц, оружия, черепов и «викингских» клише.
 - Кнопки: `Continue` (primary), `Skip setup` (tertiary, ведёт к пустому состоянию).
 
@@ -389,13 +390,13 @@ protected   checking/grace   frozen   unknown   off
 | brand.name | No-halla | No-halla |
 | brand.tagline | Valhalla can wait. | Вальхалла подождёт. |
 | status.protected | Protected | Защищено |
-| status.protected.lore | The gate holds. | Ворота держат. |
+| status.protected.lore | The gate is open. | Ворота открыты. |
 | status.checking | Checking… | Проверяем… |
 | status.checking.lore | Testing the gate. | Проверяем ворота. |
 | status.grace | VPN lost — freezing in %ds | VPN пропал — заморозка через %d с |
 | status.grace.lore | The gate is closing. | Ворота закрываются. |
 | status.frozen | Frozen | Заморожено |
-| status.frozen.lore | Waiting at the gate. | Ждут у ворот. |
+| status.frozen.lore | The gate is closed. | Ворота закрыты. |
 | status.unknown | Can't verify IP | Не удаётся проверить IP |
 | status.unknown.lore | The gate doesn't answer. | Ворота не отвечают. |
 | status.paused | Protection off until %@ | Защита выключена до %@ |
@@ -430,7 +431,7 @@ protected   checking/grace   frozen   unknown   off
 | action.settings | Settings | Настройки |
 | caption.resumeBypass | Apps will unfreeze for 5 minutes, then protection resumes. | Приложения возобновятся на 5 минут, затем защита включится снова. |
 | onboarding.1.title | Keep the gate closed when the VPN falls | Закрывайте ворота, когда падает VPN |
-| onboarding.1.body | No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate until your VPN returns. | No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, пока VPN не вернётся. |
+| onboarding.1.body | No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate and blocked sites stop resolving until your VPN returns. | No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, а заблокированные сайты перестают резолвиться, пока VPN не вернётся. |
 | onboarding.2.title | Choose who waits at the gate | Выберите, кто будет ждать у ворот |
 | onboarding.3.title | Trust your VPN's realm | Доверьтесь миру вашего VPN |
 | onboarding.3.body | Only this IP opens the gate. Add your VPN IP here. | Только этот IP открывает ворота. Добавьте сюда IP вашего VPN. |
@@ -620,8 +621,7 @@ design/
 │   ├── app-picker.html
 │   └── quit-confirm.html
 └── exports/
-    ├── appicon-1024.png     # бронзовый щит, 1024×1024
-    ├── appicon.svg
+    ├── appicon-1024.png     # bronze gateway, 1024×1024
     ├── menubar-icons.svg    # 5 состояний, template
     └── brand-sheet.svg      # палитра, иконка, орнамент, tagline, тёмная оболочка + линия ворот
 ```

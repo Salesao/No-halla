@@ -4,7 +4,7 @@
 |---|---|---|
 | Button | Primary, secondary, plain, destructive, disabled. Fit or full width | Native macOS button styles. Use blue for Resume all. Use destructive role for Reset only. Minimum target 28 pt. |
 | GateRule | 1 pt bronze line with 24 strokes | Decorative SVG divider under the popover header and in About. Hidden from assistive technology. |
-| GateScene | Hero, About panel, empty-state vignette | Share the geometric SVG. Treat it as decoration and keep actions outside the image. |
+| GateScene | Hero, About panel, empty-state vignette | Share the amber gateway artwork from `exports/gate-scene.png`. Keep its square composition visible, treat it as decoration, and keep actions outside the image. |
 | Protection badge | Success, checking, grace/bypass, frozen, unknown/setup, off | State glyph plus semantic label inside a 1 pt decorative bronze rim. Wrap at long translations and reserve the lore line separately. |
 | Network field | Default, monospace, trusted | Trailing values. Label pairs are read together. Use a separate refresh button with a descriptive label. |
 | App row | Active, frozen, not running. Protection on and off | 44 pt row and 20 pt icon. Switch label includes the app name. Toggle changes protection without removing the row. A frozen row uses a 1 pt waiting rim alongside its Frozen label. |

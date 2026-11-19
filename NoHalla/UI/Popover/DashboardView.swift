@@ -27,13 +27,13 @@ struct DashboardView: View {
             protectionToggle
             NetworkCardView(
                 ipv4: snapshot.currentIPv4,
-                ipv6: snapshot.currentIPv6,
                 vpnInterface: snapshot.vpnInterface,
                 trusted: vpnMode ? snapshot.trusted : (snapshot.currentIPv4 == nil ? nil : snapshot.trusted),
                 vpnMode: vpnMode,
                 note: networkNote,
                 onAddCurrentIP: { appState.send(.addCurrentIP) },
-                onRefresh: { appState.send(.retryCheck) }
+                onRefresh: { appState.send(.retryCheck) },
+                isRefreshing: snapshot.isRefreshing
             )
             appsSection
             actionSection
@@ -96,6 +96,7 @@ struct DashboardView: View {
             ))
             .labelsHidden()
             .toggleStyle(.switch)
+            .controlSize(.small)
             .accessibilityLabel(L10n.string("ui.protection"))
         }
         .frame(minHeight: DesignTokens.targetMin)
@@ -112,20 +113,24 @@ struct DashboardView: View {
                 Spacer()
                 Button(L10n.string("apps.add")) { showAppPicker = true }
                     .buttonStyle(.borderless)
+                    .tint(DesignTokens.blue)
                     .font(.system(size: DesignTokens.typeSmall))
             }
             if apps.isEmpty {
                 emptyApps
             } else {
                 ScrollView { appRows }
-                    .frame(maxHeight: DesignTokens.appRow * 6 + DesignTokens.spacing2 * 5)
+                    .frame(height: min(CGFloat(apps.count) * DesignTokens.appRow + CGFloat(max(0, apps.count - 1)), DesignTokens.appRow * 4))
+                    .background(DesignTokens.surface, in: RoundedRectangle(cornerRadius: DesignTokens.radiusCard))
+                    .overlay(RoundedRectangle(cornerRadius: DesignTokens.radiusCard).strokeBorder(DesignTokens.line, lineWidth: 0.5))
             }
         }
     }
 
     private var appRows: some View {
-        VStack(spacing: DesignTokens.spacing2) {
-            ForEach(apps) { app in
+        VStack(spacing: 0) {
+            ForEach(Array(apps.enumerated()), id: \.element.id) { index, app in
+                if index > 0 { Divider().overlay(DesignTokens.line) }
                 AppRowView(
                     app: app,
                     runState: runState(for: app),
@@ -237,6 +242,7 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity)
         }
         .menuStyle(.borderedButton)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Helpers

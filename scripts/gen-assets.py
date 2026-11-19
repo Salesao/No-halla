@@ -4,8 +4,7 @@
 Sources (read-only):
   design/exports/appicon-1024.png   -> AppIcon.appiconset (all macOS sizes, via sips)
   design/exports/menubar-icons.svg  -> five 18x18 template SVG imagesets
-  design/mockups/onboarding-1.html  -> GateScene.imageset (decorative gate/fjord SVG)
-  design/tokens.json                -> appearance colors for the GateScene variants
+  design/exports/gate-scene.png     -> GateScene.imageset (decorative gateway artwork)
 
 Only the Python standard library and the system `sips` tool are used.
 The script is idempotent: it rewrites the generated sets on every run.
@@ -158,50 +157,18 @@ def generate_menubar_icons() -> None:
         print(f"{name}.imageset: 18x18 template SVG (symbol '{symbol_id}')")
 
 
-def generate_gate_scene(tokens: dict) -> None:
-    """Decorative gate/fjord scene shared by hero, About and empty states.
-
-    Geometry comes from the onboarding hero (design/mockups/onboarding-1.html);
-    CSS color variables are resolved from tokens.json. The light variant is the
-    unqualified fallback: every decorative color's contrast value in tokens.json
-    equals its light value, so Increase Contrast resolves correctly through it.
-    """
-    source = DESIGN / "mockups" / "onboarding-1.html"
+def generate_gate_scene() -> None:
+    """Copy the shared Doop artwork for both light and dark appearances."""
+    source = DESIGN / "exports" / "gate-scene.png"
     if not source.is_file():
         fail(f"missing source {source}")
-    match = re.search(r'<svg class="gate-scene".*?</svg>',
-                      source.read_text(encoding="utf-8"), re.DOTALL)
-    if match is None:
-        fail(f"gate-scene SVG not found in {source.name}")
-    template = match.group(0)
-
-    colors = tokens["colors"]
     directory = fresh_set("GateScene.imageset")
-    images = []
-    for index, appearance in enumerate(tokens["appearance"][:2]):  # light, dark
-        def resolve(match: re.Match) -> str:
-            key = match.group(1)
-            if key not in colors:
-                fail(f"unknown color token '{key}' in gate scene")
-            return colors[key][index]
-
-        svg_text = re.sub(r"var\(--color-([a-z-]+)\)", resolve, template)
-        if "var(--color-" in svg_text:
-            fail("unresolved color variable in gate scene")
-        ET.fromstring(svg_text)  # well-formedness guard
-
-        filename = "GateScene.svg" if appearance == "light" else "GateSceneDark.svg"
-        (directory / filename).write_text(svg_text + "\n", encoding="utf-8")
-        entry = {"filename": filename, "idiom": "universal"}
-        if appearance == "dark":
-            entry["appearances"] = [{"appearance": "luminosity", "value": "dark"}]
-        images.append(entry)
+    shutil.copyfile(source, directory / source.name)
     write_json(directory / "Contents.json", {
-        "images": images,
+        "images": [{"filename": source.name, "idiom": "universal"}],
         "info": INFO,
-        "properties": {"preserves-vector-representation": True},
     })
-    print("GateScene.imageset: decorative SVG, light/dark variants")
+    print("GateScene.imageset: shared gateway artwork")
 
 
 def validate_catalog() -> None:
@@ -221,16 +188,11 @@ def validate_catalog() -> None:
 
 
 def main() -> None:
-    tokens_path = DESIGN / "tokens.json"
-    if not tokens_path.is_file():
-        fail(f"missing {tokens_path}")
-    tokens = json.loads(tokens_path.read_text(encoding="utf-8"))
-
     CATALOG.mkdir(parents=True, exist_ok=True)
     write_json(CATALOG / "Contents.json", {"info": INFO})
     generate_appicon()
     generate_menubar_icons()
-    generate_gate_scene(tokens)
+    generate_gate_scene()
     validate_catalog()
     print(f"done: {CATALOG}")
 

@@ -13,7 +13,6 @@ import SwiftUI
 
 struct NetworkCardView: View {
     let ipv4: String?
-    let ipv6: String?
     let vpnInterface: String?
     /// nil = unknown/unverifiable (render "—"); true/false = known trust.
     let trusted: Bool?
@@ -22,6 +21,8 @@ struct NetworkCardView: View {
     var note: String? = nil
     var onAddCurrentIP: (() -> Void)? = nil
     var onRefresh: (() -> Void)? = nil
+    /// A user-requested check is pending (possibly behind the verifier throttle).
+    var isRefreshing: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
@@ -38,25 +39,12 @@ struct NetworkCardView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            HStack(spacing: DesignTokens.spacing2) {
-                if !vpnMode, trusted == false, ipv4 != nil, let onAddCurrentIP = onAddCurrentIP {
-                    Button(L10n.string("network.addCurrentIP"), action: onAddCurrentIP)
-                        .buttonStyle(.bordered)
-                        .frame(minHeight: DesignTokens.targetMin)
-                        .contentShape(Rectangle())
-                }
-                Spacer()
-                if let onRefresh = onRefresh {
-                    Button(action: onRefresh) {
-                        Image(systemName: "arrow.clockwise")
-                            .frame(minWidth: DesignTokens.targetMin, minHeight: DesignTokens.targetMin)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel(L10n.string("ui.refresh-current-ip"))
-                    .help(L10n.string("ui.refresh-current-ip"))
-                }
+            if !vpnMode, trusted == false, ipv4 != nil, let onAddCurrentIP = onAddCurrentIP {
+                Button(L10n.string("network.addCurrentIP"), action: onAddCurrentIP)
+                    .buttonStyle(.bordered)
+                    .frame(minHeight: DesignTokens.targetMin)
             }
+
         }
         .padding(DesignTokens.spacing3)
         .background(
@@ -77,9 +65,9 @@ struct NetworkCardView: View {
     /// IP-whitelist mode fields.
     private var ipFields: some View {
         Group {
-            field(label: L10n.string("network.currentIP"), value: ipv4 ?? "—", mono: true)
-            if let ipv6 = ipv6 {
-                field(label: "IPv6", value: ipv6, mono: true)
+            HStack(spacing: 0) {
+                field(label: L10n.string("network.currentIP"), value: ipv4 ?? "—", mono: true)
+                refreshControl
             }
             field(label: L10n.string("network.vpnInterface"), value: vpnInterface ?? "—", mono: false)
             field(label: L10n.string("network.trusted"), value: trustedText, mono: false)
@@ -95,9 +83,29 @@ struct NetworkCardView: View {
                 value: connected ? L10n.string("network.vpnConnected") : L10n.string("network.vpnDisconnected"),
                 mono: false
             )
-            if let vpnInterface = vpnInterface {
-                field(label: L10n.string("network.vpnInterface"), value: vpnInterface, mono: true)
+            HStack(spacing: 0) {
+                field(label: L10n.string("network.vpnInterface"), value: vpnInterface ?? "—", mono: true)
+                refreshControl
             }
+        }
+    }
+
+    @ViewBuilder private var refreshControl: some View {
+        if isRefreshing {
+            ProgressView().controlSize(.small)
+                .frame(width: DesignTokens.targetMin, height: DesignTokens.targetMin)
+                .accessibilityLabel(L10n.string("ui.refresh-current-ip"))
+                .accessibilityValue(L10n.string("status.checking"))
+        } else if let onRefresh = onRefresh {
+            Button(action: onRefresh) {
+                Image(systemName: "arrow.clockwise")
+                    .frame(width: DesignTokens.targetMin, height: DesignTokens.targetMin)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(DesignTokens.muted)
+            .accessibilityLabel(L10n.string("ui.refresh-current-ip"))
+            .help(L10n.string("ui.refresh-current-ip"))
         }
     }
 
@@ -120,9 +128,9 @@ struct NetworkCardView: View {
 
 #Preview("Network card") {
     VStack(spacing: 12) {
-        NetworkCardView(ipv4: "203.0.113.5", ipv6: "2001:db8::1", vpnInterface: "utun3", trusted: true, onRefresh: {})
-        NetworkCardView(ipv4: "198.51.100.7", ipv6: nil, vpnInterface: nil, trusted: false, onAddCurrentIP: {}, onRefresh: {})
-        NetworkCardView(ipv4: nil, ipv6: nil, vpnInterface: nil, trusted: nil, note: L10n.string("empty.offline"), onRefresh: {})
+        NetworkCardView(ipv4: "203.0.113.5", vpnInterface: "utun3", trusted: true, onRefresh: {})
+        NetworkCardView(ipv4: "198.51.100.7", vpnInterface: nil, trusted: false, onAddCurrentIP: {}, onRefresh: {})
+        NetworkCardView(ipv4: nil, vpnInterface: nil, trusted: nil, note: L10n.string("empty.offline"), onRefresh: {})
     }
     .padding()
     .frame(width: 360)

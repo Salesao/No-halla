@@ -21,7 +21,7 @@ struct StatusPillView: View {
                 .foregroundStyle(Self.tint(for: status))
             Text(Self.label(for: status, graceRemaining: graceRemaining, untilText: untilText))
                 .font(.system(size: DesignTokens.typeSmall, weight: .semibold))
-                .foregroundStyle(DesignTokens.text)
+                .foregroundStyle(Self.tint(for: status))
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
