@@ -43,11 +43,8 @@ final class NoHallaAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        // User requested a Dock icon: clicking it with no visible window opens
-        // Settings (the popover lives in the menu bar extra).
-        if !flag {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        }
+        // User requested a Dock icon: with a WindowGroup, returning true lets the
+        // app show/reopen its main window when the Dock icon is clicked.
         return true
     }
 

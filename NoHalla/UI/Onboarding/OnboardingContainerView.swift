@@ -5,7 +5,8 @@
 //  Three-step onboarding (design §7.3, FR-2/3/10): intro, apps, trusted realm,
 //  with progress dots. Finish persists onboardingCompleted, the selected apps
 //  and launch-at-login (SMAppService, inline error on failure), then requests
-//  notification permission (FR-29) and closes the window.
+//  notification permission (FR-29). Embedded in the main window, which switches
+//  to the dashboard once onboardingCompleted becomes true.
 //
 
 import ServiceManagement
@@ -13,7 +14,6 @@ import SwiftUI
 
 struct OnboardingContainerView: View {
     @EnvironmentObject var appState: AppState
-    @Environment(\.dismiss) private var dismiss
 
     @State private var step = 0
     @State private var selectedApps: [ProtectedApp] = []
@@ -88,7 +88,8 @@ struct OnboardingContainerView: View {
         }
         appState.setConfig(config)
         appState.requestNotificationPermission()
-        dismiss()
+        // No dismiss: the enclosing main window reactively shows the dashboard
+        // once onboardingCompleted is true.
     }
 }
 

@@ -2,10 +2,11 @@
 //  NoHallaApp.swift
 //  NoHalla
 //
-//  SwiftUI entry point. A MenuBarExtra agent (LSUIElement) whose template glyph
-//  tracks the derived UI status (design/ICONS.md) with a VoiceOver label
-//  (design/ACCESSIBILITY.md). Scenes: the full popover, the four-tab Settings
-//  window, and an onboarding window opened on first launch (FR-2).
+//  SwiftUI entry point. User-requested windowed experience: a main WindowGroup
+//  (opened on launch / from the Dock, like a regular app) shows onboarding then
+//  the protection dashboard. A MenuBarExtra shield remains for quick popover
+//  access, and Settings opens as its own window. The Dock icon is enabled
+//  (LSUIElement=false); the menu bar glyph tracks the derived UI status.
 //
 
 import SwiftUI
@@ -13,21 +14,21 @@ import SwiftUI
 @main
 struct NoHallaApp: App {
     @NSApplicationDelegateAdaptor(NoHallaAppDelegate.self) private var appDelegate
-    @Environment(\.openWindow) private var openWindow
 
     private var appState: AppState { appDelegate.appState }
 
     var body: some Scene {
+        WindowGroup(L10n.string("brand.name")) {
+            MainWindowView()
+                .environmentObject(appState)
+        }
+        .windowResizability(.contentSize)
+
         MenuBarExtra {
             PopoverView()
                 .environmentObject(appState)
         } label: {
             MenuBarLabelView(appState: appState)
-                .task {
-                    if !appState.config.onboardingCompleted {
-                        openWindow(id: "onboarding")
-                    }
-                }
         }
         .menuBarExtraStyle(.window)
 
@@ -35,12 +36,5 @@ struct NoHallaApp: App {
             SettingsRootView()
                 .environmentObject(appState)
         }
-
-        Window(L10n.string("brand.name"), id: "onboarding") {
-            OnboardingContainerView()
-                .environmentObject(appState)
-        }
-        .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentSize)
     }
 }
