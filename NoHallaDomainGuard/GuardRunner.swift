@@ -77,6 +77,7 @@ final class GuardRunner {
         suffixMode = .unavailable
         dnsSwitched = false
         reason = "restored"
+        flushDNSCache()
         publish(makeStatus())
     }
 
@@ -114,6 +115,7 @@ final class GuardRunner {
             )
             dns = manager
             apply(manager.captureAndSwitch())
+            flushDNSCache()
         } else if let dns {
             apply(dns.reconcile())
         }
@@ -135,6 +137,7 @@ final class GuardRunner {
         suffixMode = .unavailable
         dnsSwitched = false
         reason = "protection released"
+        if wasActive || hadManifest { flushDNSCache() }
     }
 
     private func apply(_ result: DNSApplyResult) {
@@ -152,6 +155,14 @@ final class GuardRunner {
             dnsSwitched = false
             reason = why
         }
+    }
+
+    /// A switch to loopback only affects new lookups; the system cache would
+    /// keep serving pre-block answers. Only the root helper can flush it.
+    private func flushDNSCache() {
+        guard !dryRun else { return }
+        _ = ProcessRunner().run("/usr/bin/dscacheutil", ["-flushcache"])
+        _ = ProcessRunner().run("/usr/bin/killall", ["-HUP", "mDNSResponder"])
     }
 
     // MARK: - State and files
