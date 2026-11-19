@@ -585,7 +585,7 @@ schemes:
 <key>CFBundleDisplayName</key><string>No-halla</string>
 <key>CFBundleName</key><string>No-halla</string>
 <key>CFBundleIdentifier</key><string>dev.nohalla.NoHalla</string>
-<key>CFBundleShortVersionString</key><string>0.1.0</string>
+<key>CFBundleShortVersionString</key><string>0.9.0</string>
 ```
 
 Скрипты:
