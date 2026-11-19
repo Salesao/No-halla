@@ -24,15 +24,15 @@ The 18 pt menu bar glyph opens the 360 pt popover. From its footer, Settings ope
 |---|---|---|
 | Checking | Current measurements are pending | Disabled Checking… |
 | Protected | Trusted IP and active apps | Pause, with three durations |
-| Grace | Untrusted IP, time left and a linear countdown | Freeze now, Cancel |
-| Frozen | Untrusted IP and the affected apps | Resume all |
-| Unknown | A check failed. Apps may remain frozen per configuration | Retry, Resume all |
+| Grace | Untrusted IP and one countdown below the app list | Freeze now, Cancel |
+| Frozen | Untrusted IP and the affected apps | Automatic resume when trust returns |
+| Unknown | A check failed. Apps may remain frozen per configuration | Retry |
 | Paused | Time at which checks restart | Turn on now |
 | Disabled | Protection is off | Turn on |
 | Setup | A trusted IP is missing | Add current IP |
 | Bypassing | Time at which protection resumes | Resume protection |
 | Empty | Trusted network with zero selected apps | Choose apps |
-| Offline | Network is unavailable | Retry, Resume all if apps are frozen |
+| Offline | Network is unavailable | Retry |
 
 Show a monospace IP and interface name in a single network group. Use a dash for an unavailable value. Status comes before the lore sentence in reading order. Use text and a glyph for a status. Each app row is 44 pt and has its own persistent protection switch. Up to four rows fit. Beyond four, scroll the list and keep the action and footer visible. A non-running app remains configured.
 
@@ -54,7 +54,7 @@ Show a monospace IP and interface name in a single network group. Use a dash for
 | Network change or wake | Check immediately with debouncing specified by the engine. Preserve state through transient wake updates. |
 | Untrusted IP | Start grace. Update the countdown once a second. Freeze immediately on Freeze now. |
 | Trusted IP returns or is added | Cancel grace or resume the frozen apps. Refresh the status immediately. |
-| Manual Resume all | Resume apps and show Bypassing until the configured bypass expires. Then check again. |
+| Resume all from the freeze notification | Resume apps and show Bypassing until the configured bypass expires. Then check again. |
 | Pause | Resume apps and suspend protection for 15 minutes, one hour or until relaunch. Recheck when protection resumes. |
 | App starts while frozen | Add its frozen status without a second notification. |
 | App exits | Mark Not running and remove the process from the frozen set. |

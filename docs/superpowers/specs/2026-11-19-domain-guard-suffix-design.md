@@ -260,3 +260,7 @@ Live (after the one-time helper reinstall):
 - The precise manifest format and restore retry policy.
 - Ordering of hosts and DNS writes during activation/release.
 - The wording and placement of the degraded-suffix warning in Settings.
+
+## Журнал блица
+
+- Раунд 1: заданы 1 «Проверка адреса не ответила» и 2 «Приложение исчезло, блокировка осталась». Подтверждены обе предложенные модели: при неподтверждённом адресе сайты закрыты; автоматического срока снятия нет. Изменён раздел «Fail-closed policy» — открытый вопрос заменён решением.

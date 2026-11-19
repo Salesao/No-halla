@@ -76,7 +76,7 @@
 3. Обрыв VPN: появляется grace-отсчёт, приложения замораживаются, приходит уведомление. Пользователь видит причину и может возобновить вручную.
 4. VPN вернулся: приложения автоматически возобновляются, приходит уведомление.
 5. Пользователь сам выключил VPN и хочет поработать: ставит защиту на паузу на 15 минут / час / до перезапуска.
-6. Ложное срабатывание: пользователь добавляет текущий IP в доверенные или жмёт «Resume all».
+6. Ложное срабатывание: пользователь добавляет текущий IP в доверенные или выбирает «Resume all» в уведомлении.
 
 ---
 
@@ -88,7 +88,7 @@
 4. **Calm tech, not bare tech.** Спокойно, но не голо: тональная глубина, бронзовые детали, орнамент. Без тревожности, восклицательных знаков, красных кнопок для безопасных действий и анимаций-вспышек.
 5. **Lore in the shell.** Скандинавская тема живёт в оболочке (шапка, линия ворот, ободок статуса), иконке, иллюстрациях, пустых состояниях, уведомлениях и About. Функциональные подписи контролов и статусов остаются ясными; лор не заменяет их.
 6. **Прозрачность.** Всегда видно: текущий IP, доверенный ли он, какие приложения заморожены, сколько осталось до заморозки и что произойдёт дальше.
-7. **Возврат управления в один клик.** «Resume all» доступен из поповера, уведомления и диалога выхода. Никогда не прячь его.
+7. **Возврат управления в один клик.** На панели можно выключить «Защиту», чтобы возобновить приложения. Для временного возобновления в уведомлении есть «Resume all».
 8. **Privacy by design.** Ноль аккаунтов и аналитики. Интерфейс не создаёт ощущение слежки.
 
 ---
@@ -151,9 +151,9 @@ Notifications (Frozen / Resumed / Can't verify IP)
 |---|---|---|---|---|---|
 | `checking` | Идёт первая/очередная проверка IP | shield + spinner | Checking… | Testing the gate. | нет (disabled) |
 | `protected` | IP доверенный, приложения активны | shield | Protected | The gate is open. | Pause |
-| `grace` | IP недоверенный, идёт отсчёт до заморозки | shield + clock | VPN lost — freezing in Ns | The gate is closing. | Freeze now |
-| `frozen` | Приложения заморожены | pause.circle | Frozen | The gate is closed. | Resume all |
-| `unknown` | Не удалось проверить IP (нет кворума) | exclamationmark.shield | Can't verify IP | The gate doesn't answer. | Retry / Resume all |
+| `grace` | IP недоверенный, идёт отсчёт до заморозки | shield + clock | — | The gate is closing. | Freeze now |
+| `frozen` | Приложения заморожены | pause.circle | Frozen | The gate is closed. | Автоматически при возврате доверенного соединения |
+| `unknown` | Не удалось проверить IP (нет кворума) | exclamationmark.shield | Can't verify IP | The gate doesn't answer. | Retry |
 | `paused` | Защита на паузе по команде пользователя | shield.slash | Protection off until 14:32 | The gate is open. | Turn on now |
 | `disabled` | Защита выключена в настройках | shield.slash | Protection off | The gate is open. | Turn on |
 | `setup` | Не настроен ни один доверенный IP | exclamationmark.shield | Set up trusted IP | No trusted realm yet. | Add current IP |
@@ -161,7 +161,7 @@ Notifications (Frozen / Resumed / Can't verify IP)
 Дополнительно:
 
 - **Bypass после ручного Resume all**: статус `protected` не показываем; показываем `Bypassing until 14:37` с lore-подписью `The gate is ajar.` и возможностью вернуть защиту.
-- **Нет выбранных приложений**: защита формально включена, но работать нечему — показываем empty state с CTA «Choose apps».
+- **No selected apps**: show a concise empty-state message and the section's existing “Add app” action.
 - **Приложение не запущено**: строка в списке показывает `Not running`, но остаётся в конфиге.
 
 Lore-подписи — вспомогательные. Пилюля статуса всегда содержит функциональный текст; lore-подпись не заменяет его и не показывается в уведомлениях вместо причины.
@@ -229,12 +229,12 @@ protected   checking/grace   frozen   unknown   off
    - Каждая строка: иконка приложения, имя, статус (`Active`, `Frozen`, `Not running`), toggle.
    - Toggle выключает защиту конкретного приложения, не удаляя его.
    - Заголовок секции + ссылка `+ Add app`.
-   - Если пусто — empty state: «No one is guarding the gate yet» + кнопка «Choose apps».
+   - When empty, show the message in a centered grouped surface; use the existing “Add app” action in the section header.
 4. **Primary action** зависит от состояния:
    - `protected` → secondary «Pause» (меню: 15 minutes / 1 hour / Until relaunch).
    - `grace` → большая кнопка «Freeze now» + ссылка «Cancel»; рядом/внутри — кольцевой или линейный countdown.
-   - `frozen` → primary «Resume all», caption «Apps will unfreeze for 5 minutes, then protection resumes.»
-   - `unknown` → «Retry» + secondary «Resume all».
+   - `frozen` → статус заморозки в строках приложений. Автоматическое возобновление при возврате доверенного соединения.
+   - `unknown` → «Retry».
    - `paused` → «Turn on now» + caption с временем окончания паузы.
    - `setup` → «Add current IP».
 5. **Footer.** Шестерёнка (Settings) слева, «Quit» справа. Quit при замороженных приложениях открывает подтверждение.
@@ -337,12 +337,12 @@ protected   checking/grace   frozen   unknown   off
 
 ### 7.8 Пустые состояния и ошибки
 
-Пустые состояния несут малую фьорд-иллюстрацию (line art, бронза/кость) над текстом — не голая строка. Иллюстрация декоративна и не заменяет CTA.
+The empty protected-app list uses the same grouped surface and centered text as an empty app search, without an illustration.
 
-- **Нет приложений**: «No one is guarding the gate yet» + `Choose apps`.
+- **No apps**: “No apps added yet. Add an app to protect it.” with `Add app` in the section header.
 - **Нет доверенных IP**: «No trusted realm yet. Protection can't start.» + `Add current IP`.
 - **Нет сети**: «You're offline. The gate will be checked when the network is back.»
-- **Все endpoint'ы недоступны**: «The gate doesn't answer.» + `Retry`, `Resume all`.
+- **Все endpoint'ы недоступны**: «The gate doesn't answer.» + `Retry`.
 - **Нет разрешения на уведомления**: inline-баннер в General с кнопкой `Open System Settings`.
 - **Ошибка автозапуска**: inline-ошибка под toggle, без модалок.
 
@@ -354,7 +354,7 @@ protected   checking/grace   frozen   unknown   off
 |---|---|
 | Network change / IP change | Немедленная проверка; статус `checking`, затем `grace` или `protected` |
 | Grace countdown | Тикает раз в секунду, отменяется при возврате доверенного IP; кнопка `Freeze now` замораживает сразу |
-| Freeze | Статус `frozen`, уведомление, primary `Resume all` |
+| Freeze | Статус `frozen`, уведомление с действием `Resume all` |
 | Resume all (вручную) | Все приложения возобновляются, статус `Bypassing until HH:mm`, через 5 минут — повторная проверка и, если IP плохой, снова заморозка |
 | Add current IP | IP добавляется в trusted, статус обновляется сразу, если приложения были заморожены — они возобновляются |
 | Pause 15 min / 1 hour / Until relaunch | Все замороженные возобновляются, freeze отключён, в статусе время окончания; по истечении — немедленная проверка |
@@ -413,7 +413,7 @@ protected   checking/grace   frozen   unknown   off
 | network.addCurrentIP | Add current IP | Добавить текущий IP |
 | apps.title | Protected apps | Защищённые приложения |
 | apps.add | Add app | Добавить приложение |
-| apps.empty | No one is guarding the gate yet | Ворота пока никто не охраняет |
+| apps.empty | No apps added yet. Add an app to protect it. | Пока нет приложений. Добавьте приложение, чтобы защитить его. |
 | apps.choose | Choose apps | Выбрать приложения |
 | apps.active | Active | Активно |
 | apps.frozen | Frozen | Заморожено |
@@ -674,7 +674,7 @@ design/
 - Не добавлять экраны, фичи и настройки, которых нет в этом документе.
 - Не использовать эмодзи в UI.
 - Не делать онбординг длиннее 3 шагов.
-- Не прятать «Resume all» и «Quit».
+- Держать «Quit» в нижней части поповера.
 - Не использовать красный как primary для безопасных действий.
 - Не показывать вымышленные IP/имена приложений, противоречащие состояниям.
 - Тёмная тема проектируется первой (dark-first), светлая — адаптация; не делать ни одну простым инвертированием другой. Оболочка — фьордовые тона, не нейтрально-серые.

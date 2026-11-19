@@ -1,6 +1,6 @@
 # Icons and symbols
 
-[appicon-1024.png](exports/appicon-1024.png) is the selected bronze gateway artwork from the Doop GatewayAppIcon component, cropped with the 22.5% rounded corners shown in the design. Generate all macOS AppIcon sizes from this raster. Use the same artwork in About, alerts and notifications. The menu bar status symbols remain separate template glyphs.
+[appicon-1024.png](exports/appicon-1024.png) is the selected bronze gateway artwork from the Doop GatewayAppIcon component, cropped with the 22.5% rounded corners shown in the design. Generate all macOS AppIcon sizes from this raster. Use the same artwork in the dashboard header, About, alerts and notifications. The menu bar status symbols remain separate template glyphs.
 
 [menubar-icons.svg](exports/menubar-icons.svg) contains five reusable SVG symbols. The preview renders them in order, 18 pt each. Export each symbol separately with its own 18 × 18 viewBox and template rendering enabled.
 
