@@ -694,7 +694,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate and blocked sites stop resolving until your VPN returns."
+            "value": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate and blocked sites stop loading until your VPN returns."
           }
         },
         "ru": {
@@ -790,7 +790,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Optional: these domains and all their subdomains will not resolve while the IP is not trusted."
+            "value": "Optional: these domains and all their subdomains will not load while the IP is not trusted."
           }
         },
         "ru": {
@@ -1670,13 +1670,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "While protection is on and the IP is not proven trusted, these domains and all their subdomains do not resolve. Browsers using DNS-over-HTTPS and connections already open bypass this."
+            "value": "While protection is on and the IP is not proven trusted, these domains and all their subdomains do not load. The block uses the system proxy: apps that ignore it, and connections already open, bypass it."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Пока защита включена и IP не подтверждён доверенным, эти домены и все их поддомены не открываются. Браузеры с DNS-over-HTTPS и уже открытые соединения это обходят."
+            "value": "Пока защита включена и IP не подтверждён доверенным, эти домены и все их поддомены не открываются. Блокировка идёт через системный прокси: приложения, которые его игнорируют, и уже открытые соединения её обходят."
           }
         }
       }

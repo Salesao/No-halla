@@ -196,7 +196,7 @@
     "ru": "Закрывайте ворота, когда падает VPN"
   },
   "onboarding.1.body": {
-    "en": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate and blocked sites stop resolving until your VPN returns.",
+    "en": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate and blocked sites stop loading until your VPN returns.",
     "ru": "No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, а заблокированные домены перестают открываться, пока VPN не вернётся."
   },
   "onboarding.2.title": {
@@ -224,7 +224,7 @@
     "ru": "Заблокированные сайты"
   },
   "onboarding.4.body": {
-    "en": "Optional: these domains and all their subdomains will not resolve while the IP is not trusted.",
+    "en": "Optional: these domains and all their subdomains will not load while the IP is not trusted.",
     "ru": "Необязательно: эти домены и все их поддомены не будут открываться, пока IP недоверенный."
   },
   "onboarding.4.helper": {
@@ -692,8 +692,8 @@
     "ru": "Блокировка поддоменов недоступна: %@."
   },
   "ui.domain-guard-helper": {
-    "en": "While protection is on and the IP is not proven trusted, these domains and all their subdomains do not resolve. Browsers using DNS-over-HTTPS and connections already open bypass this.",
-    "ru": "Пока защита включена и IP не подтверждён доверенным, эти домены и все их поддомены не открываются. Браузеры с DNS-over-HTTPS и уже открытые соединения это обходят."
+    "en": "While protection is on and the IP is not proven trusted, these domains and all their subdomains do not load. The block uses the system proxy: apps that ignore it, and connections already open, bypass it.",
+    "ru": "Пока защита включена и IP не подтверждён доверенным, эти домены и все их поддомены не открываются. Блокировка идёт через системный прокси: приложения, которые его игнорируют, и уже открытые соединения её обходят."
   },
   "ui.domain-guard-not-installed": {
     "en": "The root helper is not installed, so this list has no effect yet.",
