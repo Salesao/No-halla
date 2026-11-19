@@ -68,6 +68,11 @@ Out of scope (v1): VPN client, `pf`/Network Extension/kext kill switch, packet-l
 ./scripts/package.sh # build + dist/No-halla-<version>.dmg and .zip (with SHA-256)
 ```
 
+Packaging requires a graphical Finder session and permission to automate Finder
+so that the disk image's layout can be saved. Open the DMG and drag No-halla to
+Applications. The local build is ad-hoc signed and not notarized, so macOS may
+require you to approve the first launch in Privacy & Security.
+
 The watchdog binary is embedded at `No-halla.app/Contents/MacOS/NoHallaWatchdog`.
 
 To repeat the first-run experience, build the current version and run:
