@@ -24,6 +24,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
             header
             GateRuleView()
+            protectionToggle
             NetworkCardView(
                 ipv4: snapshot.currentIPv4,
                 ipv6: snapshot.currentIPv6,
@@ -56,6 +57,10 @@ struct DashboardView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing1) {
             HStack {
+                Image(systemName: "shield.lefthalf.filled")
+                    .font(.system(size: DesignTokens.typeTitle))
+                    .foregroundStyle(DesignTokens.blue)
+                    .accessibilityHidden(true)
                 Text(L10n.string("brand.name"))
                     .font(.system(size: DesignTokens.typeTitle, weight: .semibold))
                     .foregroundStyle(DesignTokens.text)
@@ -73,6 +78,27 @@ struct DashboardView: View {
                 .lineLimit(1)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// Master protection switch on the dashboard (owner request): the same D27
+    /// semantics as Settings — off resumes everything and disables protection,
+    /// on re-enables into an immediate check. Visible in every state, in both
+    /// the main window and the menu bar popover (shared DashboardView).
+    private var protectionToggle: some View {
+        HStack {
+            Text(L10n.string("ui.protection"))
+                .font(.system(size: DesignTokens.typeBody, weight: .semibold))
+                .foregroundStyle(DesignTokens.text)
+            Spacer()
+            Toggle("", isOn: Binding(
+                get: { appState.config.protection.enabled },
+                set: { appState.send(.setProtectionEnabled($0)) }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .accessibilityLabel(L10n.string("ui.protection"))
+        }
+        .frame(minHeight: DesignTokens.targetMin)
     }
 
     // MARK: - Apps
@@ -171,9 +197,9 @@ struct DashboardView: View {
                 }
             }
         case .disabled:
-            Button(L10n.string("ui.turn-on")) { appState.send(.setProtectionEnabled(true)) }
-                .buttonStyle(.borderedProminent)
-                .frame(maxWidth: .infinity)
+            // The master toggle above the network card is the single control
+            // for turning protection back on; the header lore explains the state.
+            EmptyView()
         case .setup:
             Button(L10n.string("network.addCurrentIP")) { appState.send(.addCurrentIP) }
                 .buttonStyle(.borderedProminent)
