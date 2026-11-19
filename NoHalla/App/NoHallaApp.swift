@@ -22,9 +22,7 @@ struct NoHallaApp: App {
             PopoverView()
                 .environmentObject(appState)
         } label: {
-            Image(DesignTokens.menuBarImageName(for: appState.uiStatus))
-                .renderingMode(.template)
-                .accessibilityLabel(L10n.string(DesignTokens.menuBarAccessibilityKey(for: appState.uiStatus)))
+            MenuBarLabelView(appState: appState)
                 .task {
                     if !appState.config.onboardingCompleted {
                         openWindow(id: "onboarding")

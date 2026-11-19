@@ -412,10 +412,13 @@ actor ProtectionEngine {
 
     private func performFreeze(_ reason: FreezeReason) async {
         let apps = config.protectedApps.filter { $0.enabled }
-        let frozen = await controller.freeze(apps)
-        frozenProcesses = frozen
+        // C2: set metadata and configure durable per-process persistence BEFORE
+        // the controller signals, so each stopped process is recorded first.
         frozenSince = Date()
         freezeReason = reason
+        configureControllerPersistence(reason: reason)
+        let frozen = await controller.freeze(apps)
+        frozenProcesses = frozen
         let state = PersistedState(
             schemaVersion: 1,
             frozen: frozen,
@@ -427,6 +430,33 @@ actor ProtectionEngine {
         let count = Set(frozen.map { $0.bundleID }).count
         AppLog.engine.info("Froze \(count, privacy: .public) apps (reason \(reason.rawValue, privacy: .public))")
         onNotification?(NotificationEvent(kind: .frozen, frozenCount: count))
+    }
+
+    /// C2: give the concrete controller a persistence hook that writes the frozen
+    /// set durably (synchronous atomic write) before each SIGSTOP. Metadata is
+    /// captured by value so the hook runs safely on the controller's queue.
+    private func configureControllerPersistence(reason: FreezeReason?) {
+        guard let processController = controller as? ProcessController else { return }
+        let store = stateStore
+        let since = frozenSince ?? Date()
+        let ip = currentIPv4?.description
+        let reasonValue = reason ?? freezeReason
+        processController.persist = { records in
+            let state = PersistedState(
+                schemaVersion: 1,
+                frozen: records,
+                frozenSince: since,
+                reason: reasonValue,
+                lastKnownIP: ip
+            )
+            do {
+                try store.save(state)
+                return true
+            } catch {
+                AppLog.engine.error("Failed to persist frozen state: \(error.localizedDescription, privacy: .public)")
+                return false
+            }
+        }
     }
 
     private func performResumeAll() async {
@@ -443,8 +473,10 @@ actor ProtectionEngine {
     }
 
     private func reconcile() async {
-        guard machine.status == .frozen else { return }
+        // C1: never freeze new instances while the trusted list is empty (setup).
+        guard machine.status == .frozen, !config.trustedAddresses.isEmpty else { return }
         let apps = config.protectedApps.filter { $0.enabled }
+        configureControllerPersistence(reason: freezeReason)
         let frozen = await controller.reconcile(apps)
         frozenProcesses = frozen
         if frozen.isEmpty {
@@ -468,6 +500,23 @@ actor ProtectionEngine {
         let wasEnabled = config.protection.enabled
         config = newConfig
         startPeriodicTimer()
+        // C1: an empty trusted list means INACTIVE protection (FR-10), not just a
+        // different UI label. Resume our own processes, cancel any pending freeze
+        // (grace/bypass/pause) and reset to checking so reconcile won't freeze new
+        // instances. Adding an address later re-activates protection via a check.
+        if newConfig.trustedAddresses.isEmpty {
+            await performResumeAll()
+            cancelGrace()
+            cancelBypass()
+            cancelPause()
+            machine = ProtectionStateMachine()
+            await applyEvent(.appStarted(configValid: true))
+            if !newConfig.protection.enabled {
+                await applyEvent(.protectionDisabled)
+            }
+            publishSnapshot()
+            return
+        }
         if !newConfig.protection.enabled && wasEnabled {
             await applyEvent(.protectionDisabled)
         } else if newConfig.protection.enabled && !wasEnabled {

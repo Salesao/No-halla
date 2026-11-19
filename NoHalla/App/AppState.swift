@@ -71,6 +71,8 @@ final class AppState: ObservableObject {
         notificationCoordinator.onResumeAllAction = { [weak self] in
             self?.send(.resumeAll)
         }
+        // C4: apply the persisted language from launch (D12), not only on Apply.
+        L10n.current = loaded.language
     }
 
     /// Installs engine callbacks and starts the protection loop. The caller
@@ -109,6 +111,8 @@ final class AppState: ObservableObject {
     /// Persists a config change and notifies the engine (FR-27/37).
     func setConfig(_ newConfig: AppConfig) {
         config = newConfig
+        // C4: keep localization in sync with the accepted config (Apply, reset).
+        L10n.current = newConfig.language
         do {
             try configStore.save(newConfig)
         } catch {

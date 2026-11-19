@@ -24,6 +24,10 @@ final class ProcessController: ProcessControlling {
     private let watchdogPIDProvider: () -> Int32?
     /// Tracked frozen processes keyed by pid (idempotence + identity records).
     private var frozen: [Int32: FrozenProcess] = [:]
+    /// C2: durable persistence hook, configured by the engine. Called BEFORE
+    /// each SIGSTOP (and after removals) so every stopped process is recoverable
+    /// even if the app crashes mid-batch. Returns false on write failure.
+    var persist: (([FrozenProcess]) -> Bool)?
 
     init(selfPID: Int32 = getpid(), watchdogPIDProvider: @escaping () -> Int32?) {
         self.selfPID = selfPID
@@ -92,11 +96,21 @@ final class ProcessController: ProcessControlling {
         // Identity snapshot taken before the signal (PID-reuse guard).
         guard let start = ProcessEnumerator.startTime(of: pid) else { return }
 
+        // C2: record the process durably BEFORE stopping it, so a crash between
+        // SIGSTOP and publication still leaves it recoverable by the watchdog /
+        // next launch. If the record cannot be persisted, do not stop it.
+        let record = FrozenProcess(pid: pid, startTimeSec: start.sec, startTimeUsec: start.usec, bundleID: bundleID, path: path)
+        frozen[pid] = record
+        guard persistNow() else {
+            frozen.removeValue(forKey: pid)
+            AppLog.process.warning("Persist failed; not freezing pid \(pid, privacy: .public)")
+            return
+        }
         if kill(pid, SIGSTOP) == 0 {
-            frozen[pid] = FrozenProcess(pid: pid, startTimeSec: start.sec, startTimeUsec: start.usec, bundleID: bundleID, path: path)
             AppLog.process.info("Froze pid \(pid, privacy: .public)")
         } else {
             handleSignalError(errno, pid: pid, action: "SIGSTOP")
+            _ = persistNow()
         }
     }
 
@@ -119,6 +133,7 @@ final class ProcessController: ProcessControlling {
                 handleSignalError(errno, pid: pid, action: "SIGCONT")
             }
         }
+        _ = persistNow()
         return resumed
     }
 
@@ -152,6 +167,7 @@ final class ProcessController: ProcessControlling {
                 freezeOne(pid: pid, bundleID: app.bundleID, bundlePath: bundlePath)
             }
         }
+        _ = persistNow()
         return Array(frozen.values)
     }
 
@@ -162,6 +178,13 @@ final class ProcessController: ProcessControlling {
         if kill(pid, SIGCONT) != 0 {
             handleSignalError(errno, pid: pid, action: "SIGCONT")
         }
+    }
+
+    /// C2: durably record the current frozen set. Fail-safe: with no persistence
+    /// configured, return false so a process is never stopped unrecoverably.
+    private func persistNow() -> Bool {
+        guard let persist = persist else { return false }
+        return persist(Array(frozen.values))
     }
 
     // MARK: - Helpers
