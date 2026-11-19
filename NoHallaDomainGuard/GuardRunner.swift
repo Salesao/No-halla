@@ -28,6 +28,7 @@ final class GuardRunner {
     private var reason = ""
     private var lastPublished = Date.distantPast
     private var lastSignature = ""
+    private var lastReconcile = Date.distantPast
 
     init(
         config: GuardConfig,
@@ -112,8 +113,10 @@ final class GuardRunner {
             )
             systemProxy = manager
             apply(manager.captureAndSwitch(port: proxyPort))
-        } else if let systemProxy {
+            lastReconcile = Date()
+        } else if let systemProxy, Date().timeIntervalSince(lastReconcile) >= 10 {
             apply(systemProxy.reconcile(port: proxyPort))
+            lastReconcile = Date()
         }
     }
 

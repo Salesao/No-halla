@@ -132,7 +132,16 @@ final class SystemProxyManager {
             }
         }
         for service in manifest?.services ?? [] {
-            if !set(service.name, port: port) {
+            let portValue = Int(port)
+            let web = read(service.name, secure: false)
+            let secure = read(service.name, secure: true)
+            if web == nil || secure == nil {
+                degraded = degraded ?? "cannot read proxy state for \(service.name)"
+                continue
+            }
+            let webOK = web!.enabled && web!.server == "127.0.0.1" && web!.port == portValue
+            let secureOK = secure!.enabled && secure!.server == "127.0.0.1" && secure!.port == portValue
+            if !webOK || !secureOK, !set(service.name, port: port) {
                 degraded = degraded ?? "cannot set proxy for \(service.name)"
             }
         }
