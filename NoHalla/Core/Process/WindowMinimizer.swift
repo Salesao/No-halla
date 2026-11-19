@@ -28,11 +28,19 @@ enum WindowMinimizer {
     }
 
     private static var didPrompt = false
+    private static let promptedKey = "nohalla.accessibilityPrompted"
 
-    /// Prompts at most once per launch and only while not yet trusted.
+    /// Prompts at most once ever and only while not yet trusted. The flag is
+    /// persisted because an ad-hoc signed rebuild gets a new TCC identity: the
+    /// system would otherwise ask again on every launch and every freeze.
+    /// Without the grant windows are hidden instead of minimized, so the app
+    /// stays fully usable; the user can still enable it in System Settings.
     static func promptAccessibilityOnce() {
         guard !didPrompt, !AXIsProcessTrusted() else { return }
         didPrompt = true
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: promptedKey) else { return }
+        defaults.set(true, forKey: promptedKey)
         promptAccessibility()
     }
 

@@ -196,8 +196,8 @@
     "ru": "Закрывайте ворота, когда падает VPN"
   },
   "onboarding.1.body": {
-    "en": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate and blocked sites stop resolving until your VPN returns.",
-    "ru": "No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, а заблокированные сайты перестают резолвиться, пока VPN не вернётся."
+    "en": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate. Blocked sites stay blocked while protection is on.",
+    "ru": "No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот. Заблокированные сайты закрыты, пока защита включена."
   },
   "onboarding.2.title": {
     "en": "Choose who waits at the gate",
@@ -224,8 +224,8 @@
     "ru": "Заблокированные сайты"
   },
   "onboarding.4.body": {
-    "en": "Optional: these hostnames will not resolve while protection is active and your IP is untrusted.",
-    "ru": "Необязательно: эти хосты не будут резолвиться, пока защита активна и IP недоверенный."
+    "en": "Optional: these hostnames will not resolve while protection is on.",
+    "ru": "Необязательно: эти хосты не будут резолвиться, пока защита включена."
   },
   "onboarding.4.helper": {
     "en": "Shared packages can be imported later in Settings → Protection.",
@@ -676,8 +676,8 @@
     "ru": "Список слишком большой."
   },
   "ui.domain-guard-helper": {
-    "en": "While protection is active and the IP is not trusted, these hostnames resolve to 0.0.0.0/::1. Exact hostnames; www. is added automatically. Browsers using DNS-over-HTTPS bypass this.",
-    "ru": "Пока защита активна и IP недоверенный, эти хосты резолвятся в 0.0.0.0/::1. Точные имена; www. добавляется автоматически. Браузеры с DNS-over-HTTPS это обходят."
+    "en": "While protection is on (not paused), these hostnames resolve to 0.0.0.0/::1. Exact hostnames: a bare name also covers www., and a www. entry covers the bare name. Other subdomains are separate entries. Browsers using DNS-over-HTTPS bypass this, and connections already open keep working.",
+    "ru": "Пока защита включена (не на паузе), эти хосты резолвятся в 0.0.0.0/::1. Точные имена: имя без www. покрывает и www., а запись с www. покрывает имя без www. Другие поддомены добавляются отдельно. Браузеры с DNS-over-HTTPS это обходят, а уже открытые соединения продолжают работать."
   },
   "ui.domain-guard-not-installed": {
     "en": "The root helper is not installed, so this list has no effect yet.",

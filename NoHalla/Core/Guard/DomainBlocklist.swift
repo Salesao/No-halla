@@ -57,6 +57,15 @@ enum DomainBlocklist {
                 guard valid else { return nil }
             }
         }
+        // A suffix root: `www.` is a web hostname prefix, not the family the
+        // user means. Strip it when what remains is still a valid name, so
+        // `www.com` never turns into a block of the `com` TLD.
+        if value.hasPrefix("www.") {
+            let rest = String(value.dropFirst(4))
+            if rest.split(separator: ".", omittingEmptySubsequences: false).count >= 2 {
+                value = rest
+            }
+        }
         return value
     }
 
@@ -72,20 +81,36 @@ enum DomainBlocklist {
         return result
     }
 
-    /// Domains plus their `www.` variants, deduped and capped. A bare entry
-    /// cannot cover arbitrary subdomains (hosts has no wildcards); the UI
-    /// documents exact-host semantics.
+    /// Domains plus their `www.` counterpart: a bare entry also covers
+    /// `www.<domain>`, and a `www.` entry also covers the bare domain. Other
+    /// subdomains stay exact (hosts has no wildcards); the UI documents that.
     static func hostnames(for domains: [String]) -> [String] {
         var seen = Set<String>()
         var result: [String] = []
         for domain in normalized(domains) {
-            let candidates = domain.hasPrefix("www.") ? [domain] : [domain, "www." + domain]
+            let candidates: [String]
+            if domain.hasPrefix("www.") {
+                // Drop `www.` only when the remainder is itself a valid name:
+                // `www.com` must not turn into a block of the `com` TLD.
+                candidates = normalize(String(domain.dropFirst(4))).map { [domain, $0] } ?? [domain]
+            } else {
+                candidates = [domain, "www." + domain]
+            }
             for host in candidates where seen.insert(host).inserted {
                 result.append(host)
                 if result.count >= maxHosts { return result }
             }
         }
         return result
+    }
+
+    /// True when `host` is a suffix entry or a descendant of one. Both sides
+    /// are normalized hostnames; a trailing root dot is ignored.
+    static func isBlocked(host: String, suffixes: [String]) -> Bool {
+        var value = host.lowercased()
+        if value.hasSuffix(".") { value.removeLast() }
+        guard !value.isEmpty else { return false }
+        return suffixes.contains { value == $0 || value.hasSuffix("." + $0) }
     }
 
     /// Hosts entries that blackhole both address families.
