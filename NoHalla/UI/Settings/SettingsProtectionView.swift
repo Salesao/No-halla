@@ -407,9 +407,18 @@ struct SettingsProtectionView: View {
         if let original = editingDomain, let index = config.domainBlocklist.firstIndex(of: original) {
             config.domainBlocklist[index] = domain
         } else if !config.domainBlocklist.contains(domain) {
+            guard config.domainBlocklist.count < DomainBlocklist.maxDomains else {
+                reportDomainLimit()
+                return
+            }
             config.domainBlocklist.append(domain)
         }
         appState.setConfig(config)
+    }
+
+    private func reportDomainLimit() {
+        domainDropMessage = L10n.string("ui.domain-guard-limit")
+        domainDropFailed = true
     }
 
     private func removeDomain(_ domain: String) {
@@ -440,6 +449,10 @@ struct SettingsProtectionView: View {
             var config = appState.config
             let existing = Set(config.domainBlocklist)
             let added = result.domains.filter { !existing.contains($0) }
+            guard added.count <= max(0, DomainBlocklist.maxDomains - config.domainBlocklist.count) else {
+                reportDomainLimit()
+                return
+            }
             config.domainBlocklist.append(contentsOf: added)
             appState.setConfig(config)
             domainDropFailed = false

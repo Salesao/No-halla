@@ -675,6 +675,10 @@
     "en": "That list is too large.",
     "ru": "Список слишком большой."
   },
+  "ui.domain-guard-limit": {
+    "en": "The list is full (256 domains). Remove one before adding another.",
+    "ru": "Список заполнен (256 доменов). Удалите один, чтобы добавить новый."
+  },
   "ui.domain-guard-helper": {
     "en": "While protection is on (not paused), these hostnames resolve to 0.0.0.0/::1. Exact hostnames: a bare name also covers www., and a www. entry covers the bare name. Other subdomains are separate entries. Browsers using DNS-over-HTTPS bypass this, and connections already open keep working.",
     "ru": "Пока защита включена (не на паузе), эти хосты резолвятся в 0.0.0.0/::1. Точные имена: имя без www. покрывает и www., а запись с www. покрывает имя без www. Другие поддомены добавляются отдельно. Браузеры с DNS-over-HTTPS это обходят, а уже открытые соединения продолжают работать."

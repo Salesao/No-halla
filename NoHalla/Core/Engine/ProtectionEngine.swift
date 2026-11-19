@@ -814,22 +814,21 @@ actor ProtectionEngine {
         return Set(running.compactMap { $0.bundleIdentifier }.filter { protectedIDs.contains($0) })
     }
 
-    /// D32: the guard blocks whenever protection is on, whatever the IP
-    /// verdict. Only an explicit pause or the master switch releases it.
+    /// D32: the guard blocks only while the IP is not proven trusted.
     private var domainGuardActive: Bool {
         guard config.protection.enabled, !setupIncomplete else { return false }
         switch machine.status {
-        case .paused, .disabled:
+        case .protected, .paused, .disabled:
             return false
-        case .initializing, .checking, .grace, .frozen, .unknown, .protected:
+        case .initializing, .checking, .grace, .frozen, .unknown:
             return true
         }
     }
 
     private func publishSnapshot() {
-        // D32: block while protection is on, independently of IP trust. Pause
-        // and the master switch are explicit user overrides; setup (empty
-        // trusted list) is inactive (FR-10).
+        // D32: block only while the IP is not proven trusted. Pause and the
+        // master switch are explicit user overrides; setup (empty trusted
+        // list) is inactive (FR-10).
         domainGuard.update(active: domainGuardActive, domains: config.effectiveDomainBlocklist)
         let snapshot = EngineSnapshot(
             status: machine.status,
