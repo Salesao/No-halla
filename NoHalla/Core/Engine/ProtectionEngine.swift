@@ -829,7 +829,10 @@ actor ProtectionEngine {
         // D32: block only while the IP is not proven trusted. Pause and the
         // master switch are explicit user overrides; setup (empty trusted
         // list) is inactive (FR-10).
-        domainGuard.update(active: domainGuardActive, domains: config.effectiveDomainBlocklist)
+        // D32/D48: with no domain rules there is nothing to guard; keep the proxy
+        // and the system proxy untouched.
+        let hasDomains = !config.effectiveDomainBlocklist.isEmpty
+        domainGuard.update(active: domainGuardActive && hasDomains, domains: config.effectiveDomainBlocklist)
         let snapshot = EngineSnapshot(
             status: machine.status,
             uiStatus: deriveUIStatus(),

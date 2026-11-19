@@ -102,8 +102,22 @@ final class GuardRunner {
     // MARK: - Apply / release
 
     private func applyActive(domains: [String]) {
-        writeHosts(DomainBlocklist.hostsLines(for: domains))
         let suffixes = DomainBlocklist.normalized(domains)
+        guard !suffixes.isEmpty else {
+            if !didInitialRelease || systemProxy != nil || proxy != nil ||
+                FileManager.default.fileExists(atPath: manifestURL.path) {
+                release()
+                didInitialRelease = true
+                if proxyMode == .degraded { return }
+            }
+            writeHosts([])
+            proxyMode = .unavailable
+            proxySwitched = false
+            reason = ""
+            return
+        }
+
+        writeHosts(DomainBlocklist.hostsLines(for: domains))
 
         var justCreated = false
         if systemProxy == nil {
