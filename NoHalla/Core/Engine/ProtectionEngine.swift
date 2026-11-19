@@ -564,15 +564,29 @@ actor ProtectionEngine {
     }
 
     private func addCurrentIP() async {
+        var ipv4 = currentIPv4
+        var ipv6 = lastIPv6Verified ? currentIPv6 : nil
+        // VPN-tunnel mode keeps no cached public IP (its checks are purely
+        // local), and an IP-mode check may not have answered yet. "Add current
+        // IP" is an explicit user request, so learn the address with a one-off
+        // endpoint query instead of silently doing nothing. No verdict is fed
+        // into the machine here: VPN mode stays local, IP mode re-checks below
+        // with the updated trusted list.
+        if ipv4 == nil && ipv6 == nil {
+            if let result = await fetchCurrentIPOnDemand() {
+                ipv4 = result.currentIPv4
+                if case .verified = result.ipv6 { ipv6 = result.currentIPv6 }
+            }
+        }
         var changed = false
-        if let ipv4 = currentIPv4 {
+        if let ipv4 {
             let raw = ipv4.description
             if !config.trustedAddresses.contains(raw) {
                 config.trustedAddresses.append(raw)
                 changed = true
             }
         }
-        if lastIPv6Verified, let ipv6 = currentIPv6 {
+        if let ipv6 {
             let raw = ipv6.description
             if !config.trustedAddresses.contains(raw) {
                 config.trustedAddresses.append(raw)
@@ -583,6 +597,17 @@ actor ProtectionEngine {
             try? configStore.save(config)
         }
         requestImmediateCheck()
+    }
+
+    /// One-off public-IP lookup for the explicit "Add current IP" action.
+    /// Retries once past the verifier's 3 s minimum batch interval so a press
+    /// right after a running or backed-off batch still resolves.
+    private func fetchCurrentIPOnDemand() async -> IPVerificationResult? {
+        if let result = await verifier.check(config: config, online: monitor.isOnline) {
+            return result
+        }
+        try? await Task.sleep(nanoseconds: 3_100_000_000)
+        return await verifier.check(config: config, online: monitor.isOnline)
     }
 
     // MARK: - Timers
