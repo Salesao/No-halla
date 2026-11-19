@@ -42,7 +42,7 @@ Config and state live in `~/Library/Application Support/NoHalla/` (`config.json`
 
 ## Appearance and freeze behavior
 
-No-halla shows a shield in the menu bar and (by owner preference) an icon in the Dock; clicking the Dock icon opens Settings. When an app is frozen, its windows are **minimized to the Dock** so it does not sit on screen looking hung, and restored when resumed.
+No-halla opens a **main window** (like a regular app) on launch and from the Dock: it shows onboarding first, then the protection dashboard (status, network, protected apps, actions) with a Settings button. A shield also stays in the menu bar for quick popover access. Clicking the Dock icon shows the main window. When an app is frozen, its windows are **minimized to the Dock** so it does not sit on screen looking hung, and restored when resumed.
 
 Minimizing another app's windows needs **Accessibility permission**: on the first freeze macOS prompts you to grant it (System Settings → Privacy & Security → Accessibility → enable No-halla). Without it, No-halla falls back to hiding the app instead of minimizing. You can still use the app fully without this permission.
 

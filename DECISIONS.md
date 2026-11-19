@@ -92,3 +92,14 @@ Implementation of M1–M6 across three reviewed stages (S1 core, S2 processes+re
 **Also fixed.** The popover Settings button did not bring the Settings window to the front (an `LSUIElement` agent is not active by default); `openSettings()` now activates the app first.
 
 **Note on the freeze principle (owner question).** A freeze can occur even with a trusted current IP when the IP cannot be *verified* (endpoint quorum not reached → `unknown`) and `freezeWhenUnknown` is on (default). This is FR-11/D28 behavior, not a bug; the trusted IP must be successfully verified to stay Protected. The current IP was in fact added to the trusted list correctly.
+
+## 2026-11-19 — User-requested windowed app experience (direct owner request)
+
+**Decision (owner: «хочу как отдельное открывающееся приложение, как Telegram»).** No-halla now presents a regular main window in addition to the menu bar shield:
+- A primary `WindowGroup` opens the main window on launch and from the Dock. `MainWindowView` shows the three-step onboarding until completed, then the protection dashboard with a Settings toolbar button.
+- The dashboard content is extracted into a shared `DashboardView` reused by both the main window and the menu bar popover (`PopoverView` is now a thin 360 pt wrapper + Settings/Quit footer).
+- Settings opens via the native `SettingsLink` (macOS 14+; `SettingsButton` falls back to activate + `showSettingsWindow:` on macOS 13) — fixes the earlier «Settings button does nothing» (the `sendAction`-only approach was unreliable in a MenuBarExtra configuration).
+- Onboarding is embedded in the main window (no separate onboarding Window scene); `OnboardingContainerView.finish()` no longer dismisses — the main window reactively switches to the dashboard once `onboardingCompleted` is true.
+- Dock click reopen shows the main window (`applicationShouldHandleReopen` returns true with a WindowGroup).
+
+This deviates from the brief's pure menu bar agent architecture (FR-1/§8.8) by owner request; the menu bar shield and all protection logic are unchanged. Clean universal build green; commit 8968ea9.
