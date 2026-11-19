@@ -122,6 +122,8 @@ final class GuardRunner {
     }
 
     private func release() {
+        let hadManifest = FileManager.default.fileExists(atPath: manifestURL.path)
+        let wasActive = dns != nil || suffixMode != .unavailable
         let manager = dns ?? SystemDNSManager(
             runner: ProcessRunner(),
             services: SystemEnvironment.services(),
