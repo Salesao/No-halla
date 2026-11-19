@@ -4,8 +4,8 @@
 //
 //  Persisted application configuration (implementation brief §5.4) with the
 //  defaults from §13. `logLevel` is the D11 schema extension. The on-disk
-//  schema version is 1; loading, validation and atomic writes live in
-//  ConfigStore.
+//  schema version is 2 (IPv6/quorum removed); loading, migration, validation
+//  and atomic writes live in ConfigStore.
 //
 
 import Foundation
@@ -23,43 +23,104 @@ struct AppConfig: Codable, Equatable {
     var notifications: Bool
     var language: AppLanguage
     var logLevel: LogLevel
+    /// D32: hostnames blocked while protection is active and the IP is not
+    /// trusted. Normalized and capped by ConfigStore on load. Absent in older
+    /// configs, hence the custom decoder.
+    var domainBlocklist: [String]
+    /// D33: imported shared packages. Only enabled packages contribute to the
+    /// guard; `id` is local, the file format has no identity.
+    var domainPackages: [DomainPackage]
+
+    /// Manual entries plus every enabled package, normalized and deduped —
+    /// the exact list published to the root helper.
+    var effectiveDomainBlocklist: [String] {
+        var combined = domainBlocklist
+        for package in domainPackages where package.enabled {
+            combined.append(contentsOf: package.domains)
+        }
+        return DomainBlocklist.normalized(combined)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion, onboardingCompleted, protection, trustedAddresses
+        case protectedApps, ipCheck, launchAtLogin, notifications, language, logLevel
+        case domainBlocklist, domainPackages
+    }
+
+    init(
+        schemaVersion: Int,
+        onboardingCompleted: Bool,
+        protection: ProtectionSettings,
+        trustedAddresses: [String],
+        protectedApps: [ProtectedApp],
+        ipCheck: IPCheckSettings,
+        launchAtLogin: Bool,
+        notifications: Bool,
+        language: AppLanguage,
+        logLevel: LogLevel,
+        domainBlocklist: [String] = [],
+        domainPackages: [DomainPackage] = []
+    ) {
+        self.schemaVersion = schemaVersion
+        self.onboardingCompleted = onboardingCompleted
+        self.protection = protection
+        self.trustedAddresses = trustedAddresses
+        self.protectedApps = protectedApps
+        self.ipCheck = ipCheck
+        self.launchAtLogin = launchAtLogin
+        self.notifications = notifications
+        self.language = language
+        self.logLevel = logLevel
+        self.domainBlocklist = domainBlocklist
+        self.domainPackages = domainPackages
+    }
+
+    /// Tolerates configs written before D32: a missing `domainBlocklist` means
+    /// the guard has nothing to block. Every other key was already required.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        onboardingCompleted = try container.decode(Bool.self, forKey: .onboardingCompleted)
+        protection = try container.decode(ProtectionSettings.self, forKey: .protection)
+        trustedAddresses = try container.decode([String].self, forKey: .trustedAddresses)
+        protectedApps = try container.decode([ProtectedApp].self, forKey: .protectedApps)
+        ipCheck = try container.decode(IPCheckSettings.self, forKey: .ipCheck)
+        launchAtLogin = try container.decode(Bool.self, forKey: .launchAtLogin)
+        notifications = try container.decode(Bool.self, forKey: .notifications)
+        language = try container.decode(AppLanguage.self, forKey: .language)
+        logLevel = try container.decode(LogLevel.self, forKey: .logLevel)
+        domainBlocklist = try container.decodeIfPresent([String].self, forKey: .domainBlocklist) ?? []
+        domainPackages = try container.decodeIfPresent([DomainPackage].self, forKey: .domainPackages) ?? []
+    }
 
     /// Factory defaults. Per owner request (simple whitelist model): only freeze
     /// on a KNOWN non-whitelisted IP — `freezeWhenUnknown=false` (unknown IP keeps
-    /// apps running) and `quorum=1` (a single responding endpoint suffices).
+    /// apps running). IPv6 checks were removed (owner decision); the default
+    /// endpoint is one that routes through the VPN tunnel on split-tunnel hosts.
     /// Other values per brief §13, endpoints §5.4, logLevel .info per D11.
     static let defaults = AppConfig(
-        schemaVersion: 1,
+        schemaVersion: 2,
         onboardingCompleted: false,
         protection: ProtectionSettings(
             enabled: true,
-            graceSeconds: 5,
+            graceSeconds: 1,
             checkIntervalSeconds: 30,
             freezeWhenUnknown: false,
-            checkIPv6: true,
             requireVPNInterface: false,
             manualResumeBypassMinutes: 5
         ),
         trustedAddresses: [],
         protectedApps: [],
         ipCheck: IPCheckSettings(
-            endpointsV4: [
-                "https://api.ipify.org",
-                "https://ifconfig.me/ip",
-                "https://icanhazip.com",
-                "https://ipinfo.io/ip"
-            ],
-            endpointsV6: [
-                "https://api6.ipify.org",
-                "https://ifconfig.co/ip"
-            ],
-            timeoutSeconds: 2.5,
-            quorum: 1
+            endpointsV4: ["https://ipinfo.io/ip"],
+            timeoutSeconds: 2.5
         ),
         launchAtLogin: true,
         notifications: true,
         language: .system,
-        logLevel: .info
+        logLevel: .info,
+        domainBlocklist: [],
+        domainPackages: []
     )
 }
 
@@ -69,7 +130,6 @@ struct ProtectionSettings: Codable, Equatable {
     var graceSeconds: Int
     var checkIntervalSeconds: Int
     var freezeWhenUnknown: Bool
-    var checkIPv6: Bool
     var requireVPNInterface: Bool
     var manualResumeBypassMinutes: Int
     /// Owner-requested hybrid: decide by public-IP whitelist (external query to
@@ -78,7 +138,7 @@ struct ProtectionSettings: Codable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case enabled, graceSeconds, checkIntervalSeconds, freezeWhenUnknown
-        case checkIPv6, requireVPNInterface, manualResumeBypassMinutes, mode
+        case requireVPNInterface, manualResumeBypassMinutes, mode
     }
 
     init(
@@ -86,7 +146,6 @@ struct ProtectionSettings: Codable, Equatable {
         graceSeconds: Int,
         checkIntervalSeconds: Int,
         freezeWhenUnknown: Bool,
-        checkIPv6: Bool,
         requireVPNInterface: Bool,
         manualResumeBypassMinutes: Int,
         mode: ProtectionMode = .vpnInterface
@@ -95,7 +154,6 @@ struct ProtectionSettings: Codable, Equatable {
         self.graceSeconds = graceSeconds
         self.checkIntervalSeconds = checkIntervalSeconds
         self.freezeWhenUnknown = freezeWhenUnknown
-        self.checkIPv6 = checkIPv6
         self.requireVPNInterface = requireVPNInterface
         self.manualResumeBypassMinutes = manualResumeBypassMinutes
         self.mode = mode
@@ -107,7 +165,6 @@ struct ProtectionSettings: Codable, Equatable {
         graceSeconds = try container.decode(Int.self, forKey: .graceSeconds)
         checkIntervalSeconds = try container.decode(Int.self, forKey: .checkIntervalSeconds)
         freezeWhenUnknown = try container.decode(Bool.self, forKey: .freezeWhenUnknown)
-        checkIPv6 = try container.decode(Bool.self, forKey: .checkIPv6)
         requireVPNInterface = try container.decode(Bool.self, forKey: .requireVPNInterface)
         manualResumeBypassMinutes = try container.decode(Int.self, forKey: .manualResumeBypassMinutes)
         // Older configs predate `mode`; default to the VPN-tunnel mode.
@@ -123,12 +180,11 @@ enum ProtectionMode: String, Codable, Equatable {
     case ipWhitelist
 }
 
-/// External IP verification settings (brief §5.4).
+/// External IP verification settings (brief §5.4; IPv6/quorum removed by
+/// owner decision — every valid answer must be trusted, zero answers is unknown).
 struct IPCheckSettings: Codable, Equatable {
     var endpointsV4: [String]
-    var endpointsV6: [String]
     var timeoutSeconds: Double
-    var quorum: Int
 }
 
 /// UI language preference; `system` follows the macOS locale (EN/RU).

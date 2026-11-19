@@ -55,9 +55,8 @@ final class AppState: ObservableObject {
         self.corruptConfigBanner = configStore.lastLoadWasCorrupt
         self.snapshot = EngineSnapshot(
             status: .initializing,
-            uiStatus: loaded.trustedAddresses.isEmpty ? .setup : .checking,
+            uiStatus: (loaded.protection.mode == .ipWhitelist && loaded.trustedAddresses.isEmpty) ? .setup : .checking,
             currentIPv4: nil,
-            currentIPv6: nil,
             vpnInterface: nil,
             trusted: false,
             graceRemaining: nil,
@@ -65,7 +64,8 @@ final class AppState: ObservableObject {
             pauseUntil: nil,
             frozenBundleIDs: [],
             runningBundleIDs: [],
-            lastCheck: nil
+            lastCheck: nil,
+            isRefreshing: false
         )
         notificationCoordinator.setEnabled(loaded.notifications)
         notificationCoordinator.onResumeAllAction = { [weak self] in
@@ -138,7 +138,6 @@ final class AppState: ObservableObject {
     static func preview(
         _ status: UIStatus,
         ipv4: String? = "203.0.113.5",
-        ipv6: String? = nil,
         vpn: String? = "utun3",
         trusted: Bool = true,
         graceRemaining: Int? = nil,
@@ -173,7 +172,6 @@ final class AppState: ObservableObject {
             status: machineStatus,
             uiStatus: status,
             currentIPv4: ipv4,
-            currentIPv6: ipv6,
             vpnInterface: vpn,
             trusted: trusted,
             graceRemaining: graceRemaining,
@@ -181,7 +179,8 @@ final class AppState: ObservableObject {
             pauseUntil: pauseUntil,
             frozenBundleIDs: frozen,
             runningBundleIDs: running,
-            lastCheck: Date()
+            lastCheck: Date(),
+            isRefreshing: false
         )
         return state
     }

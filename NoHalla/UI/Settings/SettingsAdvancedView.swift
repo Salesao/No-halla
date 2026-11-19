@@ -3,7 +3,7 @@
 //  NoHalla
 //
 //  Advanced settings tab (design §7.4, FR-8/22/27/32, spec D11/D14): IP-check
-//  endpoints v4/v6 (edit + reset to defaults), manual resume bypass 0–60, log
+//  endpoints (edit + reset to defaults), manual resume bypass 0–60, log
 //  level Info/Debug (D11), Export diagnostics (NSSavePanel → DiagnosticsExporter),
 //  and a destructive Reset all settings with confirmation.
 //
@@ -14,30 +14,39 @@ import UniformTypeIdentifiers
 
 struct SettingsAdvancedView: View {
     @EnvironmentObject var appState: AppState
-    @State private var editingEndpoint: (family: String, index: Int)?
-    @State private var showEndpointEditor = false
+    private struct EndpointEdit: Identifiable {
+        let index: Int
+        let original: String
+        var id: Int { index }
+    }
+
+    @State private var editingEndpoint: EndpointEdit?
     @State private var exportError: String?
 
     var body: some View {
-        Form {
-            Section(L10n.string("ui.ip-check-endpoints")) {
-                endpointList(title: "IPv4", endpoints: appState.config.ipCheck.endpointsV4, family: "v4")
-                endpointList(title: "IPv6", endpoints: appState.config.ipCheck.endpointsV6, family: "v6")
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
+            SettingsSection(L10n.string("ui.ip-check-endpoints")) {
+                endpointList(title: "IPv4", endpoints: appState.config.ipCheck.endpointsV4)
                 Button(L10n.string("ui.reset-to-defaults")) { resetEndpoints() }
                     .buttonStyle(.bordered)
+                    .tint(DesignTokens.blue)
             }
 
-            Section(L10n.string("ui.preferences")) {
+            SettingsSection(L10n.string("ui.preferences")) {
                 SettingRowView(label: L10n.string("ui.manual-resume-bypass")) {
                     HStack {
                         Slider(value: Binding(
                             get: { Double(appState.config.protection.manualResumeBypassMinutes) },
                             set: { newValue in
+                                let minutes = Int(newValue.rounded())
+                                guard minutes != appState.config.protection.manualResumeBypassMinutes else { return }
                                 var config = appState.config
-                                config.protection.manualResumeBypassMinutes = Int(newValue)
+                                config.protection.manualResumeBypassMinutes = minutes
                                 appState.setConfig(config)
                             }
-                        ), in: 0...60, step: 1)
+                        ), in: 0...60)
+                        .accessibilityLabel(L10n.string("ui.manual-resume-bypass"))
                         .frame(width: 160)
                         Text("\(appState.config.protection.manualResumeBypassMinutes) \(L10n.string("ui.unit-minutes"))")
                             .font(.system(size: DesignTokens.typeSmall))
@@ -58,37 +67,43 @@ struct SettingsAdvancedView: View {
                         Text(L10n.string("ui.log-level-debug")).tag(LogLevel.debug)
                     }
                     .labelsHidden()
+                    .accessibilityLabel(L10n.string("ui.log-level"))
                     .frame(width: 160)
                 }
             }
 
-            Section {
+            HStack {
                 Button(L10n.string("ui.export-diagnostics")) { exportDiagnostics() }
                     .buttonStyle(.bordered)
-                if let exportError = exportError {
-                    Text(exportError)
-                        .font(.system(size: DesignTokens.typeSmall))
-                        .foregroundStyle(DesignTokens.red)
-                }
+                    .tint(DesignTokens.blue)
+                Spacer()
                 Button(L10n.string("ui.reset-all-settings")) { resetAll() }
                     .buttonStyle(.bordered)
+                    .tint(DesignTokens.red)
+            }
+            if let exportError = exportError {
+                Text(exportError)
+                    .font(.system(size: DesignTokens.typeSmall))
                     .foregroundStyle(DesignTokens.red)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            }
+            .padding(DesignTokens.spacing5)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .formStyle(.grouped)
-        .sheet(isPresented: $showEndpointEditor) {
-            if let editing = editingEndpoint {
-                let endpoints = editing.family == "v4" ? appState.config.ipCheck.endpointsV4 : appState.config.ipCheck.endpointsV6
-                EndpointEditor(
-                    original: endpoints.indices.contains(editing.index) ? endpoints[editing.index] : "",
-                    onSave: { value in saveEndpoint(value); showEndpointEditor = false },
-                    onCancel: { showEndpointEditor = false }
-                )
-            }
+        .background(DesignTokens.bg)
+        .tint(DesignTokens.action)
+        .toggleStyle(.switch)
+        .sheet(item: $editingEndpoint) { edit in
+            EndpointEditor(
+                original: edit.original,
+                onSave: { value in saveEndpoint(value, at: edit.index); editingEndpoint = nil },
+                onCancel: { editingEndpoint = nil }
+            )
         }
     }
 
-    private func endpointList(title: String, endpoints: [String], family: String) -> some View {
+    private func endpointList(title: String, endpoints: [String]) -> some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing1) {
             Text(title)
                 .font(.system(size: DesignTokens.typeSmall, weight: .semibold))
@@ -100,28 +115,24 @@ struct SettingsAdvancedView: View {
                         .foregroundStyle(DesignTokens.text)
                         .lineLimit(1)
                     Spacer()
-                    Button(L10n.string("ui.edit")) { editingEndpoint = (family, index); showEndpointEditor = true }
+                    Button(L10n.string("ui.edit")) { editingEndpoint = EndpointEdit(index: index, original: endpoint) }
                         .buttonStyle(.borderless)
+                        .tint(DesignTokens.blue)
+                        .accessibilityLabel("\(L10n.string("ui.edit")): \(endpoint)")
                 }
             }
         }
     }
 
-    private func saveEndpoint(_ value: String) {
-        guard let editing = editingEndpoint else { return }
+    private func saveEndpoint(_ value: String, at index: Int) {
         var config = appState.config
-        if editing.family == "v4" {
-            if config.ipCheck.endpointsV4.indices.contains(editing.index) { config.ipCheck.endpointsV4[editing.index] = value }
-        } else {
-            if config.ipCheck.endpointsV6.indices.contains(editing.index) { config.ipCheck.endpointsV6[editing.index] = value }
-        }
+        if config.ipCheck.endpointsV4.indices.contains(index) { config.ipCheck.endpointsV4[index] = value }
         appState.setConfig(config)
     }
 
     private func resetEndpoints() {
         var config = appState.config
         config.ipCheck.endpointsV4 = AppConfig.defaults.ipCheck.endpointsV4
-        config.ipCheck.endpointsV6 = AppConfig.defaults.ipCheck.endpointsV6
         appState.setConfig(config)
     }
 

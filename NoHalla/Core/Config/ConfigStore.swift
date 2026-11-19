@@ -21,9 +21,12 @@ final class ConfigStore {
         return base.appendingPathComponent("NoHalla", isDirectory: true)
     }
 
-    private static let currentSchemaVersion = 1
+    private static let currentSchemaVersion = 2
 
     private let directory: URL
+    /// Directory this store reads/writes. The D32 domain-guard state file
+    /// lives next to config.json so paths follow any injected directory.
+    var directoryURL: URL { directory }
     private var configURL: URL { directory.appendingPathComponent("config.json") }
 
     /// True when the last load hit corrupt JSON or repaired invalid fields.
@@ -66,14 +69,29 @@ final class ConfigStore {
         case unsupportedSchemaVersion(Int)
     }
 
-    /// Step-wise schema migration. Version 1 is the first shipped schema;
-    /// upgrades from older versions would be applied here. Files written by
-    /// a newer schema cannot be interpreted safely and are treated as corrupt.
+    /// Step-wise schema migration. v1 → v2 (owner decision): IPv6 checks and
+    /// quorum removed; the old factory-default endpoint list (whose ipify and
+    /// ifconfig.me entries bypass domain-routed split tunnels and leak the real
+    /// IP) becomes the single tunnel-routed default; IPv6 trusted entries are
+    /// dropped silently — they can no longer be observed. Files written by a
+    /// newer schema cannot be interpreted safely and are treated as corrupt.
     private func migrate(_ config: AppConfig) throws -> AppConfig {
         guard config.schemaVersion <= Self.currentSchemaVersion else {
             throw StoreError.unsupportedSchemaVersion(config.schemaVersion)
         }
         var config = config
+        if config.schemaVersion < 2 {
+            let legacyDefaultEndpoints: Set<String> = [
+                "https://api.ipify.org",
+                "https://ifconfig.me/ip",
+                "https://icanhazip.com",
+                "https://ipinfo.io/ip"
+            ]
+            if Set(config.ipCheck.endpointsV4) == legacyDefaultEndpoints {
+                config.ipCheck.endpointsV4 = AppConfig.defaults.ipCheck.endpointsV4
+            }
+            config.trustedAddresses = config.trustedAddresses.filter { TrustedAddress(raw: $0).isValid }
+        }
         config.schemaVersion = Self.currentSchemaVersion
         return config
     }
@@ -102,11 +120,6 @@ final class ConfigStore {
             config.protection.manualResumeBypassMinutes = fallback.protection.manualResumeBypassMinutes
             repaired = true
         }
-        if config.ipCheck.quorum < 1 {
-            AppLog.engine.error("Config quorum \(config.ipCheck.quorum, privacy: .public) below 1; using default")
-            config.ipCheck.quorum = fallback.ipCheck.quorum
-            repaired = true
-        }
         if !config.ipCheck.timeoutSeconds.isFinite || config.ipCheck.timeoutSeconds <= 0 {
             AppLog.engine.error("Config timeoutSeconds invalid; using default")
             config.ipCheck.timeoutSeconds = fallback.ipCheck.timeoutSeconds
@@ -119,13 +132,7 @@ final class ConfigStore {
             family: "IPv4"
         )
         config.ipCheck.endpointsV4 = v4
-        let (v6, v6Repaired) = sanitizeEndpoints(
-            config.ipCheck.endpointsV6,
-            defaults: fallback.ipCheck.endpointsV6,
-            family: "IPv6"
-        )
-        config.ipCheck.endpointsV6 = v6
-        repaired = repaired || v4Repaired || v6Repaired
+        repaired = repaired || v4Repaired
 
         var trusted: [String] = []
         for raw in config.trustedAddresses {
@@ -137,6 +144,49 @@ final class ConfigStore {
             }
         }
         config.trustedAddresses = trusted
+
+        // D32: the guard only ever sees normalized hostnames. Drop invalid or
+        // duplicate entries here so a hand-edited config cannot reach /etc/hosts.
+        let domains = DomainBlocklist.normalized(config.domainBlocklist)
+        if domains != config.domainBlocklist {
+            AppLog.engine.error("Dropped invalid or duplicate blocked domains")
+            repaired = true
+        }
+        config.domainBlocklist = domains
+
+        // D33: imported packages are untrusted input too. Keep at most 32,
+        // drop empty ones, re-normalize domains, clamp text, fix duplicate ids.
+        var packages: [DomainPackage] = []
+        for raw in config.domainPackages {
+            guard packages.count < 32 else {
+                AppLog.engine.error("Dropped domain packages beyond the limit of 32")
+                repaired = true
+                break
+            }
+            let packageDomains = DomainBlocklist.normalized(raw.domains)
+            guard !packageDomains.isEmpty else {
+                AppLog.engine.error("Dropped a domain package without valid domains")
+                repaired = true
+                continue
+            }
+            var name = raw.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if name.isEmpty { name = "Package" }
+            if name.count > DomainPackageDocument.maxNameLength {
+                name = String(name.prefix(DomainPackageDocument.maxNameLength))
+            }
+            var note = raw.note
+            if let text = note, text.count > DomainPackageDocument.maxNoteLength {
+                note = String(text.prefix(DomainPackageDocument.maxNoteLength))
+            }
+            var id = raw.id
+            if id.isEmpty || packages.contains(where: { $0.id == id }) {
+                id = UUID().uuidString
+            }
+            let package = DomainPackage(id: id, name: name, note: note, domains: packageDomains, enabled: raw.enabled)
+            if package != raw { repaired = true }
+            packages.append(package)
+        }
+        config.domainPackages = packages
 
         if repaired {
             lastLoadWasCorrupt = true

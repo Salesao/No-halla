@@ -2,45 +2,49 @@
 //  IPVerifier.swift
 //  NoHalla
 //
-//  Public-IP verification (implementation brief §8.2, FR-8/9/13, NFR-8).
-//  Each address family is checked in parallel across its HTTPS endpoints; a
-//  family is `verified` only when at least `quorum` endpoints agree on the same
-//  valid IP of that family. Disagreement or too few answers yields `noQuorum`.
-//  IPv6 is skipped (`notApplicable`) when disabled or when there is no IPv6
-//  egress. Offline produces `noQuorum` without any request. Batches are
-//  throttled to one per 3 s and backed off 5→60 s while endpoints keep failing.
-//  Only HTTPS is used and cross-host redirects are blocked. Logs mask IPs
-//  (FR-39).
+//  Public-IPv4 verification (implementation brief §8.2, FR-8/9/13, NFR-8;
+//  owner decision: IPv6 checks removed, single tunnel-routed endpoint).
+//  Every configured HTTPS endpoint is queried in parallel and ALL valid
+//  answers are kept: a split-tunnel host may legitimately expose several
+//  public addresses, and the engine checks each observed address against the
+//  trusted list (all trusted → allowed, any untrusted → disallowed). Zero
+//  answers yields `noQuorum`. Offline produces `noQuorum` without any request.
+//  Batches are throttled to one per 3 s and backed off 5→60 s while endpoints
+//  keep failing. Only HTTPS is used and cross-host redirects are blocked.
+//  Logs mask IPs (FR-39).
 //
-//  R4: requests keep the endpoint hostname in the URL so URLSession performs
-//  normal SNI and certificate name validation. Families are separated by the
-//  family of the RESPONSE: an answer whose family differs from the branch is
-//  discarded before quorum (a dual-stack endpoint reached over IPv6 can never
-//  masquerade as the IPv4 verdict). An empty family answer set is `noQuorum`,
-//  which composes to `unknown` in the engine lattice (spec D28) — honest, not a
-//  false `disallowed`. Forcing the transport family via a numeric IP literal was
-//  rejected because it breaks SNI/name validation (see DECISIONS.md).
+//  Requests keep the endpoint hostname in the URL so URLSession performs
+//  normal SNI and certificate name validation. `IPAddress` parses IPv4 only,
+//  so an IPv6 answer from a dual-stack endpoint is discarded before it can
+//  influence the verdict. Forcing the transport family via a numeric IP
+//  literal was rejected because it breaks SNI/name validation (see project
+//  memory).
 //
 
-import Darwin
 import Foundation
 import OSLog
 
-/// Per-family verification outcome.
+/// Verification outcome for the IPv4 check.
 enum FamilyResult {
-    case verified(IPAddress)
+    /// One or more valid IPv4 answers.
+    case answers([IPAddress])
     case noQuorum
-    case notApplicable
+
+    /// Verified addresses, empty unless at least one endpoint answered.
+    var verifiedAddresses: [IPAddress] {
+        if case .answers(let addresses) = self { return addresses }
+        return []
+    }
 }
 
-/// Combined verification result. `currentIPv4`/`currentIPv6` carry the first
-/// valid answer of each family (for the UI and "Add current IP") even when the
-/// family did not reach quorum.
+/// Verification result. `currentIPv4` carries the first valid answer (for the
+/// UI and "Add current IP") even when no endpoint answered — then it is nil.
 struct IPVerificationResult {
     let ipv4: FamilyResult
-    let ipv6: FamilyResult
     let currentIPv4: IPAddress?
-    let currentIPv6: IPAddress?
+
+    /// All observed IPv4 answers.
+    var allIPv4: [IPAddress] { ipv4.verifiedAddresses }
 }
 
 /// Session delegate: blocks cross-host and non-HTTPS redirects (NFR-8, R27).
@@ -89,51 +93,38 @@ actor IPVerifier {
     /// Runs one verification batch, or returns nil when throttled/backed off so
     /// the engine keeps its current state. Offline returns `noQuorum` without
     /// sending requests (FR-11).
-    func check(config: AppConfig, online: Bool) async -> IPVerificationResult? {
+    func check(config: AppConfig, online: Bool, force: Bool = false) async -> IPVerificationResult? {
         let now = Date()
         guard !inFlight else { return nil }
-        if let backoffUntil = backoffUntil, now < backoffUntil { return nil }
-        if let lastBatchStart = lastBatchStart, now.timeIntervalSince(lastBatchStart) < minimumBatchInterval {
-            return nil
+        // A user-initiated detection ignores the periodic throttle and the
+        // failure backoff (D35): onboarding must not wait up to 60 s.
+        if !force {
+            if let backoffUntil = backoffUntil, now < backoffUntil { return nil }
+            if let lastBatchStart = lastBatchStart, now.timeIntervalSince(lastBatchStart) < minimumBatchInterval {
+                return nil
+            }
         }
-
-        let checkIPv6 = config.protection.checkIPv6
 
         if !online {
             // No network path: unknown without any request (FR-11).
-            let ipv6: FamilyResult = checkIPv6 ? .noQuorum : .notApplicable
-            return IPVerificationResult(ipv4: .noQuorum, ipv6: ipv6, currentIPv4: nil, currentIPv6: nil)
+            return IPVerificationResult(ipv4: .noQuorum, currentIPv4: nil)
         }
 
         inFlight = true
         lastBatchStart = now
         defer { inFlight = false }
 
-        let quorum = max(1, config.ipCheck.quorum)
         let timeout = config.ipCheck.timeoutSeconds > 0 ? config.ipCheck.timeoutSeconds : 2.5
+        let (result, address) = await verify(endpoints: config.ipCheck.endpointsV4, timeout: timeout)
 
-        async let ipv4 = verifyFamily(endpoints: config.ipCheck.endpointsV4, family: .v4, quorum: quorum, timeout: timeout)
-        async let ipv6 = verifyIPv6(config: config, quorum: quorum, timeout: timeout)
-        let (v4Result, v4Address) = await ipv4
-        let (v6Result, v6Address) = await ipv6
+        applyBackoff(address: address)
 
-        applyBackoff(v4Address: v4Address, v6Address: v6Address, v6Result: v6Result)
-
-        return IPVerificationResult(ipv4: v4Result, ipv6: v6Result, currentIPv4: v4Address, currentIPv6: v6Address)
+        return IPVerificationResult(ipv4: result, currentIPv4: address)
     }
 
-    // MARK: - Families
+    // MARK: - Verification
 
-    private func verifyIPv6(config: AppConfig, quorum: Int, timeout: Double) async -> (FamilyResult, IPAddress?) {
-        guard config.protection.checkIPv6 else { return (.notApplicable, nil) }
-        guard hasIPv6Egress() else {
-            AppLog.network.debug("IPv6 enabled but no egress; marking notApplicable")
-            return (.notApplicable, nil)
-        }
-        return await verifyFamily(endpoints: config.ipCheck.endpointsV6, family: .v6, quorum: quorum, timeout: timeout)
-    }
-
-    private func verifyFamily(endpoints: [String], family: IPFamily, quorum: Int, timeout: Double) async -> (FamilyResult, IPAddress?) {
+    private func verify(endpoints: [String], timeout: Double) async -> (FamilyResult, IPAddress?) {
         let httpsEndpoints = endpoints.filter { endpoint in
             guard let url = URL(string: endpoint) else { return false }
             return url.scheme?.lowercased() == "https"
@@ -142,7 +133,7 @@ actor IPVerifier {
 
         let answers: [IPAddress] = await withTaskGroup(of: IPAddress?.self) { group in
             for endpoint in httpsEndpoints {
-                group.addTask { await self.fetchIP(from: endpoint, family: family, timeout: timeout) }
+                group.addTask { await self.fetchIP(from: endpoint, timeout: timeout) }
             }
             var collected: [IPAddress] = []
             for await answer in group {
@@ -151,22 +142,16 @@ actor IPVerifier {
             return collected
         }
 
-        // R4: only answers of the expected family count toward quorum. An empty
-        // matching set is noQuorum (→ unknown in the lattice, spec D28).
-        let matching = answers.filter { $0.family == family }
-        let first = matching.first
-        guard matching.count >= quorum, let reference = matching.first else {
-            return (.noQuorum, first)
-        }
-        // Quorum reached: any disagreement between successful answers is unknown
-        // (split tunnel / anycast), per brief §8.2.
-        let agrees = matching.allSatisfy { $0 == reference }
-        return agrees ? (.verified(reference), first) : (.noQuorum, first)
+        guard let first = answers.first else { return (.noQuorum, nil) }
+        // Split-tunnel hosts legitimately expose several public addresses.
+        // Keep every observed answer so the engine can require ALL of them to
+        // be trusted; disagreement alone says nothing about trust.
+        return (.answers(answers), first)
     }
 
-    private func fetchIP(from endpoint: String, family: IPFamily, timeout: Double) async -> IPAddress? {
+    private func fetchIP(from endpoint: String, timeout: Double) async -> IPAddress? {
         // Keep the hostname in the URL: URLSession performs normal SNI and
-        // certificate name validation (R4). The response family is checked below.
+        // certificate name validation. Only IPv4 answers are accepted below.
         guard let url = URL(string: endpoint), url.scheme?.lowercased() == "https" else { return nil }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -184,14 +169,13 @@ actor IPVerifier {
             }
             let host = url.host ?? ""
             // Plain-text IP first, then a JSON object with an `ip` field.
-            if let address = IPAddress(text), address.family == family {
+            if let address = IPAddress(text) {
                 AppLog.network.debug("IP check \(host, privacy: .public) -> \(address.masked, privacy: .public)")
                 return address
             }
             if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let ipString = object["ip"] as? String,
-               let address = IPAddress(ipString.trimmingCharacters(in: .whitespacesAndNewlines)),
-               address.family == family {
+               let address = IPAddress(ipString.trimmingCharacters(in: .whitespacesAndNewlines)) {
                 AppLog.network.debug("IP check \(host, privacy: .public) -> \(address.masked, privacy: .public)")
                 return address
             }
@@ -202,41 +186,14 @@ actor IPVerifier {
         }
     }
 
-    // MARK: - IPv6 egress probe
-
-    /// A UDP `connect` to a public IPv6 address checks routing without sending
-    /// a packet; success means an IPv6 egress path exists.
-    private func hasIPv6Egress() -> Bool {
-        let sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
-        guard sock >= 0 else { return false }
-        defer { close(sock) }
-
-        var address = sockaddr_in6()
-        address.sin6_len = UInt8(MemoryLayout<sockaddr_in6>.stride)
-        address.sin6_family = sa_family_t(AF_INET6)
-        address.sin6_port = UInt16(53).bigEndian
-        guard inet_pton(AF_INET6, "2001:4860:4860::8888", &address.sin6_addr) == 1 else { return false }
-
-        let result = withUnsafePointer(to: &address) { pointer in
-            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPointer in
-                connect(sock, sockaddrPointer, socklen_t(MemoryLayout<sockaddr_in6>.stride))
-            }
-        }
-        return result == 0
-    }
-
     // MARK: - Backoff
 
     /// Grow backoff while no endpoint answered at all; reset on any success.
     /// R13: measure the pause from batch completion, not from the pre-batch
     /// timestamp, so timeouts do not shorten the declared backoff.
-    private func applyBackoff(v4Address: IPAddress?, v6Address: IPAddress?, v6Result: FamilyResult) {
-        let v6Applicable: Bool
-        if case .notApplicable = v6Result { v6Applicable = false } else { v6Applicable = true }
-        let anyAnswer = v4Address != nil || (v6Applicable && v6Address != nil)
+    private func applyBackoff(address: IPAddress?) {
         let completed = Date()
-
-        if anyAnswer {
+        if address != nil {
             backoffSeconds = initialBackoff
             backoffUntil = nil
         } else {

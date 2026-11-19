@@ -22,9 +22,9 @@ enum AppLog {
     static let ui = Logger(subsystem: subsystem, category: "ui")
     static let watchdog = Logger(subsystem: subsystem, category: "watchdog")
 
-    /// Log-safe form of an IP address: the last IPv4 octet or the last IPv6
-    /// group is replaced with `x` (203.0.113.x, 2001:db8::x). Input that is
-    /// not an address is returned unchanged.
+    /// Log-safe form of an IP address: the last IPv4 octet is replaced with
+    /// `x` (203.0.113.x). Input that is not an address is returned unchanged
+    /// (colon-bearing text gets its last group masked as a privacy fallback).
     static func maskIP(_ ip: String) -> String {
         let trimmed = ip.trimmingCharacters(in: .whitespacesAndNewlines)
         if let address = IPAddress(trimmed) {

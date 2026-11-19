@@ -18,12 +18,12 @@ struct EndpointEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
-            Text(L10n.string("ui.edit-family-endpoint", "IP"))
+            Text(L10n.string("ui.edit-ip-check-endpoint"))
                 .font(.system(size: DesignTokens.typeTitle, weight: .semibold))
                 .foregroundStyle(DesignTokens.text)
             TextField(L10n.string("ui.use-an-https-endpoint-that-returns-an-ip-address"), text: $value)
                 .textFieldStyle(.roundedBorder)
-                .frame(width: 360)
+                .frame(maxWidth: .infinity)
             if let error = error {
                 Text(error)
                     .font(.system(size: DesignTokens.typeSmall))
@@ -33,12 +33,15 @@ struct EndpointEditor: View {
                 Spacer()
                 Button(L10n.string("action.cancel"), action: onCancel)
                     .buttonStyle(.bordered)
+                    .tint(DesignTokens.text)
                 Button(L10n.string("ui.save")) { save() }
                     .buttonStyle(.borderedProminent)
             }
         }
         .padding(DesignTokens.spacing4)
         .frame(width: 440)
+        .background(DesignTokens.bg)
+        .tint(DesignTokens.action)
         .onAppear { value = original }
     }
 
@@ -53,5 +56,5 @@ struct EndpointEditor: View {
 }
 
 #Preview {
-    EndpointEditor(original: "https://api.ipify.org", onSave: { _ in }, onCancel: {})
+    EndpointEditor(original: "https://ipinfo.io/ip", onSave: { _ in }, onCancel: {})
 }
