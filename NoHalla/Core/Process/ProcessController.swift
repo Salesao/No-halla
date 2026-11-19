@@ -88,16 +88,19 @@ final class ProcessController: ProcessControlling, @unchecked Sendable {
 
     private func freezeSync(_ apps: [ProtectedApp]) -> [FrozenProcess] {
         for app in apps where app.enabled {
-            let (candidates, bundlePath) = targetPIDs(for: app)
-            guard !bundlePath.isEmpty else { continue }
-            for pid in candidates {
-                freezeOne(pid: pid, bundleID: app.bundleID, bundlePath: bundlePath)
+            for target in targets(for: app) {
+                freezeOne(
+                    pid: target.pid,
+                    bundleID: app.bundleID,
+                    bundlePath: target.bundlePath,
+                    terminalDescendant: target.terminalDescendant
+                )
             }
         }
         return Array(frozen.values)
     }
 
-    private func freezeOne(pid: Int32, bundleID: String, bundlePath: String) {
+    private func freezeOne(pid: Int32, bundleID: String, bundlePath: String, terminalDescendant: Bool) {
         guard pid > 0, frozen[pid] == nil else { return }
 
         let path = ProcessEnumerator.path(of: pid) ?? ""
@@ -105,9 +108,16 @@ final class ProcessController: ProcessControlling, @unchecked Sendable {
             AppLog.process.info("Skip denied pid \(pid, privacy: .public)")
             return
         }
-        guard SafetyGuard.isInsideBundle(path: path, bundlePath: bundlePath) else {
-            AppLog.process.info("Skip pid outside bundle \(pid, privacy: .public)")
-            return
+        // D30: a terminal descendant is authorized by its live process-tree edge
+        // from an instance inside the selected .app, so its executable path is
+        // intentionally outside the bundle (`/bin/zsh`, `~/.local/bin/claude`).
+        // Everything else still must live inside the bundle (FR-45). The uid
+        // check above and the start-time guard below apply to both.
+        if !terminalDescendant {
+            guard SafetyGuard.isInsideBundle(path: path, bundlePath: bundlePath) else {
+                AppLog.process.info("Skip pid outside bundle \(pid, privacy: .public)")
+                return
+            }
         }
         // Identity snapshot taken before the signal (PID-reuse guard).
         guard let start = ProcessEnumerator.startTime(of: pid) else { return }
@@ -118,7 +128,14 @@ final class ProcessController: ProcessControlling, @unchecked Sendable {
         // after this write but before the signal leaves an "incomplete intent":
         // recovery sends an identity-checked SIGCONT, which is a benign no-op on
         // a still-running process — never a claim of owning someone else's stop.
-        let record = FrozenProcess(pid: pid, startTimeSec: start.sec, startTimeUsec: start.usec, bundleID: bundleID, path: path)
+        let record = FrozenProcess(
+            pid: pid,
+            startTimeSec: start.sec,
+            startTimeUsec: start.usec,
+            bundleID: bundleID,
+            path: path,
+            terminalDescendant: terminalDescendant
+        )
         frozen[pid] = record
         guard persistNow() else {
             frozen.removeValue(forKey: pid)
@@ -184,12 +201,27 @@ final class ProcessController: ProcessControlling, @unchecked Sendable {
     // MARK: - Reconcile (FR-24)
 
     private func reconcileSync(_ apps: [ProtectedApp]) -> [FrozenProcess] {
-        let activeBundleIDs = Set(apps.filter { $0.enabled }.map { $0.bundleID })
-        // Resume processes of apps removed or disabled from protection (FR-24):
-        // they must not stay SIGSTOP until a full Resume all.
+        let enabledApps = apps.filter { $0.enabled }
+        let scopeByBundleID = Dictionary(
+            enabledApps.map { ($0.bundleID, $0.freezeScope) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        // Resume records the current scope no longer covers (FR-24, D30):
+        // removed/disabled apps entirely; at `.app` scope the agent-session
+        // records; at `.agentTerminals` the app's own processes, so switching
+        // to agent-only actually lets the app run again.
         for pid in Array(frozen.keys) {
             guard let record = frozen[pid] else { continue }
-            if !activeBundleIDs.contains(record.bundleID) {
+            let revoked: Bool
+            switch scopeByBundleID[record.bundleID] {
+            case .none:
+                revoked = true
+            case .some(.app):
+                revoked = record.terminalDescendant
+            case .some(.agentTerminals):
+                revoked = !record.terminalDescendant
+            }
+            if revoked {
                 resumeOne(pid: pid, record: record)
                 frozen.removeValue(forKey: pid)
             }
@@ -203,12 +235,16 @@ final class ProcessController: ProcessControlling, @unchecked Sendable {
                 continue
             }
         }
-        // Freeze newly launched instances and helpers of enabled apps.
-        for app in apps where app.enabled {
-            let (candidates, bundlePath) = targetPIDs(for: app)
-            guard !bundlePath.isEmpty else { continue }
-            for pid in candidates {
-                freezeOne(pid: pid, bundleID: app.bundleID, bundlePath: bundlePath)
+        // Freeze newly launched instances, helpers and (D30) terminal
+        // descendants of enabled apps.
+        for app in enabledApps {
+            for target in targets(for: app) {
+                freezeOne(
+                    pid: target.pid,
+                    bundleID: app.bundleID,
+                    bundlePath: target.bundlePath,
+                    terminalDescendant: target.terminalDescendant
+                )
             }
         }
         _ = persistNow()
@@ -239,26 +275,98 @@ final class ProcessController: ProcessControlling, @unchecked Sendable {
 
     // MARK: - Helpers
 
-    /// Candidate pid set for an app: main instances + their children + every
-    /// process whose path lies inside the app bundle (FR-16).
-    private func targetPIDs(for app: ProtectedApp) -> (Set<Int32>, String) {
+    /// One process to signal, plus the authorization decision made when the
+    /// target set was built.
+    private struct FreezeTarget {
+        let pid: Int32
+        /// Bundle path the process was discovered under (journal + FR-45 gate).
+        let bundlePath: String
+        /// D30: frozen because it runs under the selected app's terminal, not
+        /// because its executable lives in the bundle.
+        let terminalDescendant: Bool
+    }
+
+    /// Targets for an app. `.app` freezes every bundle path the app occupies
+    /// (FR-16). `.agentTerminals` leaves the app running and freezes only the
+    /// shell subtrees that host a supported CLI agent (D30).
+    private func targets(for app: ProtectedApp) -> [FreezeTarget] {
+        // Roots are processes authorized by bundle membership: the main
+        // instance, helpers/XPC inside its bundle, and same-identifier bundles
+        // found by path scan.
+        var roots: [(pid: Int32, bundlePath: String)] = []
+        var seenRoots = Set<Int32>()
+        func addRoot(pid: Int32, bundlePath: String) {
+            guard pid > 0, !bundlePath.isEmpty, seenRoots.insert(pid).inserted else { return }
+            roots.append((pid, bundlePath))
+        }
+
         let instances = ProcessEnumerator.instances(of: app.bundleID)
-        let bundlePath = instances.first?.bundlePath
-            ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: app.bundleID)?.path
-            ?? ""
-        var candidates = Set<Int32>()
+        var bundlePaths = instances.map(\.bundlePath).filter { !$0.isEmpty }
+        if let resolved = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app.bundleID)?.path,
+           !bundlePaths.contains(resolved) {
+            bundlePaths.append(resolved)
+        }
         for instance in instances {
-            candidates.insert(instance.pid)
-            for child in ProcessEnumerator.childPIDs(of: instance.pid) {
-                candidates.insert(child)
-            }
+            let path = instance.bundlePath.isEmpty ? (bundlePaths.first ?? "") : instance.bundlePath
+            addRoot(pid: instance.pid, bundlePath: path)
         }
-        if !bundlePath.isEmpty {
+        for bundlePath in bundlePaths {
             for pid in ProcessEnumerator.processes(insideBundleAt: bundlePath) {
-                candidates.insert(pid)
+                addRoot(pid: pid, bundlePath: bundlePath)
             }
         }
-        return (candidates, bundlePath)
+        if app.freezeScope == .agentTerminals {
+            // Same bundle identifier, different location: covers helper apps
+            // such as Orca's terminal host that NSWorkspace never lists.
+            for pid in ProcessEnumerator.processes(bundleID: app.bundleID) {
+                guard let executable = ProcessEnumerator.path(of: pid),
+                      let bundlePath = ProcessEnumerator.enclosingBundlePath(ofExecutableAt: executable) else { continue }
+                addRoot(pid: pid, bundlePath: bundlePath)
+            }
+        }
+
+        switch app.freezeScope {
+        case .app:
+            return appTargets(roots: roots)
+        case .agentTerminals:
+            return agentTerminalTargets(roots: roots)
+        }
+    }
+
+    /// `.app`: the roots themselves plus anything that lives inside their
+    /// bundles is frozen; the FR-45 path gate applies to every one of them.
+    private func appTargets(roots: [(pid: Int32, bundlePath: String)]) -> [FreezeTarget] {
+        roots.map { FreezeTarget(pid: $0.pid, bundlePath: $0.bundlePath, terminalDescendant: false) }
+    }
+
+    /// `.agentTerminals`: walk the app's tree, find agent CLIs attached to a
+    /// tty, and freeze the shell session hosting each one — the tab becomes
+    /// inert while the app and every non-agent terminal keep running.
+    private func agentTerminalTargets(roots: [(pid: Int32, bundlePath: String)]) -> [FreezeTarget] {
+        guard !roots.isEmpty else { return [] }
+        let rootPIDs = Set(roots.map(\.pid))
+        let bundlePath = roots.first?.bundlePath ?? ""
+        let tree = ProcessEnumerator.tree(rootedAt: roots.map(\.pid))
+
+        var targets: [FreezeTarget] = []
+        var seen = Set<Int32>()
+        for agent in tree.pids where AgentDetector.isAgent(pid: agent) {
+            // Highest shell below the app: freezing it makes the whole tab
+            // inert (host → login → zsh → agent). Without a shell ancestor
+            // the agent itself is the session root.
+            var sessionRoot = agent
+            var cursor = tree.parent[agent]
+            while let pid = cursor, pid > 1, !rootPIDs.contains(pid) {
+                if AgentDetector.isShell(pid: pid) { sessionRoot = pid }
+                cursor = tree.parent[pid]
+            }
+            guard seen.insert(sessionRoot).inserted else { continue }
+            targets.append(FreezeTarget(pid: sessionRoot, bundlePath: bundlePath, terminalDescendant: true))
+            for pid in tree.subtree(of: sessionRoot) where seen.insert(pid).inserted {
+                targets.append(FreezeTarget(pid: pid, bundlePath: bundlePath, terminalDescendant: true))
+            }
+        }
+        return targets
     }
 
     private func handleSignalError(_ err: Int32, pid: Int32, action: String) {
