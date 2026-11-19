@@ -14,7 +14,6 @@ import Darwin
 @MainActor
 final class NoHallaAppDelegate: NSObject, NSApplicationDelegate {
     let appState = AppState()
-    let watchdogLauncher = WatchdogLauncher()
 
     private let statePath = ConfigStore.defaultDirectory.appendingPathComponent("state.json")
     private var lockFileDescriptor: Int32 = -1
@@ -34,20 +33,12 @@ final class NoHallaAppDelegate: NSObject, NSApplicationDelegate {
         installTerminationSignalHandlers()
 
         Task { @MainActor in
-            // Republish engine snapshots to the UI bridge. Installed here (not
-            // via AppState.start) so startup recovery precedes engine.start.
-            await appState.engine.setOnSnapshot { [weak appState] snapshot in
-                Task { @MainActor in
-                    appState?.snapshot = snapshot
-                }
-            }
-            await appState.engine.setOnNotification { _ in
-                // s2-wiring routes this to NotificationCoordinator.
-            }
-            // FR-6 order: recover stale frozen -> watchdog -> engine.
+            // FR-6 order: recover stale frozen -> watchdog -> engine. AppState
+            // owns the launcher and installs the snapshot/notification callbacks
+            // in start(); the coordinator is wired there (s2-wiring).
             await appState.engine.recoverStaleFrozen()
-            watchdogLauncher.start(parentPID: getpid(), statePath: statePath)
-            await appState.engine.start()
+            appState.watchdogLauncher.start(parentPID: getpid(), statePath: statePath)
+            appState.start()
         }
     }
 
@@ -69,7 +60,7 @@ final class NoHallaAppDelegate: NSObject, NSApplicationDelegate {
             }
             // FR-4 order: resume all + clear state (engine.stop) -> watchdog.
             await appState.engine.stop()
-            watchdogLauncher.stop()
+            appState.watchdogLauncher.stop()
             cancelTerminationSignalHandlers()
             releaseSingleInstanceLock()
             NSApp.reply(toApplicationShouldTerminate: true)

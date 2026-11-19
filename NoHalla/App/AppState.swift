@@ -2,10 +2,11 @@
 //  AppState.swift
 //  NoHalla
 //
-//  MainActor UI bridge (spec D7). Owns the engine and stores, republishes engine
-//  snapshots as observable state and forwards user intents back to the engine.
-//  S1 wires a LoggingProcessController seam; S2 replaces it with the real
-//  ProcessController and connects notifications.
+//  MainActor UI bridge (spec D7). Owns the engine, stores, watchdog launcher and
+//  notification coordinator; republishes engine snapshots as observable state
+//  and forwards user intents back to the engine. S2 wiring injects the real
+//  ProcessController (watchdog pid provider reads the launcher) and routes
+//  engine notifications to the coordinator.
 //
 
 import AppKit
@@ -23,15 +24,19 @@ final class AppState: ObservableObject {
     let engine: ProtectionEngine
     let configStore: ConfigStore
     let stateStore: StateStore
+    let watchdogLauncher: WatchdogLauncher
+    let notificationCoordinator: NotificationCoordinator
 
     var uiStatus: UIStatus { snapshot.uiStatus }
 
     init() {
         let configStore = ConfigStore()
         let stateStore = StateStore()
+        let watchdogLauncher = WatchdogLauncher()
+        let notificationCoordinator = NotificationCoordinator()
         let loaded = configStore.load()
-        // S1 seam: logs intents only. Replaced by ProcessController in s2-wiring.
-        let controller = LoggingProcessController()
+        // Real process control; the safety guard excludes the watchdog by pid.
+        let controller = ProcessController(watchdogPIDProvider: { watchdogLauncher.watchdogPID })
         let verifier = IPVerifier()
         let monitor = NetworkMonitor()
         let engine = ProtectionEngine(
@@ -43,6 +48,8 @@ final class AppState: ObservableObject {
         )
         self.configStore = configStore
         self.stateStore = stateStore
+        self.watchdogLauncher = watchdogLauncher
+        self.notificationCoordinator = notificationCoordinator
         self.engine = engine
         self.config = loaded
         self.corruptConfigBanner = configStore.lastLoadWasCorrupt
@@ -60,9 +67,14 @@ final class AppState: ObservableObject {
             runningBundleIDs: [],
             lastCheck: nil
         )
+        notificationCoordinator.setEnabled(loaded.notifications)
+        notificationCoordinator.onResumeAllAction = { [weak self] in
+            self?.send(.resumeAll)
+        }
     }
 
-    /// Installs engine callbacks and starts the protection loop.
+    /// Installs engine callbacks and starts the protection loop. The caller
+    /// (AppDelegate) runs startup recovery and starts the watchdog first (FR-6).
     func start() {
         Task {
             await engine.setOnSnapshot { [weak self] snapshot in
@@ -70,8 +82,9 @@ final class AppState: ObservableObject {
                     self?.snapshot = snapshot
                 }
             }
-            await engine.setOnNotification { _ in
-                // S2 wiring routes this to NotificationCoordinator.
+            let coordinator = notificationCoordinator
+            await engine.setOnNotification { event in
+                coordinator.post(event)
             }
             await engine.start()
         }
@@ -90,11 +103,17 @@ final class AppState: ObservableObject {
         } catch {
             AppLog.ui.error("Failed to save config: \(error.localizedDescription, privacy: .public)")
         }
+        notificationCoordinator.setEnabled(newConfig.notifications)
         Task { await engine.handle(.configChanged(newConfig)) }
     }
 
-    /// S2 wiring connects this to NotificationCoordinator.requestPermission.
+    /// Requests notification permission (after onboarding, FR-29) and reflects
+    /// a denied status for the General settings banner.
     func requestNotificationPermission() {
-        // Placeholder until s2-wiring installs the coordinator.
+        Task {
+            await notificationCoordinator.requestPermission()
+            let denied = await notificationCoordinator.isPermissionDenied()
+            notificationsDenied = denied
+        }
     }
 }
