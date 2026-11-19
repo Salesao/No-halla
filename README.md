@@ -38,6 +38,8 @@ The script copies `NoHallaDomainGuard` to `/usr/local/libexec`, writes `/Library
 
 Limits: the block uses the system proxy, so apps that ignore it (some native clients, `curl`) and connections already open bypass it; the proxy is a fail-closed dependency for covered apps. If the proxy cannot bind port 8844, only exact hosts names are blocked and the status file reports suffix mode as unavailable. It is not a packet filter and does not inspect TLS or block per app.
 
+**Proxy guard acceptance (2026-11-20, Happ connected).** Trusted IP: no hosts markers, web/secure proxy off and empty, sites load. Untrusted IP: hosts markers present, web and secure proxy enabled at `127.0.0.1:8844`, Vivaldi blocks `m.youtube.com`, `google.com` loads. Back to trusted: proxy restored to off/empty, hosts removed, Vivaldi loads YouTube again. Not exercised: pause/off through the UI, helper `kill -9` + launchd restart, a network change while active, and uninstall. The reconcile throttle was added after the installed helper build; it takes effect on the next helper reinstall.
+
 **Shared packages.** A list can be sent to another person as a JSON package: **Import package…** validates the file and shows a preview (name, note, author, how many domains are new versus already blocked) before adding it as a toggleable package; a package can be disabled without deleting it. Drag a package row onto Finder or a chat window to share it, or drop a `.json` file onto the packages section to import — both paths use the same validation and preview. The share button on a package row and **Export list…** for manual entries write the same format:
 
 ```json
