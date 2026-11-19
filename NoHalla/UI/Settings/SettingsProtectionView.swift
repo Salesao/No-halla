@@ -34,6 +34,7 @@ struct SettingsProtectionView: View {
     @State private var importError: String?
     @State private var exportDocument = PackageDocumentFile(document: DomainPackageDocument(name: "package", domains: []))
     @State private var exportFilename = "domains.json"
+    @State private var guardStatus: DomainGuardStatus?
 
     private var protection: ProtectionSettings { appState.config.protection }
 
@@ -113,6 +114,15 @@ struct SettingsProtectionView: View {
                         .foregroundStyle(DesignTokens.muted)
                         .fixedSize(horizontal: false, vertical: true)
                     DomainGuardInstallView(showsUninstall: true)
+                    if let status = guardStatus,
+                       status.suffixMode != .active,
+                       !status.reason.isEmpty,
+                       status.reason != "protection released" {
+                        Text(L10n.string("ui.domain-guard-suffix-warning", status.reason))
+                            .font(.system(size: DesignTokens.typeSmall))
+                            .foregroundStyle(DesignTokens.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignTokens.radiusCard)
@@ -318,6 +328,7 @@ struct SettingsProtectionView: View {
         }
         .background(DesignTokens.bg)
         .tint(DesignTokens.action)
+        .onAppear { guardStatus = DomainGuardInstaller.readStatus() }
         .toggleStyle(.switch)
         .sheet(item: $editingAddress) { edit in
             TrustedAddressEditor(

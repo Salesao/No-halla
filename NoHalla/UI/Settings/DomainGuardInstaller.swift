@@ -19,6 +19,46 @@ enum DomainGuardInstaller {
         FileManager.default.fileExists(atPath: plistPath)
     }
 
+    static let helperPath = "/usr/local/libexec/nohalla-domain-guard"
+
+    /// Runs the installed helper's `--version`; nil when it is missing or does
+    /// not answer with a protocol line.
+    static func protocolVersion() -> Int? {
+        guard FileManager.default.isExecutableFile(atPath: helperPath) else { return nil }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: helperPath)
+        process.arguments = ["--version"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0,
+              let text = String(data: data, encoding: .utf8) else { return nil }
+        for line in text.split(whereSeparator: \.isNewline)
+        where line.hasPrefix("domainGuardProtocol=") {
+            return Int(line.dropFirst("domainGuardProtocol=".count))
+        }
+        return nil
+    }
+
+    /// Suffix blocking needs helper protocol 2; an older helper keeps exact
+    /// hosts behavior.
+    static var isSuffixCapable: Bool {
+        isInstalled && (protocolVersion() ?? 0) >= DomainGuardProtocol.version
+    }
+
+    /// The helper's last published state, read-only for the app.
+    static func readStatus() -> DomainGuardStatus? {
+        guard let data = try? Data(contentsOf: DomainGuardProtocol.statusURL) else { return nil }
+        return try? JSONDecoder().decode(DomainGuardStatus.self, from: data)
+    }
+
     static var scriptPath: String {
         Bundle.main.bundlePath + "/Contents/Resources/install-domain-guard.sh"
     }

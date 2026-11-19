@@ -15,6 +15,7 @@ struct DomainGuardInstallView: View {
     var showsUninstall = false
 
     @State private var installed = DomainGuardInstaller.isInstalled
+    @State private var suffixCapable = DomainGuardInstaller.isSuffixCapable
     @State private var installing = false
     @State private var uninstalling = false
     @State private var error: String?
@@ -34,6 +35,20 @@ struct DomainGuardInstallView: View {
                         Button(L10n.string("ui.domain-guard-uninstall")) { uninstall() }
                             .buttonStyle(.bordered)
                             .tint(DesignTokens.red)
+                    }
+                }
+                if !suffixCapable {
+                    Text(L10n.string("ui.domain-guard-reinstall"))
+                        .font(.system(size: DesignTokens.typeSmall))
+                        .foregroundStyle(DesignTokens.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: DesignTokens.spacing2) {
+                        Button(L10n.string("ui.domain-guard-reinstall-action")) { install() }
+                            .buttonStyle(.bordered)
+                            .disabled(installing)
+                        if installing {
+                            ProgressView().controlSize(.small)
+                        }
                     }
                 }
             } else {
@@ -66,7 +81,10 @@ struct DomainGuardInstallView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .onAppear { installed = DomainGuardInstaller.isInstalled }
+        .onAppear {
+            installed = DomainGuardInstaller.isInstalled
+            suffixCapable = DomainGuardInstaller.isSuffixCapable
+        }
     }
 
     private func install() {
@@ -79,6 +97,7 @@ struct DomainGuardInstallView: View {
                 installing = false
                 if ok {
                     installed = true
+                    suffixCapable = DomainGuardInstaller.isSuffixCapable
                 } else {
                     error = L10n.string("ui.domain-guard-install-failed")
                 }
