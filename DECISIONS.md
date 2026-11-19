@@ -27,3 +27,48 @@ Log of deviations and ambiguous design/implementation decisions with their ratio
 **Contrast verified.** Proposed dark tokens were checked: text/bg 15.5:1, muted/surface 6.5:1, bronze/bg 7.4:1, control-line/control 3.26:1, white/action 5.6:1, semantic variants ≥6.9:1 on surface.
 
 **Follow-up (completed).** The [Doop canvas](http://localhost:4300/c/2lgrE5QsCb?page=VhQCHx-t4F), the 15 offline HTML references, `DESIGN.md` and the handoff now use the dark-first shell. Light status fills use 4% tint to keep the bronze rim at 3:1 or better. Settings rails use the control boundary token at 28 pt hit height. Four app rows fit before internal scrolling. All 280 Doop prototype interactions were preserved.
+
+## 2026-11-19 — v1 implementation (orca-pod run e1363f11, plan-v1)
+
+Implementation of M1–M6 across three reviewed stages (S1 core, S2 processes+reliability, S3 UI+brand+docs). Decisions below reference the approved specification (`docs/superpowers/specs/2026-11-19-no-halla-v1-spec.md`) and plan (`docs/superpowers/plans/2026-11-19-no-halla-v1.md`).
+
+### Owner-mandated scope deviation
+
+- **D2 — Tests excluded.** By explicit owner mandate, no unit/integration tests are written, changed or run; no test targets and no `scripts/test.sh` are created; no TDD. This deviates from brief §4/§8.10/§9/NFR-6. Verification is static: `xcodegen generate` + `xcodebuild` Release universal typecheck + structural checks (plutil/test/grep). The 20-scenario manual matrix and runtime VoiceOver/contrast checks are the owner's checklist in README (D6). The app is not launched by the pipeline.
+
+### Specification decisions implemented
+
+- **D9 — Assets.** AppIcon generated from `design/exports/appicon-1024.png` via `sips` (all macOS sizes); the five menu bar glyphs split from `menubar-icons.svg` into template imagesets by `scripts/gen-assets.py` (python3 stdlib); GateScene SVG asset. The `qlmanage` rasterization fallback was not needed (SVG renders in the catalog).
+- **D11 — `logLevel`.** Added `logLevel: info|debug` (default `info`) to the config schema (brief §5.4 extension) for the Advanced → Log level control.
+- **D12 — Language in-process.** System/English/Русский selection applies without relaunch via `L10n` reading the selected `.lproj` bundle; "Apply language change" button. System panels stay on the system language.
+- **D13 — Layout additions.** `Core/Logging/`, `Core/Notifications/`, `Core/Process/ProcessControlling.swift` (seam), `UI/Theme/`, `UI/Localization/`, `App/AppState.swift` added to brief §4 layout.
+- **D14 — Diagnostics.** ZIP via system `/usr/bin/zip`; last-15-min logs via `OSLogStore(scope: .currentProcessIdentifier)` (`position(date:)` + `getEntries(at:)`), best-effort with an `export-notes.txt` note when unavailable (ad-hoc bundle risk); config/state/versions included; no automatic sending.
+- **D16 — `.gitignore`.** Created with `build/`, `DerivedData/`, `.DS_Store`, `NoHalla.xcodeproj`, `.orca-pod/`; also `graphify-out/` and `.impeccable/` (generated tool artifacts).
+- **D17 — XcodeGen.** Installed via Homebrew (2.47.0).
+- **D19 — Check interval.** Range 10–120 s, default 30 (design §7.4).
+- **D20 — Quit confirmation.** Shown only when apps are frozen; native alert; after confirm resume all + clear state + stop watchdog.
+- **D21 — About.** Version 0.1.0, tagline, MIT; `LICENSE` MIT; README per brief §4.
+- **D22 — Additive strings.** `design/copy.json` extended additively (144→155 keys) and the catalog regenerated. Parameterized mock literals: `caption.resumeBypass` (%d), `ui.checking-resumes-at-14-32` (%@), `ui.2-apps-selected` (%d), `ui.version-0-1-0` (%@); normalized `{app}`/`{family}` → %@. New keys: `ui.corrupt-config-title/body` (FR-38), `ui.log-level-info/debug`, `ui.unit-seconds/minutes`, `ui.protection-toggle-helper` (D27), `ui.language-english/russian`, `notification.frozen.reason-changed`, `notification.app-count` (%d, R35).
+- **D23 — Esc in MenuBarExtra.** `.menuBarExtraStyle(.window)` kept (brief mandate). Esc dismissal is best-effort within MenuBarExtra; if not reachable on macOS 13 it is an accessibility gap noted here and in README.
+- **D24 — Grace range 0–120.** Config and slider use 0–120 s (default 5), deviating from the mockup's 0–60; owner-approved.
+- **D25 — Cancel during grace.** Immediate re-check → `checking`, no hidden bypass; if still disallowed the countdown restarts.
+- **D26 — Repository hidden.** The About Repository row is hidden until a real URL exists; `ui.repository` unused.
+- **D27 — Master Protection toggle.** At the top of the Protection tab; off → resume all + `protection.enabled=false` → `disabled`; on → `checking`.
+- **D28 — IPv6 lattice.** Quorum per family; any disallowed → disallowed; else any unknown → unknown; else allowed. Unverifiable IPv6 (egress, no quorum) → unknown; known untrusted IPv6 → disallowed; `requireVPNInterface` without tunnel → disallowed.
+
+### Implementation decisions within builder discretion (R18)
+
+- **Watchdog embed.** XcodeGen `embed: true` defaulted to `Contents/Resources`; used dependency `copy: { destination: executables }` so the binary lands in `Contents/MacOS/NoHallaWatchdog` (verified `test -x`).
+- **NetworkMonitor.** Brief pseudo-code `NWPathMonitor(requiredInterfaceType: .any)` is not a real API → `NWPathMonitor()`. `SCDynamicStoreInvalidate` is not public → teardown via `SCDynamicStoreSetDispatchQueue(store, nil)`. C callout uses a non-capturing closure literal.
+- **IPVerifier family split (R4).** Requests keep the endpoint hostname (native SNI + certificate name check); families separated by the RESPONSE family; an empty family answer set → `noQuorum` → `unknown` (D28). A numeric-IP-literal transport force was rejected after it broke TLS (measured).
+- **ProcessEnumerator (R32).** `proc_listallpids`/`proc_listchildpids` return a pid COUNT capped at buffer size; a `capacity + 1` sentinel slot detects truncation (`count > capacity` → grow). Verified to enumerate the full table; the NULL-size hint is avoided (valid only for `proc_listallpids`).
+- **Startup recovery (R33).** `recoverStaleFrozen` resumes directly from `state.json` records (identity-check + SIGCONT), then clears state — the controller's in-memory dict is empty after restart.
+- **Reconcile (R34).** Resumes frozen processes of apps removed/disabled from protection, in addition to freezing new instances and pruning exited/reused pids.
+- **Localized notifications (R35).** Notification bodies use L10n keys only (`notification.frozen.reason-changed`, `notification.app-count`); the `NotificationEvent` seam is unchanged (localized descriptor instead of a real IP).
+
+### Accepted risks carried to the manual matrix / Chief
+
+- **R29 — Dual-stack v4 endpoints.** On a host with IPv6 egress, the default dual-stack v4 endpoints may return no IPv4 answer → `unknown` → freeze when `freezeWhenUnknown` (default). This is FR-11/D28-compatible honest behavior, not a code defect. Remedy is a defaults-level decision: add a dedicated IPv4-only endpoint (e.g. `https://api.ipify.org`, which is A-only) or disable `checkIPv6`/`freezeWhenUnknown` as appropriate. Not reproducible on the build machine (no IPv6 route). Owners can add their own endpoint in Advanced settings.
+- **R30 — Recovery nuances.** Recovery signals outside the controller (by design, from persisted records) and clears state after the resume pass; a failed SIGCONT is logged. Identity-check prevents signaling a reused pid. Accepted for the manual matrix.
+- **R52 — Notification pluralization.** `notification.app-count` uses `%d` ("1 apps"/"5 приложения"); full RU/EN plural forms via xcstrings plural variations + `String.localizedStringWithFormat` in `L10n` are a follow-up localization refinement (the mixed-language defect itself is fixed by R35).
+- Other accepted non-blocking findings (R7–R12, R14–R16, R19–R20, R23–R25, R36–R51) are recorded in the stage review reports under `.orca-pod/reports/plan-v1/`.

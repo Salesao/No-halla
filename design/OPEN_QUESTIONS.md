@@ -1,5 +1,9 @@
 # Open questions
 
-- **Grace range.** The design brief sets 0–60 s and FR-21 allows 0–120 s. The mockup uses 0–60 s with a default of 5 s. Align the visible range and config validation before shipping.
-- **Cancel during grace.** The design brief includes Cancel, but does not specify the protection state after it is pressed. Approve a policy before implementation. Recommend an immediate recheck with a visible state change and no hidden indefinite bypass. The Doop flow returns to Checking for the design review.
-- **Repository link.** No Git remote or release repository URL is present in the project. Bind the About link to the official repository before shipping.
+All resolved by owner decisions during the v1 specification blitz (2026-11-19). See `DECISIONS.md` and the specification (`docs/superpowers/specs/2026-11-19-no-halla-v1-spec.md`).
+
+- **Grace range.** RESOLVED (D24): config and slider use 0–120 s, default 5 s. Deviates from the mockup's 0–60 s; owner-approved and recorded in `DECISIONS.md`.
+- **Cancel during grace.** RESOLVED (D25): Cancel triggers an immediate re-check → `checking`, with no hidden indefinite bypass; if the IP is still disallowed the countdown restarts.
+- **Repository link.** RESOLVED (D26): the About Repository row is hidden until a real repository URL exists; `ui.repository` is unused.
+
+Additional builder-check decisions: reachability of `disabled` → D27 (master Protection toggle); unverifiable IPv6 policy → D28 (unknown, lattice composition); missing/parameterized strings → D22 (additive copy.json); language switch without relaunch → D12; Esc in MenuBarExtra → D23 (best-effort).
