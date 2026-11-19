@@ -15,7 +15,6 @@ import UniformTypeIdentifiers
 
 struct SettingsProtectionView: View {
     @EnvironmentObject var appState: AppState
-    @State private var showAppPicker = false
     private struct AddressEdit: Identifiable {
         let id = UUID()
         let original: String?
@@ -198,65 +197,6 @@ struct SettingsProtectionView: View {
                     handlePackageDrop(providers)
                 }
 
-                SettingsSection(L10n.string("apps.title")) {
-                    ForEach(Array(appState.config.protectedApps.enumerated()), id: \.element.id) { index, app in
-                        if index > 0 {
-                            Divider().overlay(DesignTokens.line)
-                                .padding(.vertical, DesignTokens.spacing1)
-                        }
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(spacing: DesignTokens.spacing2) {
-                                ProtectedAppIconView(bundleID: app.bundleID)
-                                Text(app.name)
-                                    .font(.system(size: DesignTokens.typeBody))
-                                    .foregroundStyle(DesignTokens.text)
-                                Spacer()
-                                Text(appState.snapshot.runningBundleIDs.contains(app.bundleID) ? L10n.string("ui.running") : L10n.string("apps.notRunning"))
-                                    .font(.system(size: DesignTokens.typeSmall))
-                                    .foregroundStyle(DesignTokens.muted)
-                                Button(L10n.string("ui.remove")) { removeApp(app) }
-                                    .buttonStyle(.borderless)
-                                    .foregroundStyle(DesignTokens.red)
-                                    .accessibilityLabel("\(L10n.string("ui.remove")): \(app.name)")
-                            }
-                            // D30: choose what freezes. `.app` stops the app;
-                            // `.agentTerminals` leaves it running and stops only
-                            // Claude Code/Codex sessions started in its terminals.
-                            HStack(spacing: DesignTokens.spacing2) {
-                                Text(L10n.string("apps.freeze-scope"))
-                                    .font(.system(size: DesignTokens.typeSmall))
-                                    .foregroundStyle(DesignTokens.muted)
-                                Picker("", selection: Binding(
-                                    get: { app.freezeScope },
-                                    set: { newValue in setFreezeScope(newValue, for: app) }
-                                )) {
-                                    Text(L10n.string("apps.scope-app")).tag(FreezeScope.app)
-                                    Text(L10n.string("apps.scope-agent-terminals")).tag(FreezeScope.agentTerminals)
-                                }
-                                .pickerStyle(.segmented)
-                                .labelsHidden()
-                                .frame(maxWidth: 300)
-                                .accessibilityLabel("\(L10n.string("apps.freeze-scope")): \(app.name)")
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.leading, DesignTokens.appIcon + DesignTokens.spacing2)
-                        }
-                    }
-                    Button(L10n.string("apps.add")) { showAppPicker = true }
-                        .buttonStyle(.bordered)
-                        .tint(DesignTokens.blue)
-                    if appState.config.protectedApps.contains(where: { $0.freezeScope == .agentTerminals }) {
-                        Text(L10n.string("apps.scope-agent-terminals-help"))
-                            .font(.system(size: DesignTokens.typeSmall))
-                            .foregroundStyle(DesignTokens.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(L10n.string("apps.scope-agent-terminals-caveat"))
-                            .font(.system(size: DesignTokens.typeSmall))
-                            .foregroundStyle(DesignTokens.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
                 SettingsSection(L10n.string("ui.preferences")) {
                     VStack(alignment: .leading, spacing: DesignTokens.spacing1) {
                         Text(L10n.string("ui.grace-period"))
@@ -342,18 +282,6 @@ struct SettingsProtectionView: View {
                 original: editingDomain,
                 onSave: { value in saveDomain(value); showDomainEditor = false },
                 onCancel: { showDomainEditor = false }
-            )
-        }
-        .sheet(isPresented: $showAppPicker) {
-            AppPickerSheet(
-                existingBundleIDs: Set(appState.config.protectedApps.map { $0.bundleID }),
-                onAdd: { newApps in
-                    var config = appState.config
-                    config.protectedApps.append(contentsOf: newApps)
-                    appState.setConfig(config)
-                    showAppPicker = false
-                },
-                onCancel: { showAppPicker = false }
             )
         }
         // D33: package preview, then the system import/export panels.
@@ -621,21 +549,6 @@ struct SettingsProtectionView: View {
             }
         }
         return L10n.string("ui.domain-packages-invalid")
-    }
-
-    private func removeApp(_ app: ProtectedApp) {
-        var config = appState.config
-        config.protectedApps.removeAll { $0.bundleID == app.bundleID }
-        appState.setConfig(config)
-    }
-
-    /// D30: persists the per-app freeze scope. The engine reconciles on the
-    /// next 5 s pass — freezing agent sessions or resuming revoked ones.
-    private func setFreezeScope(_ value: FreezeScope, for app: ProtectedApp) {
-        var config = appState.config
-        guard let index = config.protectedApps.firstIndex(where: { $0.bundleID == app.bundleID }) else { return }
-        config.protectedApps[index].freezeScope = value
-        appState.setConfig(config)
     }
 }
 
