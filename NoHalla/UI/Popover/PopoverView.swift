@@ -253,6 +253,11 @@ struct PopoverView: View {
     }
 
     private func openSettings() {
+        // An LSUIElement agent is not active by default; without activating, the
+        // Settings window can open behind other apps or not come to the front,
+        // which looks like the button does nothing. Activate, then open Settings
+        // (showSettingsWindow: is the macOS 13+ Settings scene selector).
+        NSApp.activate(ignoringOtherApps: true)
         NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 

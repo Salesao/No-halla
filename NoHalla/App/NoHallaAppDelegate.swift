@@ -42,6 +42,15 @@ final class NoHallaAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // User requested a Dock icon: clicking it with no visible window opens
+        // Settings (the popover lives in the menu bar extra).
+        if !flag {
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        }
+        return true
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // A secondary instance never touched the engine or state; exit at once.
         guard isPrimaryInstance else { return .terminateNow }

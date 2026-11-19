@@ -40,6 +40,14 @@ The watchdog binary is embedded at `No-halla.app/Contents/MacOS/NoHallaWatchdog`
 
 Config and state live in `~/Library/Application Support/NoHalla/` (`config.json`, `state.json`, atomic writes).
 
+## Appearance and freeze behavior
+
+No-halla shows a shield in the menu bar and (by owner preference) an icon in the Dock; clicking the Dock icon opens Settings. When an app is frozen, its windows are **minimized to the Dock** so it does not sit on screen looking hung, and restored when resumed.
+
+Minimizing another app's windows needs **Accessibility permission**: on the first freeze macOS prompts you to grant it (System Settings → Privacy & Security → Accessibility → enable No-halla). Without it, No-halla falls back to hiding the app instead of minimizing. You can still use the app fully without this permission.
+
+A note on the freeze principle: an app can freeze even when your current IP is trusted, if the IP cannot be *verified* (the check endpoints did not reach quorum → `unknown`) and *Freeze when unknown* is on (default). The trusted IP must be successfully verified to stay Protected; you can turn off *Freeze when unknown* in Settings → Protection if you prefer.
+
 ## Crash recovery and its limitation
 
 No-halla records each process it intends to freeze **before** sending `SIGSTOP`, so a crash cannot leave a stopped app unrecorded. If No-halla crashes, the embedded watchdog resumes the recorded apps within ~2 s; the next launch also recovers any stale records. Both paths verify the process id **and start time** before sending `SIGCONT`, so a reused pid is never signaled (D29, FR-41/42).

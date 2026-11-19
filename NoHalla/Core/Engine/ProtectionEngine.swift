@@ -425,6 +425,13 @@ actor ProtectionEngine {
         // (empty trusted list or master switch off), even if a stale effect arrives.
         guard !config.trustedAddresses.isEmpty, config.protection.enabled else { return }
         let apps = config.protectedApps.filter { $0.enabled }
+        // User preference: minimize frozen apps' windows to the Dock so they do
+        // not sit on screen looking hung. Window actions must precede SIGSTOP (a
+        // frozen app cannot process them); prompt for Accessibility once (hide
+        // fallback without it) and let the minimize settle before freezing.
+        WindowMinimizer.promptAccessibilityOnce()
+        for app in apps { WindowMinimizer.minimizeApp(bundleID: app.bundleID) }
+        try? await Task.sleep(nanoseconds: 400_000_000)
         // C2: set metadata and configure durable per-process persistence BEFORE
         // the controller signals, so each stopped process is recorded first. The
         // controller's queue is the single journal owner; no engine save here.
@@ -471,6 +478,8 @@ actor ProtectionEngine {
         // the hook first and do not clear from the actor (avoids a stale overwrite).
         configureControllerPersistence(reason: freezeReason)
         let resumed = await controller.resumeAll()
+        // User preference: restore minimized/hidden windows after SIGCONT.
+        for record in resumed { WindowMinimizer.restoreApp(pid: record.pid) }
         frozenProcesses = []
         frozenSince = nil
         freezeReason = nil

@@ -82,3 +82,13 @@ Implementation of M1–M6 across three reviewed stages (S1 core, S2 processes+re
 **Rejected alternatives.** B (confirmed-stop journal written only after `SIGSTOP`) leaves a FR-41 gap on crash-after-stop-before-write; C (two-phase journal + `proc_bsdinfo` `SSTOP`/`P_TRACED` heuristic) is best-effort and adds platform complexity. Moving the write after `SIGSTOP` and ignoring pending records are forbidden (they break G1). No new recovery semantics beyond D29.
 
 **Analysis.** `.orca-pod/reports/plan-v1/C2-guarantee-conflict.md` (G1/G2 incompatibility), `chief-attempt4.md` (Chief criterion), spec-v2 D29 / plan-v2 revision C2 (owner decision). The real C2 races (single journal owner, lock-synchronized persist hook, explicit rollback reporting, identity re-check after I/O, inactive-protection guard) were closed in Chief rounds 1–4; D29 resolves the remaining semantic conflict by owner decision, not a code change.
+
+## 2026-11-19 — User-requested UX changes (post-acceptance, direct owner request)
+
+**Decision (owner chose via interactive questions).** Two deviations from the original brief, requested directly by the owner after running the app:
+- **Dock icon (deviates from FR-1 / LSUIElement).** `Info.plist` `LSUIElement` set to `false` so No-halla also appears in the Dock (the menu bar shield remains). Clicking the Dock icon with no visible window opens Settings (`applicationShouldHandleReopen`). The app is still primarily a menu bar agent.
+- **Minimize frozen apps to the Dock.** On freeze, a protected app's windows are minimized to the Dock (so a frozen app does not sit on screen looking hung); on resume they are restored. Implemented in `Core/Process/WindowMinimizer.swift` via the public Accessibility API (`AXUIElement`, `kAXMinimizedAttribute`), invoked by the engine before `SIGSTOP` (with a short settle delay) and restored after `SIGCONT`. **Requires Accessibility permission** (System Settings → Privacy & Security → Accessibility); the app prompts once on first freeze. Without permission it falls back to hiding the app (`NSRunningApplication.hide/unhide`). Window actions run before freeze / after resume because a frozen app cannot process them.
+
+**Also fixed.** The popover Settings button did not bring the Settings window to the front (an `LSUIElement` agent is not active by default); `openSettings()` now activates the app first.
+
+**Note on the freeze principle (owner question).** A freeze can occur even with a trusted current IP when the IP cannot be *verified* (endpoint quorum not reached → `unknown`) and `freezeWhenUnknown` is on (default). This is FR-11/D28 behavior, not a bug; the trusted IP must be successfully verified to stay Protected. The current IP was in fact added to the trusted list correctly.
