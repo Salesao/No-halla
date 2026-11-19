@@ -76,8 +76,7 @@ let runner = GuardRunner(
 )
 
 if restoreOnly {
-    runner.restoreOnly()
-    exit(0)
+    exit(runner.restoreOnly() ? 0 : 1)
 }
 if runOnce {
     _ = runner.runOnce()

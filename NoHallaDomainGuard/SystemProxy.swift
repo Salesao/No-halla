@@ -81,7 +81,7 @@ final class SystemProxyManager {
     private static let loopback = Set(["127.0.0.1", "::1"])
 
     private let runner: CommandRunning
-    private let services: [NetworkServiceInfo]
+    private let serviceProvider: () -> [NetworkServiceInfo]
     private let manifestURL: URL
     private let dryRun: Bool
     private let logger = Logger(subsystem: "dev.nohalla.NoHalla", category: "proxy")
@@ -89,16 +89,26 @@ final class SystemProxyManager {
     private(set) var manifest: ProxyRestoreManifest?
     private(set) var isActive = false
 
-    init(runner: CommandRunning, services: [NetworkServiceInfo], manifestURL: URL, dryRun: Bool) {
+    convenience init(runner: CommandRunning, services: [NetworkServiceInfo], manifestURL: URL, dryRun: Bool) {
+        self.init(runner: runner, serviceProvider: { services }, manifestURL: manifestURL, dryRun: dryRun)
+    }
+
+    init(runner: CommandRunning, serviceProvider: @escaping () -> [NetworkServiceInfo], manifestURL: URL, dryRun: Bool) {
         self.runner = runner
-        self.services = services.filter(Self.isSwitchable)
+        self.serviceProvider = serviceProvider
         self.manifestURL = manifestURL
         self.dryRun = dryRun
     }
 
     func captureAndSwitch(port: UInt16) -> ProxyApplyResult {
+        let services = serviceProvider().filter(Self.isSwitchable)
         if manifest == nil { manifest = loadManifest() }
-        if manifest != nil { _ = restore() }
+        let hadManifest = manifest != nil || FileManager.default.fileExists(atPath: manifestURL.path)
+        if hadManifest {
+            guard restore() else { return .unavailable("cannot restore the previous system proxy") }
+        } else {
+            _ = restore()
+        }
         guard !services.isEmpty else { return .unavailable("no enabled network services") }
 
         manifest = ProxyRestoreManifest(schemaVersion: 1, services: [])
@@ -124,6 +134,7 @@ final class SystemProxyManager {
 
     func reconcile(port: UInt16) -> ProxyApplyResult {
         guard isActive else { return .unavailable("not active") }
+        let services = serviceProvider().filter(Self.isSwitchable)
         var degraded: String?
         for service in services where !(manifest?.services.contains { $0.name == service.name } ?? false) {
             guard capture(service) else {
@@ -151,22 +162,42 @@ final class SystemProxyManager {
 
     @discardableResult
     func restore() -> Bool {
-        let saved = manifest ?? loadManifest()
-        guard let saved else {
-            isActive = false
-            return true
+        if let saved = manifest ?? loadManifest() {
+            var allSet = true
+            for service in saved.services {
+                let web = ProxyState(enabled: service.webEnabled, server: service.webServer, port: service.webPort)
+                let secure = ProxyState(enabled: service.secureEnabled, server: service.secureServer, port: service.securePort)
+                if !apply(service.name, state: web, secure: false) { allSet = false }
+                if !apply(service.name, state: secure, secure: true) { allSet = false }
+            }
+            if allSet {
+                if !dryRun { try? FileManager.default.removeItem(at: manifestURL) }
+                manifest = nil
+                isActive = false
+            }
+            return allSet
         }
-        var allSet = true
-        for service in saved.services {
-            let web = ProxyState(enabled: service.webEnabled, server: service.webServer, port: service.webPort)
-            let secure = ProxyState(enabled: service.secureEnabled, server: service.secureServer, port: service.securePort)
-            if !apply(service.name, state: web, secure: false) { allSet = false }
-            if !apply(service.name, state: secure, secure: true) { allSet = false }
+
+        // No usable manifest: never leave a loopback proxy behind. Disable only
+        // proxies that point at loopback; user proxies stay untouched.
+        var allOff = true
+        for service in serviceProvider().filter(Self.isSwitchable) {
+            for secure in [false, true] {
+                guard let state = read(service.name, secure: secure) else {
+                    allOff = false
+                    continue
+                }
+                if state.enabled && Self.loopback.contains(state.server) {
+                    let key = secure ? "-setsecurewebproxystate" : "-setwebproxystate"
+                    if !command([key, service.name, "off"]) { allOff = false }
+                }
+            }
         }
-        if !dryRun { try? FileManager.default.removeItem(at: manifestURL) }
-        manifest = nil
         isActive = false
-        return allSet
+        if allOff, !dryRun, FileManager.default.fileExists(atPath: manifestURL.path) {
+            try? FileManager.default.removeItem(at: manifestURL)
+        }
+        return allOff
     }
 
     // MARK: - Internals
@@ -199,7 +230,10 @@ final class SystemProxyManager {
             secureServer: secure.server,
             securePort: secure.port
         ))
-        persist()
+        guard persist() else {
+            manifest?.services.removeLast()
+            return false
+        }
         return true
     }
 
@@ -232,18 +266,21 @@ final class SystemProxyManager {
     }
 
     private func apply(_ service: String, state: ProxyState, secure: Bool) -> Bool {
-        let setOK = command([
-            secure ? "-setsecurewebproxy" : "-setwebproxy",
-            service,
-            state.server,
-            "\(state.port)",
-        ])
-        let stateOK = command([
-            secure ? "-setsecurewebproxystate" : "-setwebproxystate",
-            service,
-            state.enabled ? "on" : "off",
-        ])
-        return setOK && stateOK
+        let stateKey = secure ? "-setsecurewebproxystate" : "-setwebproxystate"
+        if state.enabled && !state.server.isEmpty {
+            let setKey = secure ? "-setsecurewebproxy" : "-setwebproxy"
+            let setOK = command([setKey, service, state.server, "\(state.port)"])
+            let stateOK = command([stateKey, service, "on"])
+            return setOK && stateOK
+        }
+        // A disabled proxy: the state-off command is the contract. Setting an
+        // empty server is accepted by some macOS versions and enables the proxy
+        // first, so it is best-effort only.
+        if !state.server.isEmpty {
+            let setKey = secure ? "-setsecurewebproxy" : "-setwebproxy"
+            _ = command([setKey, service, state.server, "\(state.port)"])
+        }
+        return command([stateKey, service, "off"])
     }
 
     private func command(_ arguments: [String]) -> Bool {
@@ -255,8 +292,10 @@ final class SystemProxyManager {
         return runner.run(Self.networksetup, arguments).status == 0
     }
 
-    private func persist() {
-        guard let manifest, !dryRun else { return }
+    @discardableResult
+    private func persist() -> Bool {
+        guard let manifest else { return false }
+        guard !dryRun else { return true }
         do {
             try FileManager.default.createDirectory(
                 at: manifestURL.deletingLastPathComponent(),
@@ -266,8 +305,10 @@ final class SystemProxyManager {
             let data = try JSONEncoder().encode(manifest)
             try data.write(to: manifestURL, options: .atomic)
             try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: manifestURL.path)
+            return true
         } catch {
             logger.error("Cannot save proxy restore manifest: \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 

@@ -29,6 +29,7 @@ final class GuardRunner {
     private var lastPublished = Date.distantPast
     private var lastSignature = ""
     private var lastReconcile = Date.distantPast
+    private let workQueue = DispatchQueue(label: "dev.nohalla.NoHalla.guard-runner")
 
     init(
         config: GuardConfig,
@@ -50,6 +51,10 @@ final class GuardRunner {
 
     @discardableResult
     func runOnce() -> DomainGuardStatus {
+        workQueue.sync { runOnceLocked() }
+    }
+
+    private func runOnceLocked() -> DomainGuardStatus {
         let state = readState()
         if state?.active == true {
             applyActive(domains: state?.domains ?? [])
@@ -62,35 +67,62 @@ final class GuardRunner {
     }
 
     /// Restores the saved system proxy and clears hosts without touching the
-    /// state file.
-    func restoreOnly() {
+    /// state file. Returns false when a service could not be restored.
+    @discardableResult
+    func restoreOnly() -> Bool {
+        workQueue.sync { restoreOnlyLocked() }
+    }
+
+    private func restoreOnlyLocked() -> Bool {
         let manager = systemProxy ?? SystemProxyManager(
             runner: ProcessRunner(),
-            services: SystemEnvironment.services(),
+            serviceProvider: { SystemEnvironment.services() },
             manifestURL: manifestURL,
             dryRun: dryRun
         )
-        _ = manager.restore()
-        systemProxy = nil
-        proxy?.stop()
-        proxy = nil
+        let restored = manager.restore()
+        if restored {
+            systemProxy = nil
+            proxy?.stop()
+            proxy = nil
+        } else {
+            systemProxy = manager
+            proxy?.update(suffixes: [])
+        }
         writeHosts([])
-        proxyMode = .unavailable
-        proxySwitched = false
-        reason = "restored"
+        proxyMode = restored ? .unavailable : .degraded
+        proxySwitched = !restored
+        reason = restored ? "restored" : "cannot restore the system proxy"
         publish(makeStatus())
+        return restored
     }
 
     // MARK: - Apply / release
 
     private func applyActive(domains: [String]) {
         writeHosts(DomainBlocklist.hostsLines(for: domains))
+        let suffixes = DomainBlocklist.normalized(domains)
+
+        var justCreated = false
+        if systemProxy == nil {
+            let manager = SystemProxyManager(
+                runner: ProcessRunner(),
+                serviceProvider: { SystemEnvironment.services() },
+                manifestURL: manifestURL,
+                dryRun: dryRun
+            )
+            guard manager.restore() else {
+                proxyMode = .unavailable
+                proxySwitched = false
+                reason = "cannot restore the previous system proxy"
+                return
+            }
+            systemProxy = manager
+            justCreated = true
+        }
 
         if proxy == nil {
-            let proxy = HTTPProxy(
-                port: proxyPort,
-                suffixes: DomainBlocklist.normalized(domains)
-            )
+            let proxy = HTTPProxy(port: proxyPort, suffixes: suffixes)
             do {
                 try proxy.start()
                 self.proxy = proxy
@@ -99,35 +131,43 @@ final class GuardRunner {
                 proxySwitched = false
                 reason = "cannot listen on 127.0.0.1:\(proxyPort): \(error)"
                 logger.error("\(self.reason, privacy: .public)")
+                systemProxy = nil
                 return
             }
         }
-        proxy?.update(suffixes: DomainBlocklist.normalized(domains))
+        proxy?.update(suffixes: suffixes)
 
-        if systemProxy == nil {
-            let manager = SystemProxyManager(
-                runner: ProcessRunner(),
-                services: SystemEnvironment.services(),
-                manifestURL: manifestURL,
-                dryRun: dryRun
-            )
-            systemProxy = manager
-            apply(manager.captureAndSwitch(port: proxyPort))
+        guard let systemProxy else { return }
+        if justCreated {
+            let result = systemProxy.captureAndSwitch(port: proxyPort)
+            apply(result)
             lastReconcile = Date()
-        } else if let systemProxy, Date().timeIntervalSince(lastReconcile) >= 10 {
-            apply(systemProxy.reconcile(port: proxyPort))
+            if case .unavailable = result { self.systemProxy = nil }
+        } else if Date().timeIntervalSince(lastReconcile) >= 10 {
+            let result = systemProxy.reconcile(port: proxyPort)
+            apply(result)
             lastReconcile = Date()
+            if case .unavailable = result { self.systemProxy = nil }
         }
     }
 
     private func release() {
         let manager = systemProxy ?? SystemProxyManager(
             runner: ProcessRunner(),
-            services: SystemEnvironment.services(),
+            serviceProvider: { SystemEnvironment.services() },
             manifestURL: manifestURL,
             dryRun: dryRun
         )
-        _ = manager.restore()
+        let restored = manager.restore()
+        if !restored {
+            systemProxy = manager
+            proxy?.update(suffixes: [])
+            writeHosts([])
+            proxyMode = .degraded
+            proxySwitched = true
+            reason = "cannot restore the system proxy"
+            return
+        }
         systemProxy = nil
         proxy?.stop()
         proxy = nil

@@ -102,9 +102,7 @@ final class HTTPProxy {
             reject(connection, status: "400 Bad Request")
             return
         }
-        if suffixes.contains(where: {
-            request.host == $0 || request.host.hasSuffix("." + $0)
-        }) {
+        if DomainBlocklist.isBlocked(host: request.host, suffixes: suffixes) {
             reject(connection, status: "403 Forbidden")
             return
         }
@@ -123,12 +121,13 @@ final class HTTPProxy {
                 payload.append(request.extra)
                 upstream.send(content: payload, completion: .contentProcessed { _ in })
             }
-            self.relay(from: connection, to: upstream)
-            self.relay(from: upstream, to: connection)
-            self.queue.asyncAfter(deadline: .now() + 300) {
+            let idle = IdleTimeout(queue: self.queue) {
                 connection.cancel()
                 upstream.cancel()
             }
+            idle.touch()
+            self.relay(from: connection, to: upstream, idle: idle)
+            self.relay(from: upstream, to: connection, idle: idle)
         }
     }
 
@@ -161,18 +160,20 @@ final class HTTPProxy {
         }
     }
 
-    private func relay(from source: NWConnection, to destination: NWConnection) {
+    private func relay(from source: NWConnection, to destination: NWConnection, idle: IdleTimeout) {
         source.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
             guard let self else { return }
             if let data, !data.isEmpty {
+                idle.touch()
                 destination.send(content: data, completion: .contentProcessed { _ in })
             }
             if isComplete || error != nil {
+                idle.cancel()
                 source.cancel()
                 destination.cancel()
                 return
             }
-            self.relay(from: source, to: destination)
+            self.relay(from: source, to: destination, idle: idle)
         }
     }
 
@@ -236,6 +237,30 @@ final class HTTPProxy {
         host = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
         guard !host.isEmpty else { return nil }
         return (host.lowercased(), port)
+    }
+}
+
+/// Resets on activity; fires after five idle minutes.
+private final class IdleTimeout {
+    private let queue: DispatchQueue
+    private let handler: () -> Void
+    private var item: DispatchWorkItem?
+
+    init(queue: DispatchQueue, handler: @escaping () -> Void) {
+        self.queue = queue
+        self.handler = handler
+    }
+
+    func touch() {
+        item?.cancel()
+        let work = DispatchWorkItem(block: handler)
+        item = work
+        queue.asyncAfter(deadline: .now() + 300, execute: work)
+    }
+
+    func cancel() {
+        item?.cancel()
+        item = nil
     }
 }
 

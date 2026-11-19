@@ -42,8 +42,9 @@ struct ProxyRestoreManifest: Codable, Equatable {
 
 enum DomainGuardProtocol {
     /// Increments when the helper gains a capability the app must know about.
-    /// 4 replaces the DNS mechanism with a loopback HTTP proxy.
-    static let version = 4
+    /// 5 hardens the proxy: trailing-dot hosts, manifest retention, restore
+    /// before listener start, and serialized shutdown.
+    static let version = 5
     static let statusURL = URL(fileURLWithPath: "/Library/Application Support/NoHalla/guard-status.json")
     static let manifestURL = URL(fileURLWithPath: "/Library/Application Support/NoHalla/proxy-restore.json")
 }

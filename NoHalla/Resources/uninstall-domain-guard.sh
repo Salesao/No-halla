@@ -30,6 +30,7 @@ if [ -x "$HELPER" ] && [ -f "$CONF" ]; then
 fi
 if [ "$restored" -eq 0 ] && [ -f "$MANIFEST" ]; then
   index=0
+  failed=0
   while name=$(plutil -extract "services.$index.name" raw -o - "$MANIFEST" 2>/dev/null); do
     for kind in web secure; do
       enabled=$(plutil -extract "services.$index.${kind}Enabled" raw -o - "$MANIFEST" 2>/dev/null || echo false)
@@ -37,17 +38,17 @@ if [ "$restored" -eq 0 ] && [ -f "$MANIFEST" ]; then
       port=$(plutil -extract "services.$index.${kind}Port" raw -o - "$MANIFEST" 2>/dev/null || echo 0)
       if [ "$enabled" = "true" ] && [ -n "$server" ] && [ "$port" != "0" ]; then
         if [ "$kind" = "web" ]; then
-          /usr/sbin/networksetup -setwebproxy "$name" "$server" "$port" || true
-          /usr/sbin/networksetup -setwebproxystate "$name" on || true
+          /usr/sbin/networksetup -setwebproxy "$name" "$server" "$port" || failed=1
+          /usr/sbin/networksetup -setwebproxystate "$name" on || failed=1
         else
-          /usr/sbin/networksetup -setsecurewebproxy "$name" "$server" "$port" || true
-          /usr/sbin/networksetup -setsecurewebproxystate "$name" on || true
+          /usr/sbin/networksetup -setsecurewebproxy "$name" "$server" "$port" || failed=1
+          /usr/sbin/networksetup -setsecurewebproxystate "$name" on || failed=1
         fi
       else
         if [ "$kind" = "web" ]; then
-          /usr/sbin/networksetup -setwebproxystate "$name" off || true
+          /usr/sbin/networksetup -setwebproxystate "$name" off || failed=1
         else
-          /usr/sbin/networksetup -setsecurewebproxystate "$name" off || true
+          /usr/sbin/networksetup -setsecurewebproxystate "$name" off || failed=1
         fi
       fi
     done
@@ -55,6 +56,10 @@ if [ "$restored" -eq 0 ] && [ -f "$MANIFEST" ]; then
   done
   if [ "$index" -eq 0 ]; then
     echo "Cannot read $MANIFEST. Restore the system proxy manually before removing it." >&2
+    exit 1
+  fi
+  if [ "$failed" -ne 0 ]; then
+    echo "Could not restore every proxy from $MANIFEST; keeping it." >&2
     exit 1
   fi
 fi

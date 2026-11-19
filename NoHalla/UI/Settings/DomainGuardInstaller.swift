@@ -47,8 +47,8 @@ enum DomainGuardInstaller {
         return nil
     }
 
-    /// Suffix blocking needs helper protocol 2; an older helper keeps exact
-    /// hosts behavior.
+    /// Suffix blocking needs helper protocol 4; an older helper keeps the
+    /// exact hosts behavior.
     static var isSuffixCapable: Bool {
         isInstalled && (protocolVersion() ?? 0) >= DomainGuardProtocol.version
     }
