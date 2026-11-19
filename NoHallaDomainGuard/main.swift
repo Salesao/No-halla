@@ -2,15 +2,14 @@
 //  main.swift
 //  NoHallaDomainGuard
 //
-//  Root LaunchDaemon (D32): reads the app-written
-//  ~/Library/Application Support/NoHalla/domain-guard.json and keeps the
-//  marked section of /etc/hosts in sync with the protection state.
+//  Root LaunchDaemon (D32/D47): reads the app-written
+//  ~/Library/Application Support/NoHalla/domain-guard.json and keeps the marked
+//  hosts section and the loopback DNS proxy in sync with the protection state.
 //
 //  Security boundary: the only user-controlled input is that JSON file. It is
 //  read with lstat checks (regular file, install-time uid, size cap), and its
-//  domains are re-validated here; the output is always 0.0.0.0/::1 lines
-//  inside the markers. Paths come from the root-owned guard.plist, never from
-//  the state file.
+//  domains are re-validated here. Privileged paths come from the root-owned
+//  guard.plist, never from the state file.
 //
 
 import Darwin
@@ -32,67 +31,70 @@ func loadConfig(_ path: String) -> GuardConfig? {
     return try? PropertyListDecoder().decode(GuardConfig.self, from: data)
 }
 
-/// Strict read of the user state file. Any anomaly (missing, symlink, wrong
-/// owner, oversized, malformed JSON) is treated as "inactive".
-func readState(_ config: GuardConfig) -> DomainGuardState? {
-    var info = stat()
-    guard lstat(config.statePath, &info) == 0,
-          (info.st_mode & S_IFMT) == S_IFREG,
-          info.st_uid == config.uid,
-          info.st_size > 0,
-          info.st_size <= 128 * 1024,
-          let data = FileManager.default.contents(atPath: config.statePath) else { return nil }
-    return try? JSONDecoder().decode(DomainGuardState.self, from: data)
+let arguments = CommandLine.arguments
+if arguments.contains("--version") {
+    print("domainGuardProtocol=\(DomainGuardProtocol.version)")
+    exit(0)
 }
 
-func apply(_ config: GuardConfig) {
-    let state = readState(config)
-    let blockLines = state?.active == true
-        ? DomainBlocklist.hostsLines(for: state?.domains ?? [])
-        : []
+let dryRun = arguments.contains("--dry-run")
+let runOnce = arguments.contains("--once")
+let restoreOnly = arguments.contains("--restore")
 
-    guard let current = try? String(contentsOfFile: config.hostsPath, encoding: .utf8) else {
-        logger.error("Cannot read \(config.hostsPath, privacy: .public)")
-        return
+var proxyPort: UInt16 = 53
+var positional: [String] = []
+var index = 1
+while index < arguments.count {
+    let argument = arguments[index]
+    if argument == "--port", index + 1 < arguments.count, let port = UInt16(arguments[index + 1]) {
+        proxyPort = port
+        index += 2
+        continue
     }
-    let updated = DomainBlocklist.merged(hosts: current, blockLines: blockLines)
-    guard updated != current else { return }
-    write(updated, to: config.hostsPath, blockedHosts: blockLines.count / 2)
+    if !argument.hasPrefix("--") { positional.append(argument) }
+    index += 1
 }
 
-func write(_ text: String, to path: String, blockedHosts: Int) {
-    let tempPath = path + ".nohalla.tmp"
-    do {
-        try text.write(toFile: tempPath, atomically: false, encoding: .utf8)
-        chmod(tempPath, 0o644)
-        guard rename(tempPath, path) == 0 else {
-            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
-        }
-        if blockedHosts > 0 {
-            logger.notice("Domain guard active: \(blockedHosts, privacy: .public) hostnames blocked")
-        } else {
-            logger.notice("Domain guard inactive: block removed")
-        }
-    } catch {
-        logger.error("Failed to update \(path, privacy: .public): \(error.localizedDescription, privacy: .public)")
-        unlink(tempPath)
-    }
-}
-
-let configPath = CommandLine.arguments.count > 1
-    ? CommandLine.arguments[1]
-    : defaultConfigPath
-let runOnce = CommandLine.arguments.contains("--once")
-
+let configPath = positional.first ?? defaultConfigPath
 guard let config = loadConfig(configPath) else {
     logger.error("Cannot load guard config at \(configPath, privacy: .public)")
     exit(2)
 }
 
+let stateDirectory = URL(fileURLWithPath: config.statePath).deletingLastPathComponent()
+let manifestURL = dryRun ? stateDirectory.appendingPathComponent("dns-restore.json") : DomainGuardProtocol.manifestURL
+let statusURL = dryRun ? stateDirectory.appendingPathComponent("guard-status.json") : DomainGuardProtocol.statusURL
+
+let runner = GuardRunner(
+    config: config,
+    statePath: config.statePath,
+    hostsPath: config.hostsPath,
+    statusURL: statusURL,
+    manifestURL: manifestURL,
+    dryRun: dryRun,
+    proxyPort: proxyPort
+)
+
+if restoreOnly {
+    runner.restoreOnly()
+    exit(0)
+}
+if runOnce {
+    _ = runner.runOnce()
+    exit(0)
+}
+
 logger.notice("Domain guard started (poll \((config.pollSeconds ?? 1), privacy: .public)s)")
+let signalQueue = DispatchQueue(label: "dev.nohalla.NoHalla.guard-signal")
+let signalSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
+signal(SIGTERM, SIG_IGN)
+signalSource.setEventHandler {
+    runner.restoreOnly()
+    exit(0)
+}
+signalSource.resume()
 
 repeat {
-    apply(config)
-    if runOnce { break }
+    _ = runner.runOnce()
     Thread.sleep(forTimeInterval: max(0.2, config.pollSeconds ?? 1))
 } while true

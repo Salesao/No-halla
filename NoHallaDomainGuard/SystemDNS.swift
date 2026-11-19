@@ -53,14 +53,30 @@ enum SystemEnvironment {
         return result
     }
 
-    /// The resolvers the system is using before we touch anything.
+    /// The resolvers the system is using before we touch anything. The global
+    /// entry can be empty when a tunnel is primary, so every per-service DNS
+    /// entry is unioned in.
     static func upstreams() -> [String] {
-        guard let store = SCDynamicStoreCreate(nil, "NoHallaDomainGuard" as CFString, nil, nil),
-              let value = SCDynamicStoreCopyValue(store, "State:/Network/Global/DNS" as CFString) as? [String: Any],
-              let servers = value["ServerAddresses"] as? [String] else {
+        guard let store = SCDynamicStoreCreate(nil, "NoHallaDomainGuard" as CFString, nil, nil) else {
             return []
         }
-        return servers.filter { $0 != "127.0.0.1" && $0 != "::1" }
+        var servers: [String] = []
+        if let value = SCDynamicStoreCopyValue(store, "State:/Network/Global/DNS" as CFString) as? [String: Any],
+           let list = value["ServerAddresses"] as? [String] {
+            servers.append(contentsOf: list)
+        }
+        if let keys = SCDynamicStoreCopyKeyList(store, "State:/Network/Service/.*/DNS" as CFString) as? [String] {
+            for key in keys {
+                if let value = SCDynamicStoreCopyValue(store, key as CFString) as? [String: Any],
+                   let list = value["ServerAddresses"] as? [String] {
+                    servers.append(contentsOf: list)
+                }
+            }
+        }
+        var seen = Set<String>()
+        return servers.filter {
+            $0 != "127.0.0.1" && $0 != "::1" && seen.insert($0).inserted
+        }
     }
 }
 
@@ -212,7 +228,8 @@ final class SystemDNSManager {
         var arguments = ["-setdnsservers", service]
         arguments.append(contentsOf: servers.isEmpty ? ["Empty"] : servers)
         if dryRun {
-            logger.notice("dry-run: networksetup \(arguments.joined(separator: " "), privacy: .public)")
+            print("dry-run: networksetup \(arguments.joined(separator: " "))")
+            fflush(stdout)
             return true
         }
         return runner.run(Self.networksetup, arguments).status == 0
