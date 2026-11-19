@@ -104,8 +104,8 @@
     "ru": "Добавить приложение"
   },
   "apps.empty": {
-    "en": "No one is guarding the gate yet",
-    "ru": "Ворота пока никто не охраняет"
+    "en": "No apps added yet. Add an app to protect it.",
+    "ru": "Пока нет приложений. Добавьте приложение, чтобы защитить его."
   },
   "apps.choose": {
     "en": "Choose apps",

@@ -15,6 +15,7 @@ enum ResetSettingsAlert {
         alert.messageText = L10n.string("ui.reset-all-settings")
         alert.informativeText = L10n.string("ui.frozen-apps-will-resume-and-your-preferences-will-return-to-their-defaults")
         alert.alertStyle = .warning
+        alert.icon = AppIdentityIcon.image
         let reset = alert.addButton(withTitle: L10n.string("ui.reset-settings"))
         reset.hasDestructiveAction = true
         alert.addButton(withTitle: L10n.string("action.cancel"))

@@ -16,6 +16,7 @@ enum QuitConfirmationAlert {
     @MainActor
     static func confirm(frozenCount: Int) async -> Bool {
         let alert = NSAlert()
+        alert.icon = AppIdentityIcon.image
         alert.messageText = L10n.string("quit.title")
         alert.informativeText = L10n.string("quit.body", frozenCount)
         alert.addButton(withTitle: L10n.string("quit.confirm"))

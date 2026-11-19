@@ -31,19 +31,6 @@ struct DashboardView: View {
     /// is something to manage.
     private var showsBlockedSites: Bool { helperInstalled && !blockedDomains.isEmpty }
 
-    /// Resume all is rendered only where it releases stopped processes: the
-    /// frozen state, or an unknown check that still reports frozen apps.
-    /// Protection off (`.disabled`) resumes everything in the engine, so no
-    /// resume control is rendered for it.
-    private var showsResumeAll: Bool {
-        guard appState.config.protection.enabled else { return false }
-        switch status {
-        case .frozen: return true
-        case .unknown: return !snapshot.frozenBundleIDs.isEmpty
-        default: return false
-        }
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
             header
@@ -92,19 +79,18 @@ struct DashboardView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing1) {
             HStack {
-                Image(systemName: "shield.lefthalf.filled")
-                    .font(.system(size: DesignTokens.typeTitle))
-                    .foregroundStyle(DesignTokens.blue)
+                Image(nsImage: AppIdentityIcon.image)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: DesignTokens.typeTitle, height: DesignTokens.typeTitle)
                     .accessibilityHidden(true)
                 Text(L10n.string("brand.name"))
                     .font(.system(size: DesignTokens.typeTitle, weight: .semibold))
                     .foregroundStyle(DesignTokens.text)
                 Spacer()
-                StatusPillView(
-                    status: status,
-                    graceRemaining: snapshot.graceRemaining,
-                    untilText: untilText
-                )
+                if status != .grace {
+                    StatusPillView(status: status, untilText: untilText)
+                }
             }
             Text(L10n.string(Self.statusKey(for: status) + ".lore"))
                 .font(.system(size: DesignTokens.typeSmall))
@@ -177,14 +163,16 @@ struct DashboardView: View {
     }
 
     private var emptyApps: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
-            GateSceneView(variant: .empty)
-            Text(L10n.string("apps.empty"))
-                .font(.system(size: DesignTokens.typeBody))
-                .foregroundStyle(DesignTokens.muted)
-            Button(L10n.string("apps.choose")) { showAppPicker = true }
-                .buttonStyle(.bordered)
-        }
+        Text(L10n.string("apps.empty"))
+            .font(.system(size: DesignTokens.typeBody))
+            .foregroundStyle(DesignTokens.muted)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, DesignTokens.spacing3)
+            .padding(.vertical, DesignTokens.spacing5)
+            .background(DesignTokens.surface, in: RoundedRectangle(cornerRadius: DesignTokens.radiusCard))
+            .overlay(RoundedRectangle(cornerRadius: DesignTokens.radiusCard).strokeBorder(DesignTokens.line, lineWidth: 0.5))
     }
 
     // MARK: - Primary action
@@ -192,9 +180,7 @@ struct DashboardView: View {
     @ViewBuilder
     private var actionSection: some View {
         switch status {
-        case .protected:
-            // Pause was removed from the dashboard (owner request): protection
-            // stays on until the master toggle or a network verdict changes it.
+        case .protected, .frozen, .disabled:
             EmptyView()
         case .grace:
             VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
@@ -209,28 +195,10 @@ struct DashboardView: View {
                         .buttonStyle(.borderedProminent)
                 }
             }
-        case .frozen:
-            if showsResumeAll {
-                VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
-                    Button(L10n.string("action.resumeAll")) { appState.send(.resumeAll) }
-                        .buttonStyle(.borderedProminent)
-                        .frame(maxWidth: .infinity)
-                    Text(L10n.string("caption.resumeBypass", appState.config.protection.manualResumeBypassMinutes))
-                        .font(.system(size: DesignTokens.typeSmall))
-                        .foregroundStyle(DesignTokens.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
         case .unknown:
-            HStack {
-                if showsResumeAll {
-                    Button(L10n.string("action.resumeAll")) { appState.send(.resumeAll) }
-                        .buttonStyle(.bordered)
-                }
-                Spacer()
-                Button(L10n.string("action.retry")) { appState.send(.retryCheck) }
-                    .buttonStyle(.borderedProminent)
-            }
+            Button(L10n.string("action.retry")) { appState.send(.retryCheck) }
+                .buttonStyle(.borderedProminent)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         case .paused:
             VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
                 Button(L10n.string("action.turnOn")) { appState.send(.turnOnNow) }
@@ -242,10 +210,6 @@ struct DashboardView: View {
                         .foregroundStyle(DesignTokens.muted)
                 }
             }
-        case .disabled:
-            // The master toggle above the network card is the single control
-            // for turning protection back on; the header lore explains the state.
-            EmptyView()
         case .setup:
             Button(L10n.string("network.addCurrentIP")) { appState.send(.addCurrentIP) }
                 .buttonStyle(.borderedProminent)
@@ -358,11 +322,12 @@ struct DashboardView: View {
         .padding()
         .frame(width: 480)
 }
-#Preview("Protection off — no Resume all") {
+
+#Preview("No protected apps") {
     DashboardView()
-        .environmentObject(AppState.preview(.disabled, protectionEnabled: false))
+        .environmentObject(AppState.preview(.protected, apps: []))
         .padding()
-        .frame(width: 480)
+        .frame(width: DesignTokens.popoverWidth)
 }
 
 #Preview("Protection off — no Resume all") {

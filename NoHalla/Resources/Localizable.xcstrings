@@ -166,13 +166,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No one is guarding the gate yet"
+            "value": "No apps added yet. Add an app to protect it."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ворота пока никто не охраняет"
+            "value": "Пока нет приложений. Добавьте приложение, чтобы защитить его."
           }
         }
       }
