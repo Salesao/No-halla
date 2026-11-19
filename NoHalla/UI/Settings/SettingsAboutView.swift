@@ -3,8 +3,7 @@
 //  NoHalla
 //
 //  About tab (design §7.4, FR-33, spec D21/D26): app icon, name, tagline,
-//  version, MIT line, Copy version info, gate ornament. The Repository row is
-//  hidden until a real URL exists (D26).
+//  version, MIT line, repository link, Copy version info, gate ornament.
 //
 
 import AppKit
@@ -15,7 +14,7 @@ struct SettingsAboutView: View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing4) {
             HStack(alignment: .center, spacing: DesignTokens.spacing5) {
                 VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
-                    Image(nsImage: NSApplication.shared.applicationIconImage)
+                    Image(nsImage: AppIdentityIcon.image)
                         .resizable()
                         .frame(width: 86, height: 86)
                         .accessibilityHidden(true)
@@ -40,6 +39,12 @@ struct SettingsAboutView: View {
                 .font(.system(size: DesignTokens.typeSmall))
                 .foregroundStyle(DesignTokens.muted)
                 .fixedSize(horizontal: false, vertical: true)
+            Link(destination: URL(string: "https://github.com/Salesao/No-halla")!) {
+                Text(L10n.string("ui.repository"))
+                    .font(.system(size: DesignTokens.typeBody))
+            }
+            .buttonStyle(.link)
+            .accessibilityLabel("\(L10n.string("ui.repository")): github.com/Salesao/No-halla")
             Button(L10n.string("ui.copy-version-info")) { copyVersionInfo() }
                 .buttonStyle(.bordered)
                 .tint(DesignTokens.blue)
