@@ -38,7 +38,8 @@ struct DNSRestoreManifest: Codable, Equatable {
 
 enum DomainGuardProtocol {
     /// Increments when the helper gains a capability the app must know about.
-    static let version = 2
+    /// 3 adds the DNS cache flush on activation/release.
+    static let version = 3
     static let statusURL = URL(fileURLWithPath: "/Library/Application Support/NoHalla/guard-status.json")
     static let manifestURL = URL(fileURLWithPath: "/Library/Application Support/NoHalla/dns-restore.json")
 }
