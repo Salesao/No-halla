@@ -18,7 +18,11 @@ import Darwin
 import Foundation
 import OSLog
 
-final class ProcessController: ProcessControlling {
+/// Thread safety: all mutable state is confined to `queue` (the frozen journal
+/// and journalNeedsSync) or guarded by `persistLock` (the persist hook); the
+/// async methods bridge onto `queue`. Hence `@unchecked Sendable` is sound and
+/// allows the queue closures to capture self without Sendable warnings.
+final class ProcessController: ProcessControlling, @unchecked Sendable {
     private let queue = DispatchQueue(label: "dev.nohalla.NoHalla.process-controller")
     private let selfPID: Int32
     private let watchdogPIDProvider: () -> Int32?

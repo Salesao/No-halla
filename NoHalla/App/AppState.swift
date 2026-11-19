@@ -78,17 +78,18 @@ final class AppState: ObservableObject {
     /// Installs engine callbacks and starts the protection loop. The caller
     /// (AppDelegate) runs startup recovery and starts the watchdog first (FR-6).
     func start() {
-        Task {
-            await engine.setOnSnapshot { [weak self] snapshot in
-                Task { @MainActor in
+        Task { [weak self] in
+            guard let self = self else { return }
+            await self.engine.setOnSnapshot { [weak self] snapshot in
+                Task { @MainActor [weak self] in
                     self?.snapshot = snapshot
                 }
             }
-            let coordinator = notificationCoordinator
-            await engine.setOnNotification { event in
+            let coordinator = self.notificationCoordinator
+            await self.engine.setOnNotification { event in
                 coordinator.post(event)
             }
-            await engine.start()
+            await self.engine.start()
         }
     }
 
