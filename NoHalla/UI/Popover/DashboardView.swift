@@ -14,11 +14,22 @@ import SwiftUI
 struct DashboardView: View {
     @EnvironmentObject var appState: AppState
     @State private var showAppPicker = false
+    /// Root-helper presence decides whether the blocked-sites card can have
+    /// any effect. Refreshed when the surface appears and when the app becomes
+    /// active (the helper can be installed from the Settings window meanwhile).
+    @State private var helperInstalled = DomainGuardInstaller.isInstalled
 
     private var snapshot: EngineSnapshot { appState.snapshot }
     private var status: UIStatus { appState.uiStatus }
     private var apps: [ProtectedApp] { appState.config.protectedApps }
     private var vpnMode: Bool { appState.config.protection.mode == .vpnInterface }
+
+    /// Domains the guard blocks right now: manual entries plus enabled packages.
+    private var blockedDomains: [String] { appState.config.effectiveDomainBlocklist }
+
+    /// The card only has an effect when the root helper is installed and there
+    /// is something to manage.
+    private var showsBlockedSites: Bool { helperInstalled && !blockedDomains.isEmpty }
 
     /// Resume all is rendered only where it releases stopped processes: the
     /// frozen state, or an unknown check that still reports frozen apps.
@@ -49,7 +60,18 @@ struct DashboardView: View {
                 isRefreshing: snapshot.isRefreshing
             )
             appsSection
+            if showsBlockedSites {
+                BlockedSitesCard(
+                    domains: blockedDomains,
+                    onAdd: addDomain,
+                    onRemove: removeDomain
+                )
+            }
             actionSection
+        }
+        .onAppear { helperInstalled = DomainGuardInstaller.isInstalled }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            helperInstalled = DomainGuardInstaller.isInstalled
         }
         .sheet(isPresented: $showAppPicker) {
             AppPickerSheet(
@@ -280,6 +302,34 @@ struct DashboardView: View {
         }
     }
 
+    /// Adds to the manual list, exactly like Settings → Protection. Returns
+    /// false only when the 256-domain cap would be exceeded; an already
+    /// effective domain is a no-op and closes the editor.
+    private func addDomain(_ value: String) -> Bool {
+        guard let domain = DomainBlocklist.normalize(value) else { return true }
+        var config = appState.config
+        guard !config.effectiveDomainBlocklist.contains(domain) else { return true }
+        guard config.domainBlocklist.count < DomainBlocklist.maxDomains,
+              config.effectiveDomainBlocklist.count < DomainBlocklist.maxDomains else {
+            return false
+        }
+        config.domainBlocklist.append(domain)
+        appState.setConfig(config)
+        return true
+    }
+
+    /// The card manages the effective list, so removal must also drop the
+    /// domain from enabled packages; otherwise a package would immediately
+    /// publish it again. Settings keeps package contents under its own tab.
+    private func removeDomain(_ domain: String) {
+        var config = appState.config
+        config.domainBlocklist.removeAll { $0 == domain }
+        for index in config.domainPackages.indices where config.domainPackages[index].enabled {
+            config.domainPackages[index].domains.removeAll { $0 == domain }
+        }
+        appState.setConfig(config)
+    }
+
     static func statusKey(for status: UIStatus) -> String {
         switch status {
         case .setup: return "status.setup"
@@ -315,6 +365,13 @@ struct DashboardView: View {
         .frame(width: 480)
 }
 
+#Preview("Protection off — no Resume all") {
+    DashboardView()
+        .environmentObject(AppState.preview(.disabled, protectionEnabled: false))
+        .padding()
+        .frame(width: 480)
+}
+
 #Preview("Unknown — Retry only") {
     DashboardView()
         .environmentObject(AppState.preview(.unknown, ipv4: nil, vpn: nil, trusted: false))
@@ -330,6 +387,18 @@ struct DashboardView: View {
             vpn: nil,
             trusted: false,
             frozen: ["com.anthropic.claudefordesktop"]
+        ))
+        .padding()
+        .frame(width: 480)
+}
+
+/// Visible on a machine with the root helper installed; BlockedSitesCard has
+/// a helper-independent preview of the same card.
+#Preview("Blocked sites") {
+    DashboardView()
+        .environmentObject(AppState.preview(
+            .protected,
+            domainBlocklist: ["chatgpt.com", "claude.ai", "youtube.com"]
         ))
         .padding()
         .frame(width: 480)

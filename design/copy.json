@@ -858,5 +858,9 @@
   "network.vpnDisconnected": {
     "en": "Disconnected",
     "ru": "Отключён"
+  },
+  "ui.domain-guard-card-helper": {
+    "en": "These sites stay blocked while protection is on and your IP isn't trusted.",
+    "ru": "Эти сайты остаются заблокированными, пока защита включена, а IP не подтверждён доверенным."
   }
 }

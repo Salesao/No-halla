@@ -1553,6 +1553,22 @@
         }
       }
     },
+    "ui.domain-guard-card-helper": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These sites stay blocked while protection is on and your IP isn't trusted."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эти сайты остаются заблокированными, пока защита включена, а IP не подтверждён доверенным."
+          }
+        }
+      }
+    },
     "ui.domain-guard-copied": {
       "localizations": {
         "en": {
