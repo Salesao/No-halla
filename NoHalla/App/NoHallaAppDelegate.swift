@@ -2,10 +2,10 @@
 //  NoHallaAppDelegate.swift
 //  NoHalla
 //
-//  Application lifecycle (S1 wiring). Enforces a single instance via flock
-//  (FR-1/43, spec D15), starts the engine through AppState and resumes frozen
-//  processes on exit. The full quit confirmation, SIGTERM/SIGINT handling and
-//  watchdog coordination land in s2-lifecycle.
+//  Application lifecycle (FR-1/4/5/6/43, spec D15/D20). Enforces a single
+//  instance via flock, recovers stale frozen records on startup, supervises
+//  the watchdog, and resumes frozen processes on quit (with confirmation)
+//  and on SIGTERM/SIGINT.
 //
 
 import AppKit
@@ -14,8 +14,15 @@ import Darwin
 @MainActor
 final class NoHallaAppDelegate: NSObject, NSApplicationDelegate {
     let appState = AppState()
+    let watchdogLauncher = WatchdogLauncher()
+
+    private let statePath = ConfigStore.defaultDirectory.appendingPathComponent("state.json")
     private var lockFileDescriptor: Int32 = -1
     private var isPrimaryInstance = false
+    private var signalSources: [DispatchSourceSignal] = []
+    /// Set when SIGTERM/SIGINT routes into the normal quit path. The frozen
+    /// apps are resumed there, so no confirmation dialog is shown (D20).
+    private var isSignalShutdown = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard acquireSingleInstanceLock() else {
@@ -24,17 +31,46 @@ final class NoHallaAppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         isPrimaryInstance = true
-        appState.start()
+        installTerminationSignalHandlers()
+
+        Task { @MainActor in
+            // Republish engine snapshots to the UI bridge. Installed here (not
+            // via AppState.start) so startup recovery precedes engine.start.
+            await appState.engine.setOnSnapshot { [weak appState] snapshot in
+                Task { @MainActor in
+                    appState?.snapshot = snapshot
+                }
+            }
+            await appState.engine.setOnNotification { _ in
+                // s2-wiring routes this to NotificationCoordinator.
+            }
+            // FR-6 order: recover stale frozen -> watchdog -> engine.
+            await appState.engine.recoverStaleFrozen()
+            watchdogLauncher.start(parentPID: getpid(), statePath: statePath)
+            await appState.engine.start()
+        }
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // A secondary instance never touched the engine or state; exit at once.
         guard isPrimaryInstance else { return .terminateNow }
         // R3: never block the main thread waiting on a MainActor Task (it would
-        // deadlock). Resume asynchronously, then reply to complete termination.
-        // s2-lifecycle reuses this path for the quit confirmation + watchdog.
+        // deadlock). Confirm/resume asynchronously, then reply to terminate.
         Task { @MainActor in
+            let frozenCount = appState.snapshot.frozenBundleIDs.count
+            // D20: confirm only when apps are frozen. A signal-driven shutdown
+            // resumes them on this same path, so it never prompts.
+            if frozenCount > 0 && !isSignalShutdown {
+                let confirmed = await QuitConfirmationAlert.confirm(frozenCount: frozenCount)
+                guard confirmed else {
+                    NSApp.reply(toApplicationShouldTerminate: false)
+                    return
+                }
+            }
+            // FR-4 order: resume all + clear state (engine.stop) -> watchdog.
             await appState.engine.stop()
+            watchdogLauncher.stop()
+            cancelTerminationSignalHandlers()
             releaseSingleInstanceLock()
             NSApp.reply(toApplicationShouldTerminate: true)
         }
@@ -44,6 +80,37 @@ final class NoHallaAppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // Backup cleanup; the resume already ran in applicationShouldTerminate.
         releaseSingleInstanceLock()
+    }
+
+    // MARK: - SIGTERM / SIGINT (FR-5)
+
+    private func installTerminationSignalHandlers() {
+        for signalNumber in [SIGTERM, SIGINT] {
+            // Ignore the default disposition so the dispatch source receives it.
+            signal(signalNumber, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: signalNumber, queue: .main)
+            source.setEventHandler { [weak self] in
+                Task { @MainActor in
+                    self?.handleTerminationSignal()
+                }
+            }
+            source.resume()
+            signalSources.append(source)
+        }
+    }
+
+    private func handleTerminationSignal() {
+        // Route through the normal quit path so resume all + state clear +
+        // watchdog stop run exactly once (FR-5). No confirmation (D20).
+        isSignalShutdown = true
+        NSApp.terminate(nil)
+    }
+
+    private func cancelTerminationSignalHandlers() {
+        for source in signalSources {
+            source.cancel()
+        }
+        signalSources.removeAll()
     }
 
     // MARK: - Single instance (flock)
