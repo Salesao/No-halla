@@ -115,7 +115,7 @@ struct SettingsProtectionView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     DomainGuardInstallView(showsUninstall: true)
                     if let status = guardStatus,
-                       status.suffixMode != .active,
+                       status.proxyMode != .active,
                        !status.reason.isEmpty,
                        status.reason != "protection released" {
                         Text(L10n.string("ui.domain-guard-suffix-warning", status.reason))
