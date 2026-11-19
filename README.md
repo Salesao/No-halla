@@ -1,6 +1,6 @@
 **English** · [Русский](README.ru.md)
 
-# <img src="docs/images/no-halla-banner.jpg" alt="No-halla · Valhalla can wait." width="100%">
+# <img src="https://raw.githubusercontent.com/Salesao/No-halla/refs/heads/master/docs/images/no-halla-banner.jpg" alt="No-halla · Valhalla can wait." width="100%">
 
 **When your VPN drops, No-halla can pause a whole Mac app or just the terminal sessions running AI agents.** Say you have Codex working in Orca and Claude Code in macOS Terminal. Enable **Agent terminals** for both apps and those sessions pause together, including the commands the agents started. A build or SSH session in another tab keeps running. When the VPN returns, both agents resume.
 
