@@ -24,7 +24,10 @@ struct AppConfig: Codable, Equatable {
     var language: AppLanguage
     var logLevel: LogLevel
 
-    /// Factory defaults (brief §13, endpoints §5.4, logLevel .info per D11).
+    /// Factory defaults. Per owner request (simple whitelist model): only freeze
+    /// on a KNOWN non-whitelisted IP — `freezeWhenUnknown=false` (unknown IP keeps
+    /// apps running) and `quorum=1` (a single responding endpoint suffices).
+    /// Other values per brief §13, endpoints §5.4, logLevel .info per D11.
     static let defaults = AppConfig(
         schemaVersion: 1,
         onboardingCompleted: false,
@@ -32,7 +35,7 @@ struct AppConfig: Codable, Equatable {
             enabled: true,
             graceSeconds: 5,
             checkIntervalSeconds: 30,
-            freezeWhenUnknown: true,
+            freezeWhenUnknown: false,
             checkIPv6: true,
             requireVPNInterface: false,
             manualResumeBypassMinutes: 5
@@ -51,7 +54,7 @@ struct AppConfig: Codable, Equatable {
                 "https://ifconfig.co/ip"
             ],
             timeoutSeconds: 2.5,
-            quorum: 2
+            quorum: 1
         ),
         launchAtLogin: true,
         notifications: true,

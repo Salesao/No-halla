@@ -103,3 +103,12 @@ Implementation of M1–M6 across three reviewed stages (S1 core, S2 processes+re
 - Dock click reopen shows the main window (`applicationShouldHandleReopen` returns true with a WindowGroup).
 
 This deviates from the brief's pure menu bar agent architecture (FR-1/§8.8) by owner request; the menu bar shield and all protection logic are unchanged. Clean universal build green; commit 8968ea9.
+
+## 2026-11-19 — User-requested simple whitelist IP model (direct owner request)
+
+**Decision (owner: «IP в белом списке → работаем; IP не в белом списке → морозим», без лишнего «unknown»).** Simplified the IP decision to the owner's binary model:
+- **`freezeWhenUnknown` default `false`** (was `true`): an unverifiable IP (endpoints unavailable) NO LONGER freezes apps — they keep running. Freeze happens only when the current IP is KNOWN and not in the trusted whitelist. The toggle remains in Settings → Protection for flexibility.
+- **`quorum` default `1`** (was `2`): a single responding endpoint suffices to determine the IP (no 2-of-4 agreement required). Disagreement between multiple responses still yields unknown (which now does not freeze).
+- The owner's existing `config.json` was updated to match (`freezeWhenUnknown=false`, `quorum=1`).
+
+**Tradeoff accepted by owner:** if the VPN drops AND the check endpoints are unreachable, the IP cannot be determined and apps are NOT frozen (protection does not trigger in that moment). Simplicity is prioritized over the fail-safe freeze. Public-IP discovery still requires an external endpoint (the computer cannot know its public IP locally); the simplification is in the decision logic, not in eliminating discovery. Deviates from brief §13 defaults (freezeWhenUnknown=true, quorum=2) by owner request.
