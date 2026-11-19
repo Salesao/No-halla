@@ -161,7 +161,7 @@ final class SystemProxyManager {
     }
 
     @discardableResult
-    func restore() -> Bool {
+    func restore(cleanLoopback: Bool = false) -> Bool {
         if let saved = manifest ?? loadManifest() {
             var allSet = true
             for service in saved.services {
@@ -178,8 +178,14 @@ final class SystemProxyManager {
             return allSet
         }
 
-        // No usable manifest: never leave a loopback proxy behind. Disable only
-        // proxies that point at loopback; user proxies stay untouched.
+        guard cleanLoopback else {
+            isActive = false
+            return true
+        }
+
+        // No usable manifest on a release path: never leave a loopback proxy
+        // behind. Disable only proxies that point at loopback; user proxies
+        // stay untouched.
         var allOff = true
         for service in serviceProvider().filter(Self.isSwitchable) {
             for secure in [false, true] {
@@ -273,13 +279,11 @@ final class SystemProxyManager {
             let stateOK = command([stateKey, service, "on"])
             return setOK && stateOK
         }
-        // A disabled proxy: the state-off command is the contract. Setting an
+        // A disabled proxy: clear the stored server (best-effort; setting an
         // empty server is accepted by some macOS versions and enables the proxy
-        // first, so it is best-effort only.
-        if !state.server.isEmpty {
-            let setKey = secure ? "-setsecurewebproxy" : "-setwebproxy"
-            _ = command([setKey, service, state.server, "\(state.port)"])
-        }
+        // first) and make the state-off command the contract.
+        let setKey = secure ? "-setsecurewebproxy" : "-setwebproxy"
+        _ = command([setKey, service, state.server, "\(state.port)"])
         return command([stateKey, service, "off"])
     }
 

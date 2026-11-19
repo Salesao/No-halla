@@ -30,6 +30,7 @@ final class GuardRunner {
     private var lastSignature = ""
     private var lastReconcile = Date.distantPast
     private let workQueue = DispatchQueue(label: "dev.nohalla.NoHalla.guard-runner")
+    private var didInitialRelease = false
 
     init(
         config: GuardConfig,
@@ -58,8 +59,9 @@ final class GuardRunner {
         let state = readState()
         if state?.active == true {
             applyActive(domains: state?.domains ?? [])
-        } else {
+        } else if systemProxy != nil || proxy != nil || FileManager.default.fileExists(atPath: manifestURL.path) || !didInitialRelease {
             release()
+            didInitialRelease = true
         }
         let status = makeStatus()
         publish(status)
@@ -80,7 +82,7 @@ final class GuardRunner {
             manifestURL: manifestURL,
             dryRun: dryRun
         )
-        let restored = manager.restore()
+        let restored = manager.restore(cleanLoopback: true)
         if restored {
             systemProxy = nil
             proxy?.stop()
@@ -158,7 +160,7 @@ final class GuardRunner {
             manifestURL: manifestURL,
             dryRun: dryRun
         )
-        let restored = manager.restore()
+        let restored = manager.restore(cleanLoopback: true)
         if !restored {
             systemProxy = manager
             proxy?.update(suffixes: [])
