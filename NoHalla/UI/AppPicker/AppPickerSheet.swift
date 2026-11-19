@@ -4,7 +4,7 @@
 //
 //  Add-apps sheet (implementation brief FR-15/17/28, design §7.5). Running apps
 //  plus /Applications, search by name and bundle ID, native checkboxes, an
-//  "Added" disabled state for duplicates, yellow warnings for system and
+//  checked, disabled state for duplicates, yellow warnings for system and
 //  Terminal-like apps (SafetyGuard.pickerWarning), Cancel/Add (Add disabled
 //  without a selection) and "Add other app" via NSOpenPanel.
 //
@@ -39,7 +39,7 @@ struct AppPickerSheet: View {
                 .textFieldStyle(.roundedBorder)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     if !filteredRunning.isEmpty {
                         section(title: L10n.string("ui.running"), apps: filteredRunning)
                     }
@@ -54,7 +54,12 @@ struct AppPickerSheet: View {
                             .padding(.vertical, DesignTokens.spacing5)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(minHeight: 150)
+            .background(DesignTokens.surface, in: RoundedRectangle(cornerRadius: DesignTokens.radiusCard))
+            .overlay(RoundedRectangle(cornerRadius: DesignTokens.radiusCard).strokeBorder(DesignTokens.line, lineWidth: 0.5))
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.radiusCard))
 
             HStack {
                 Button(L10n.string("ui.add-other-app"), action: addOtherApp)
@@ -69,17 +74,30 @@ struct AppPickerSheet: View {
         }
         .padding(DesignTokens.spacing4)
         .frame(width: DesignTokens.pickerWidth, height: DesignTokens.pickerHeight)
+        .background(DesignTokens.bg)
+        .tint(DesignTokens.action)
         .onAppear(perform: loadApps)
     }
 
     private func section(title: String, apps: [PickerApp]) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.spacing1) {
+        VStack(alignment: .leading, spacing: 0) {
             Text(title)
                 .font(.system(size: DesignTokens.typeSmall, weight: .semibold))
                 .foregroundStyle(DesignTokens.muted)
+                .padding(.horizontal, DesignTokens.spacing3)
+                .padding(.top, DesignTokens.spacing3)
+                .padding(.bottom, DesignTokens.spacing1)
             ForEach(apps) { app in
                 row(app)
+                if app.id != apps.last?.id {
+                    Rectangle()
+                        .fill(DesignTokens.line)
+                        .frame(height: 0.5)
+                        .padding(.leading, DesignTokens.appIcon + DesignTokens.spacing2)
+                }
             }
+            .padding(.horizontal, DesignTokens.spacing3)
+            .padding(.bottom, DesignTokens.spacing1)
         }
     }
 
@@ -88,26 +106,15 @@ struct AppPickerSheet: View {
         let warningKey = SafetyGuard.pickerWarning(for: app.bundleID, name: app.name)
         let isSystem = warningKey == "ui.system-app-can-t-be-protected"
         let disabled = added || isSystem
-        return HStack(spacing: DesignTokens.spacing2) {
-            Toggle(isOn: Binding(
-                get: { selected.contains(app.bundleID) },
-                set: { isOn in
-                    if isOn { selected.insert(app.bundleID) } else { selected.remove(app.bundleID) }
-                }
-            )) {
-                EmptyView()
-            }
-            .toggleStyle(.checkbox)
-            .disabled(disabled)
-            .labelsHidden()
-
+        return HStack(alignment: .center, spacing: DesignTokens.spacing2) {
             Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
                 .resizable()
                 .frame(width: DesignTokens.appIcon, height: DesignTokens.appIcon)
+                .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(app.name)
-                    .font(.system(size: DesignTokens.typeBody))
+                    .font(.system(size: DesignTokens.typeBody, weight: .medium))
                     .foregroundStyle(DesignTokens.text)
                     .lineLimit(1)
                 Text(app.bundleID)
@@ -119,20 +126,28 @@ struct AppPickerSheet: View {
                         .font(.system(size: DesignTokens.typeSmall))
                         .foregroundStyle(DesignTokens.orange)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, DesignTokens.spacing1)
                 }
             }
-            Spacer()
-            if added {
-                Text(L10n.string("ui.added"))
-                    .font(.system(size: DesignTokens.typeSmall))
-                    .foregroundStyle(DesignTokens.muted)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityHidden(true)
+
+            Toggle(isOn: Binding(
+                // D44: already protected apps stay checked and unavailable.
+                get: { added || selected.contains(app.bundleID) },
+                set: { isOn in
+                    if isOn { selected.insert(app.bundleID) } else { selected.remove(app.bundleID) }
+                }
+            )) { EmptyView() }
+                .toggleStyle(.checkbox)
+                .labelsHidden()
+                .disabled(disabled)
+                .frame(width: DesignTokens.targetMin, height: DesignTokens.targetMin)
+                .accessibilityLabel(rowAccessibility(app, added: added, warningKey: warningKey))
         }
-        .padding(.vertical, DesignTokens.spacing1)
-        .frame(minHeight: DesignTokens.targetMin)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(rowAccessibility(app, added: added, warningKey: warningKey))
-        .accessibilityAddTraits(disabled ? .isButton : [])
+        .padding(.vertical, DesignTokens.spacing2)
+        .frame(minHeight: DesignTokens.appRow)
+        .accessibilityElement(children: .contain)
     }
 
     private func rowAccessibility(_ app: PickerApp, added: Bool, warningKey: String?) -> String {
@@ -158,25 +173,13 @@ struct AppPickerSheet: View {
 
     private func loadApps() {
         let selfBundle = Bundle.main.bundleIdentifier ?? "dev.nohalla.NoHalla"
-        running = NSWorkspace.shared.runningApplications
-            .filter { $0.activationPolicy == .regular && $0.bundleIdentifier != selfBundle }
-            .compactMap { app in
-                guard let bundleID = app.bundleIdentifier, let url = app.bundleURL else { return nil }
-                return PickerApp(bundleID: bundleID, name: app.localizedName ?? bundleID, path: url.path)
-            }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-
-        var found: [PickerApp] = []
-        let applications = URL(fileURLWithPath: "/Applications", isDirectory: true)
-        let entries = (try? FileManager.default.contentsOfDirectory(at: applications, includingPropertiesForKeys: nil)) ?? []
-        for url in entries where url.pathExtension == "app" {
-            guard let bundle = Bundle(url: url), let bundleID = bundle.bundleIdentifier else { continue }
-            let name = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
-                ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
-                ?? url.deletingPathExtension().lastPathComponent
-            found.append(PickerApp(bundleID: bundleID, name: name, path: url.path))
+        running = InstalledAppCatalog.running(excluding: selfBundle).map {
+            PickerApp(bundleID: $0.bundleID, name: $0.name, path: $0.path)
         }
-        installed = found.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let runningIDs = Set(running.map(\.bundleID))
+        installed = InstalledAppCatalog.installed()
+            .filter { !runningIDs.contains($0.bundleID) }
+            .map { PickerApp(bundleID: $0.bundleID, name: $0.name, path: $0.path) }
     }
 
     private func addOtherApp() {

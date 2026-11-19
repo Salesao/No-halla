@@ -8,7 +8,6 @@
 //  the row.
 //
 
-import AppKit
 import SwiftUI
 
 /// Run state of a protected app, derived from the engine snapshot.
@@ -26,37 +25,34 @@ struct AppRowView: View {
 
     var body: some View {
         HStack(spacing: DesignTokens.spacing2) {
-            appIcon
-                .frame(width: DesignTokens.appIcon, height: DesignTokens.appIcon)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(app.name)
-                    .font(.system(size: DesignTokens.typeBody))
-                    .foregroundStyle(DesignTokens.text)
-                    .lineLimit(1)
-                Text(stateText)
-                    .font(.system(size: DesignTokens.typeSmall))
-                    .foregroundStyle(runState == .frozen ? DesignTokens.red : DesignTokens.muted)
-            }
+            ProtectedAppIconView(bundleID: app.bundleID)
+            Text(app.name)
+                .font(.system(size: DesignTokens.typeBody, weight: .medium))
+                .foregroundStyle(DesignTokens.text)
+                .lineLimit(1)
             Spacer(minLength: DesignTokens.spacing2)
+            Text(stateText)
+                .font(.system(size: DesignTokens.typeSmall))
+                .foregroundStyle(runState == .frozen ? DesignTokens.red : DesignTokens.muted)
+                .lineLimit(1)
             Toggle(isOn: Binding(get: { app.enabled }, set: { onToggle($0) })) {
                 Text(L10n.string("ui.protect-app", app.name))
                     .font(.system(size: DesignTokens.typeSmall))
             }
             .toggleStyle(.switch)
+            .controlSize(.small)
             .labelsHidden()
             .accessibilityLabel(L10n.string("ui.protect-app", app.name))
         }
         .padding(.horizontal, DesignTokens.spacing2)
         .frame(minHeight: DesignTokens.appRow)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.radiusControl)
-                .fill(DesignTokens.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.radiusControl)
-                .strokeBorder(isFrozen ? DesignTokens.bronze : DesignTokens.line,
-                              lineWidth: isFrozen ? DesignTokens.ornamentStroke : 0.5)
-        )
+        .background(isFrozen ? DesignTokens.bronze.opacity(0.08) : Color.clear)
+        .overlay {
+            if isFrozen {
+                RoundedRectangle(cornerRadius: DesignTokens.radiusControl)
+                    .strokeBorder(DesignTokens.bronze, lineWidth: DesignTokens.ornamentStroke)
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(app.name), \(stateText), \(L10n.string("ui.protect-app", app.name))")
         .accessibilityValue(app.enabled ? L10n.string("ui.yes") : L10n.string("ui.no"))
@@ -70,17 +66,6 @@ struct AppRowView: View {
         }
     }
 
-    @ViewBuilder
-    private var appIcon: some View {
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app.bundleID) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
-                .resizable()
-        } else {
-            Image(systemName: "app.dashed")
-                .resizable()
-                .foregroundStyle(DesignTokens.muted)
-        }
-    }
 }
 
 #Preview("App rows") {
