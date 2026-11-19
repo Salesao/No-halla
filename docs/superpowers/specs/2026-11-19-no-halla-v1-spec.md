@@ -13,9 +13,9 @@
 | `design/HANDOFF.md` | Маппинг экран → Doop frame id → офлайн-макет → SwiftUI view → FR |
 | `design/tokens.json`, `design/copy.json` | Токены (light/dark/contrast) и все строки EN/RU |
 | `design/BRAND.md`, `design/ICONS.md`, `design/COMPONENTS.md`, `design/ACCESSIBILITY.md` | Бренд-правила, имена ассетов, компоненты, доступность |
-| `AGENTS.md`, `DECISIONS.md` | Правила проекта и уже принятые владельцем решения |
+| `AGENTS.md`, Orca pod memory | Правила проекта и уже принятые владельцем решения |
 
-Правило конфликтов (бриф §12): поведение — IMPLEMENTATION_BRIEF; пиксели/тексты/бренд — дизайн. Отклонения фиксируются в `DECISIONS.md`.
+Правило конфликтов (бриф §12): поведение — IMPLEMENTATION_BRIEF; пиксели/тексты/бренд — дизайн. Отклонения фиксируются в Orca pod memory.
 
 ## 2. Интент и зачем
 
@@ -56,7 +56,7 @@ macOS 13.0+ · Swift 5.9+ compiler, language mode 5 · SwiftUI + AppKit где �
 |---|---|---|
 | D1 | Полный v1 (M1–M6) за один запуск, три стадии с ревью после каждой | Окно объёма, 2026-11-19 (Planner) |
 | D2 | **Тесты исключены**: не писать, не менять, не запускать тесты, без TDD. Проверки статические | Решение владельца, передано Coordinator; `tests: not requested` |
-| D3 | Dark-first нативная бренд-оболочка (фьорд/бронза), следует системной теме; бронза — только декор, не текст/смысл/primary | `DECISIONS.md` 2026-11-19 (owner-approved), дизайн §10 |
+| D3 | Dark-first нативная бренд-оболочка (фьорд/бронза), следует системной теме; бронза — только декор, не текст/смысл/primary | Orca pod memory 2026-11-19 (owner-approved), дизайн §10 |
 | D4 | Дизайн-источник: Doop-канвас + `design/HANDOFF.md`; офлайн-макеты — fallback | Задача, HANDOFF |
 
 ### Предложено автором (показывается при утверждении)
@@ -69,7 +69,7 @@ macOS 13.0+ · Swift 5.9+ compiler, language mode 5 · SwiftUI + AppKit где �
 | D8 | Шов `ProcessControlling` (протокол) в S1; реальная реализация в S2. В S1 engine публикует статусы, freeze/resume-интенты уходят в протокол | Стадийность без заглушек в финальном коде |
 | D9 | Ассеты: AppIcon — `sips` из `design/exports/appicon-1024.png` (все размеры macOS); menu bar — python3-скрипт (stdlib) разрезает `menubar-icons.svg` на 5 отдельных SVG (viewBox 18×18) → imageset'ы `MenuBarProtected/Grace/Frozen/Unknown/Off` с `preserves-vector-representation` и template-рендерингом; GateRule/GateScene — SVG-ассеты из геометрии `brand-sheet.svg` | Только системные инструменты; SVG в asset catalog поддерживается Xcode 12+. Fallback при проблемах рендеринга: растеризация `qlmanage` |
 | D10 | `Localizable.xcstrings` генерируется скриптом `scripts/gen-strings.py` из `design/copy.json` (EN база + RU), результат в репозитории; ключи = dotted-ключи copy.json; хардкод строк запрещён (FR-30) | Воспроизводимо, без ручного переноса ~150 строк |
-| D11 | В конфиг добавляется `logLevel: "info" \| "debug"` (default info) — дизайн требует Advanced → Log level; расширение схемы брифа §5.4, фиксируется в DECISIONS.md | Дизайн требует поле; бриф его не описывает — минимальное расширение |
+| D11 | В конфиг добавляется `logLevel: "info" \| "debug"` (default info) — дизайн требует Advanced → Log level; расширение схемы брифа §5.4, фиксируется в Orca pod memory | Дизайн требует поле; бриф его не описывает — минимальное расширение |
 | D12 | Язык: выбор System/English/Русский сохраняется; применение — кнопка «Apply language change» (ключ copy.json) **без перезапуска**: строки читаются через localization-хелпер из bundle выбранного языка (en.lproj/ru.lproj) внутри процесса; смена языка немедленно перерисовывает UI. Системные панели (NSOpenPanel/NSSavePanel) остаются на системном языке | Перезапуск конфликтовал бы с FR-4/FR-5 (resume all при выходе) и single-instance lock; in-process переключение безопасно и не снимает заморозку. Цена: все строки идут через хелпер |
 | D13 | `NotificationCoordinator` живёт в `NoHalla/Core/Notifications/` (дополнение к layout брифа §4), категории FROZEN/RESUMED/UNKNOWN, action RESUME_ALL, throttle 30 с на тип, permission после онбординга, баннер при отказе | Сервис, не UI; место фиксируется заранее |
 | D14 | Диагностика: ZIP через системный `/usr/bin/zip`; логи последних 15 минут — `OSLogStore` (current process); config+state+версии; `NSSavePanel`, без отправки (FR-32) | Foundation не умеет ZIP; системный zip — без зависимостей |
@@ -80,14 +80,14 @@ macOS 13.0+ · Swift 5.9+ compiler, language mode 5 · SwiftUI + AppKit где �
 | D19 | Check interval: диапазон 10–120 с, default 30 (дизайн §7.4; бриф задаёт только default) | Дизайн уточняет диапазон |
 | D20 | Quit-подтверждение — только если есть замороженные; нативный alert со строками `quit.*` (Cancel / Quit and Resume); после подтверждения resume all + очистка state + остановка watchdog (FR-4) | Дизайн §7.7 |
 | D21 | About: версия 0.9.0, tagline, MIT; `LICENSE` MIT; README по брифу §4 (включая `SIGSTOP ≠ firewall`, troubleshooting с `kill -CONT`, удаление, снятие автозапуска) + чеклист ручной матрицы | Бриф §4, FR-33 |
-| D22 | `copy.json` расширяется **аддитивно**: новые ключи EN+RU для отсутствующих строк (баннер битого конфига FR-38, подписи Log level Info/Debug, единицы s/min, переключатель «Защита» (D27)) и параметризация мок-литералов (`caption.resumeBypass` «5 minutes» → `%d`, `ui.checking-resumes-at-14-32` → `%@`, `ui.2-apps-selected` → `%d`, `ui.version-0-1-0` → `%@`); каталог перегенерируется (D10); расширение и новые тексты в тоне дизайн §9 фиксируются в DECISIONS.md | FR-30 запрещает хардкод, но часть обязательных строк в copy.json отсутствует; единственный совместимый путь — расширить источник. Цена: новые EN/RU тексты пишем мы в тоне дизайна |
-| D23 | `MenuBarExtra(.window)` сохраняется (мандат брифа §8.8 и дизайн §7.2; альтернатива NSStatusItem+NSPopover ruled out). Esc-закрытие поповера — best-effort в рамках MenuBarExtra (закрытие key window / скрытый шорткат); если на macOS 13 недостижимо — a11y-пробел документируется в DECISIONS.md и README (в счёт ≤3 отклонений) | Архитектура UI предписана; клавиатурное требование дизайна выполняется насколько позволяет платформа, пробел не замалчивается |
+| D22 | `copy.json` расширяется **аддитивно**: новые ключи EN+RU для отсутствующих строк (баннер битого конфига FR-38, подписи Log level Info/Debug, единицы s/min, переключатель «Защита» (D27)) и параметризация мок-литералов (`caption.resumeBypass` «5 minutes» → `%d`, `ui.checking-resumes-at-14-32` → `%@`, `ui.2-apps-selected` → `%d`, `ui.version-0-1-0` → `%@`); каталог перегенерируется (D10); расширение и новые тексты в тоне дизайн §9 фиксируются в Orca pod memory | FR-30 запрещает хардкод, но часть обязательных строк в copy.json отсутствует; единственный совместимый путь — расширить источник. Цена: новые EN/RU тексты пишем мы в тоне дизайна |
+| D23 | `MenuBarExtra(.window)` сохраняется (мандат брифа §8.8 и дизайн §7.2; альтернатива NSStatusItem+NSPopover ruled out). Esc-закрытие поповера — best-effort в рамках MenuBarExtra (закрытие key window / скрытый шорткат); если на macOS 13 недостижимо — a11y-пробел документируется в Orca pod memory и README (в счёт ≤3 отклонений) | Архитектура UI предписана; клавиатурное требование дизайна выполняется насколько позволяет платформа, пробел не замалчивается |
 
 ### Вилки, закрытые блицем (раунд 1, 2026-11-19) — решения владельца
 
 | ID | Решение (ответ владельца) | Источник |
 |---|---|---|
-| D24 (F1) | Grace period: **0–120 с** везде (конфиг и слайдер), default 5; отклонение от макета (0–60) записать в DECISIONS.md | Блиц, пункт 1 |
+| D24 (F1) | Grace period: **0–120 с** везде (конфиг и слайдер), default 5; отклонение от макета (0–60) записать в Orca pod memory | Блиц, пункт 1 |
 | D25 (F2) | «Cancel» во время grace: **немедленная перепроверка** → `checking`; если IP всё ещё недоверенный — countdown начинается заново; скрытого bypass нет | Блиц, пункт 2 |
 | D26 (F3) | About: **строка Repository скрыта**, пока не появится реальный URL; отклонение записать; ключ `ui.repository` пока не используется | Блиц, пункт 3 |
 | D27 (F4) | **Переключатель «Защита» в начале вкладки Protection**: выключение → resume all + `protection.enabled=false` → `disabled`; включение → `checking`; новые строки EN/RU (D22); отклонение от макетов записать | Блиц, пункт 4 |
@@ -142,16 +142,16 @@ macOS 13.0+ · Swift 5.9+ compiler, language mode 5 · SwiftUI + AppKit где �
 
 1. `./scripts/build.sh` проходит без ошибок (xcodegen + xcodebuild Release, universal, ad-hoc).
 2. `NoHallaWatchdog` находится в `No-halla.app/Contents/MacOS/`.
-3. FR-1…FR-46 реализованы; отклонения в `DECISIONS.md` (≤3; исключение тестов — мандат владельца, фиксируется отдельно).
+3. FR-1…FR-46 реализованы; отклонения в Orca pod memory (≤3; исключение тестов — мандат владельца, фиксируется отдельно).
 4. UI соответствует `design/HANDOFF.md` (все экраны и состояния, Dark/Light/Contrast); отклонения записаны.
 5. EN/RU String Catalog полон из `copy.json`, хардкод-строк нет.
 6. AppIcon (все размеры) и 5 menu bar imageset'ов установлены; `CFBundleDisplayName = No-halla`.
-7. README (ограничение SIGSTOP ≠ firewall, сборка, запуск, автозапуск, troubleshooting, удаление, чеклист ручной матрицы 20 сценариев), LICENSE MIT, DECISIONS.md.
+7. README (ограничение SIGSTOP ≠ firewall, сборка, запуск, автозапуск, troubleshooting, удаление, чеклист ручной матрицы 20 сценариев), LICENSE MIT, Orca pod memory.
 8. Нет телеметрии; исходящие запросы только к IP-endpoint'ам; IP маскируются в логах.
 9. Нет force unwrap в production; ошибки обработаны явно; нет `TODO` в critical path; нет идентификаторов Halt.
 10. Статические проверки зелёные на каждой стадии и кумулятивно на финальной.
 
-**Не выполняется пайплайном (осознанно, D2/D6):** `./scripts/test.sh` и unit/integration тесты (целиком исключены; test-target'ы и test.sh не создаются в этом запуске — отклонение от брифа §4/§8.10/§9/NFR-6 записывается в DECISIONS.md); ручная матрица 20/20 и runtime VoiceOver/контраст-проверки на живом приложении — чеклист для владельца в README. Первый запуск приложения выполняет владелец.
+**Не выполняется пайплайном (осознанно, D2/D6):** `./scripts/test.sh` и unit/integration тесты (целиком исключены; test-target'ы и test.sh не создаются в этом запуске — отклонение от брифа §4/§8.10/§9/NFR-6 записывается в Orca pod memory); ручная матрица 20/20 и runtime VoiceOver/контраст-проверки на живом приложении — чеклист для владельца в README. Первый запуск приложения выполняет владелец.
 
 ## 12. Что остаётся строителю
 
