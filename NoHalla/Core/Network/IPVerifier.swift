@@ -74,6 +74,14 @@ private final class IPCheckSessionDelegate: NSObject, URLSessionTaskDelegate {
 actor IPVerifier {
     private let session: URLSession
     private var inFlight = false
+    /// Wall-clock start of the in-flight batch; its result is ignored once the
+    /// batch is declared stale after sleep.
+    private var inFlightSince: Date?
+    private var inFlightBatchTimeout: TimeInterval = 4
+    /// Set on wake; one new batch is permitted once the old one exceeds its
+    /// timeout plus a margin. The stale batch's late completion never lands.
+    private var wakeRecoveryPending = false
+    private var activeBatchToken = 0
     private var lastBatchStart: Date?
     private var backoffSeconds: Double = 5
     private var backoffUntil: Date?
@@ -81,6 +89,11 @@ actor IPVerifier {
     private let minimumBatchInterval: TimeInterval = 3
     private let maximumBackoff: Double = 60
     private let initialBackoff: Double = 5
+    /// Slack on top of the batch timeout before a post-wake batch is stale.
+    private let staleBatchMargin: TimeInterval = 2
+    /// Hard ceiling on any single batch, independent of the configured timeout
+    /// (per-request timeout plus URLSession's resource timeout).
+    private static let maximumBatchTimeout: TimeInterval = 30
 
     init() {
         let configuration = URLSessionConfiguration.ephemeral
@@ -95,7 +108,17 @@ actor IPVerifier {
     /// sending requests (FR-11).
     func check(config: AppConfig, online: Bool, force: Bool = false) async -> IPVerificationResult? {
         let now = Date()
-        guard !inFlight else { return nil }
+        if inFlight {
+            // Sleep recovery (FR-12/44): a batch stuck across sleep must not
+            // block the first post-wake check beyond its own timeout + margin.
+            // Permit exactly one new batch; the stale one's completion is
+            // discarded by its token, so batches never overlap semantically.
+            guard wakeRecoveryPending,
+                  let since = inFlightSince,
+                  now.timeIntervalSince(since) > inFlightBatchTimeout + staleBatchMargin else { return nil }
+            wakeRecoveryPending = false
+            AppLog.network.info("Discarding stale pre-sleep IP batch; starting a new one")
+        }
         // A user-initiated detection ignores the periodic throttle and the
         // failure backoff (D35): onboarding must not wait up to 60 s.
         if !force {
@@ -110,16 +133,33 @@ actor IPVerifier {
             return IPVerificationResult(ipv4: .noQuorum, currentIPv4: nil)
         }
 
-        inFlight = true
-        lastBatchStart = now
-        defer { inFlight = false }
-
         let timeout = config.ipCheck.timeoutSeconds > 0 ? config.ipCheck.timeoutSeconds : 2.5
+        activeBatchToken += 1
+        let token = activeBatchToken
+        inFlight = true
+        inFlightSince = now
+        // URLSession clamps per-request timeouts to its own resource timeout;
+        // bound the stale check by the same ceiling regardless of config.
+        inFlightBatchTimeout = min(max(timeout, 2.5) + 4, Self.maximumBatchTimeout)
+        lastBatchStart = now
+
         let (result, address) = await verify(endpoints: config.ipCheck.endpointsV4, timeout: timeout)
 
+        // Only the newest batch may land: a stale pre-sleep batch must not
+        // release the in-flight slot of the recovery batch nor feed backoff.
+        guard token == activeBatchToken else { return nil }
+        inFlight = false
+        inFlightSince = nil
         applyBackoff(address: address)
 
         return IPVerificationResult(ipv4: result, currentIPv4: address)
+    }
+
+    /// Called by the engine on wake (FR-12): the next check may abandon a
+    /// batch that was in flight across sleep once it outlives its timeout.
+    /// Throttle and backoff are untouched.
+    func noteWake() {
+        wakeRecoveryPending = true
     }
 
     // MARK: - Verification

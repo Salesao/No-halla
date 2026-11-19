@@ -114,6 +114,12 @@ actor ProtectionEngine {
     private var lastGraceRemaining: Int?
     private var bypassDeadline: Date?
     private var pauseDeadline: Date?
+    /// FR-44: true from willSleep until didWake. Freeze effects and checks are
+    /// suppressed while set; wall-clock deadlines are re-evaluated on wake.
+    private var isAsleep = false
+    /// Hard-bounded grace period after wake for a VPN tunnel to re-establish.
+    /// Only set on wake; cleared by the settle timer or an observed interface.
+    private var vpnSettleDeadline: Date?
 
     private let timerQueue = DispatchQueue(label: "dev.nohalla.NoHalla.engine-timers")
     private var graceTimer: DispatchSourceTimer?
@@ -122,8 +128,10 @@ actor ProtectionEngine {
     private var periodicTimer: DispatchSourceTimer?
     private var reconcileTimer: DispatchSourceTimer?
     private var checkRetryTimer: DispatchSourceTimer?
+    private var vpnSettleTimer: DispatchSourceTimer?
     private var pendingChecks = 0
     private var wakeObserver: NSObjectProtocol?
+    private var sleepObserver: NSObjectProtocol?
     private var launchObserver: NSObjectProtocol?
     private var started = false
 
@@ -168,6 +176,11 @@ actor ProtectionEngine {
         ) { [weak self] _ in
             Task { await self?.wake() }
         }
+        sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.willSleepNotification, object: nil, queue: nil
+        ) { [weak self] _ in
+            Task { await self?.willSleep() }
+        }
         launchObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: nil
         ) { [weak self] _ in
@@ -201,13 +214,21 @@ actor ProtectionEngine {
         checkRetryTimer?.cancel()
         checkRetryTimer = nil
         pendingChecks = 0
+        vpnSettleTimer?.cancel()
+        vpnSettleTimer = nil
+        vpnSettleDeadline = nil
+        isAsleep = false
         if let wakeObserver = wakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+        }
+        if let sleepObserver = sleepObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(sleepObserver)
         }
         if let launchObserver = launchObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(launchObserver)
         }
         wakeObserver = nil
+        sleepObserver = nil
         launchObserver = nil
         await performResumeAll()
         // D32: a graceful quit must not leave sites blocked. A crash keeps the
@@ -286,16 +307,70 @@ actor ProtectionEngine {
         await applyEvent(.networkChanged)
     }
 
+    /// FR-44: no freeze while asleep. Wall-clock deadlines stay; every timer
+    /// re-evaluates against them on wake instead of catching up.
+    private func willSleep() async {
+        isAsleep = true
+        AppLog.engine.info("System will sleep; freeze effects suppressed")
+    }
+
     private func wake() async {
+        isAsleep = false
+        // A grace countdown from before sleep must never freeze on a stale
+        // verdict: cancel its effect and let the fresh check re-enter
+        // grace/freeze through the machine (frozen stays frozen — R1).
+        if machine.status == .grace || machine.status == .unknown {
+            await applyEvent(.networkChanged)
+        }
+        // Sleep does not consume dispatch time: re-evaluate wall-clock
+        // deadlines now; an expired one fires instead of being extended.
+        await reconcileBypassDeadline()
+        await reconcilePauseDeadline()
+        if config.protection.mode == .vpnInterface {
+            startVPNSettleWindow()
+        }
         // FR-12: recreate timers (no catch-up) and check immediately.
         startPeriodicTimer()
         startReconcileTimer()
+        await verifier.noteWake()
         requestImmediateCheck()
+    }
+
+    /// After wake a VPN client may still be re-establishing its tunnel. A
+    /// missing interface inside this hard-bounded window yields no verdict;
+    /// the timer at the window end forces a normal re-check. Only wake sets
+    /// the window — never a periodic or user check.
+    private static let vpnSettleSeconds: TimeInterval = 6
+
+    private func startVPNSettleWindow() {
+        cancelVPNSettle()
+        vpnSettleDeadline = Date().addingTimeInterval(Self.vpnSettleSeconds)
+        let timer = DispatchSource.makeTimerSource(queue: timerQueue)
+        timer.schedule(deadline: .now() + Self.vpnSettleSeconds)
+        timer.setEventHandler { [weak self] in
+            Task { await self?.vpnSettleFired() }
+        }
+        timer.resume()
+        vpnSettleTimer = timer
+        AppLog.engine.info("VPN post-wake settle window \(Self.vpnSettleSeconds, privacy: .public)s")
+    }
+
+    private func vpnSettleFired() async {
+        cancelVPNSettle()
+        requestImmediateCheck()
+    }
+
+    private func cancelVPNSettle() {
+        vpnSettleTimer?.cancel()
+        vpnSettleTimer = nil
+        vpnSettleDeadline = nil
     }
 
     // MARK: - Verification
 
     private func runCheck() async -> Bool {
+        // FR-12: no checks while asleep.
+        guard !isAsleep else { return false }
         // VPN-tunnel mode: decide locally by the VPN interface — no external query.
         if config.protection.mode == .vpnInterface {
             return await runVPNInterfaceCheck()
@@ -313,6 +388,10 @@ actor ProtectionEngine {
 
         let verdict = composeVerdict(result)
         lastVerdictAllowed = (verdict == .allowed)
+        // FR-44: end a wall-clock-expired bypass before applying any verdict.
+        if let deadline = bypassDeadline, deadline <= Date() {
+            await reconcileBypassDeadline()
+        }
 
         // R2: an active manual-resume bypass suppresses freezing (FR-22). The
         // apps keep running until the window expires; only refresh IP/snapshot,
@@ -344,7 +423,20 @@ actor ProtectionEngine {
         // onboarding polls it right after a detect, and clearing it here made
         // the "trust this IP" step flicker back to "—".
         lastVerdictAllowed = (vpn != nil)
+        // FR-44: end a wall-clock-expired bypass before applying any verdict.
+        if let deadline = bypassDeadline, deadline <= Date() {
+            await reconcileBypassDeadline()
+        }
         if let bypassDeadline = bypassDeadline, bypassDeadline > Date() {
+            publishSnapshot()
+            return true
+        }
+        // Post-wake settle (FR-14): a VPN client may still be re-establishing
+        // its tunnel. Inside the bounded window a missing interface yields no
+        // verdict; the settle timer forces a normal re-check at the window end.
+        if vpn != nil {
+            cancelVPNSettle()
+        } else if let settle = vpnSettleDeadline, Date() < settle {
             publishSnapshot()
             return true
         }
@@ -471,6 +563,12 @@ actor ProtectionEngine {
         // C1: effect-boundary guard — never freeze while protection is inactive
         // (setup in IP mode or master switch off), even if a stale effect arrives.
         guard config.protection.enabled, !setupIncomplete else { return }
+        // FR-44: never SIGSTOP while the machine sleeps. The machine may already
+        // be .frozen; the post-wake check and reconcile enforce the real state.
+        guard !isAsleep else {
+            AppLog.engine.info("Freeze suppressed: system asleep")
+            return
+        }
         let apps = config.protectedApps.filter { $0.enabled }
         // User preference: minimize frozen apps' windows to the Dock so they do
         // not sit on screen looking hung. Window actions must precede SIGSTOP (a
@@ -542,6 +640,7 @@ actor ProtectionEngine {
     private func reconcile() async {
         // C1: never freeze new instances while the trusted list is empty (setup).
         guard machine.status == .frozen, !setupIncomplete else { return }
+        guard !isAsleep else { return }
         let apps = config.protectedApps.filter { $0.enabled }
         // C2: controller queue owns the journal (persistNow after prune/freeze);
         // no engine save/clear here that could overwrite a newer record.
@@ -702,6 +801,7 @@ actor ProtectionEngine {
 
     private func graceTick() async {
         guard let deadline = graceDeadline else { return }
+        guard !isAsleep else { return }
         let remaining = deadline.timeIntervalSinceNow
         if remaining <= 0 {
             cancelGrace()
@@ -741,6 +841,28 @@ actor ProtectionEngine {
     }
 
     private func bypassFired() async {
+        // The dispatch deadline can fire long after the wall-clock deadline
+        // when sleep intervened; reconcile against the wall clock instead.
+        await reconcileBypassDeadline()
+    }
+
+    /// FR-44: the bypass window is wall-clock; sleep must not extend it. An
+    /// expired window ends now (the machine decides the follow-up check); a
+    /// live one is rescheduled for its remaining interval.
+    private func reconcileBypassDeadline() async {
+        guard let deadline = bypassDeadline else { return }
+        let remaining = deadline.timeIntervalSinceNow
+        guard remaining <= 0 else {
+            bypassTimer?.cancel()
+            let timer = DispatchSource.makeTimerSource(queue: timerQueue)
+            timer.schedule(deadline: .now() + remaining)
+            timer.setEventHandler { [weak self] in
+                Task { await self?.bypassFired() }
+            }
+            timer.resume()
+            bypassTimer = timer
+            return
+        }
         cancelBypass()
         await applyEvent(.bypassExpired)
     }
@@ -765,8 +887,13 @@ actor ProtectionEngine {
             return
         }
         pauseDeadline = Date().addingTimeInterval(TimeInterval(seconds))
+        schedulePauseTimer(remaining: TimeInterval(seconds))
+    }
+
+    private func schedulePauseTimer(remaining: TimeInterval) {
+        pauseTimer?.cancel()
         let timer = DispatchSource.makeTimerSource(queue: timerQueue)
-        timer.schedule(deadline: .now() + TimeInterval(seconds))
+        timer.schedule(deadline: .now() + max(0, remaining))
         timer.setEventHandler { [weak self] in
             Task { await self?.pauseFired() }
         }
@@ -775,8 +902,21 @@ actor ProtectionEngine {
     }
 
     private func pauseFired() async {
-        cancelPause()
-        await applyEvent(.pauseExpired)
+        // FR-23/44: pause is wall-clock. Sleep does not consume dispatch time,
+        // so recompute from the deadline: expired → end the pause now,
+        // otherwise reschedule for the remaining interval.
+        await reconcilePauseDeadline()
+    }
+
+    private func reconcilePauseDeadline() async {
+        guard let deadline = pauseDeadline else { return }
+        let remaining = deadline.timeIntervalSinceNow
+        if remaining <= 0 {
+            cancelPause()
+            await applyEvent(.pauseExpired)
+        } else {
+            schedulePauseTimer(remaining: remaining)
+        }
     }
 
     private func cancelPause() {
