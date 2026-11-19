@@ -24,7 +24,7 @@ struct SettingsAboutView: View {
                     Text(L10n.string("brand.tagline"))
                         .font(.system(size: DesignTokens.typeBody))
                         .foregroundStyle(DesignTokens.text)
-                    Text(L10n.string("ui.version-0-1-0", "0.1.0"))
+                    Text(L10n.string("ui.version", Self.appVersion))
                         .font(.system(size: DesignTokens.typeSmall))
                         .foregroundStyle(DesignTokens.muted)
                 }
@@ -56,9 +56,12 @@ struct SettingsAboutView: View {
 
     }
 
+    private static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.9.0"
+    }
+
     private func copyVersionInfo() {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
-        let info = "No-halla \(version)\nmacOS \(ProcessInfo.processInfo.operatingSystemVersionString)"
+        let info = "No-halla \(Self.appVersion)\nmacOS \(ProcessInfo.processInfo.operatingSystemVersionString)"
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(info, forType: .string)
     }

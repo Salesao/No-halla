@@ -23,7 +23,7 @@ Recognized CLIs include Claude Code, Codex, Antigravity, Gemini, Grok Build, Git
 
 ## Blocked sites
 
-App freezing runs as the current user. To block sites too, open **Settings → Protection → Blocked sites**, add a domain and choose **Install…**. macOS requests administrator approval for the optional helper. The packaged 0.1.0 helper uses exact host entries. Build the current source for domain and subdomain blocking through the system web proxy.
+App freezing runs as the current user. To block sites too, open **Settings → Protection → Blocked sites**, add a domain and choose **Install…**. macOS requests administrator approval for the optional helper. The 0.9.0 package includes the helper that blocks a domain and its subdomains through the system web proxy.
 
 With the current helper, an entry such as `example.org` also covers `api.example.org`. During checks, grace, unknown or frozen states, the helper directs system HTTP/HTTPS proxy traffic to `127.0.0.1:8844`. It rejects matching hostnames and forwards other requests without inspecting TLS. The rule applies across apps using the system proxy. Existing connections and clients that ignore the proxy can bypass suffix blocking. If the port is unavailable, exact-name entries in `/etc/hosts` provide limited coverage.
 

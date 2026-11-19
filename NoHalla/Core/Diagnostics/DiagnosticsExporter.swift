@@ -33,7 +33,7 @@ enum DiagnosticsExporter {
         }
 
         // versions.txt
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.9.0"
         let osVersion = ProcessInfo.processInfo.operatingSystemVersionString
         let versions = "No-halla \(version)\nmacOS \(osVersion)\n"
         try versions.write(to: staging.appendingPathComponent("versions.txt"), atomically: true, encoding: .utf8)
