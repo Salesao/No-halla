@@ -15,6 +15,8 @@ If all endpoints are unreachable, running apps keep running by default. Enable *
 
 During grace, **Cancel** requests another check. Frozen apps resume automatically when trust returns. To run them temporarily on an untrusted connection, select **Resume all** in the freeze notification. **Resume protection** ends that period early. Switching **Protection** off releases the processes until you turn it on again. **Settings → General** controls launch at login, notifications and the English/Russian interface.
 
+**Sleep and wake.** No-halla never freezes apps while the Mac sleeps. After wake it checks immediately; a grace countdown from before sleep is restarted only if the fresh check still finds the connection untrusted. In **VPN tunnel** mode a reconnecting VPN gets a few seconds after wake before a missing tunnel can freeze apps. A timed pause (15 minutes or 1 hour) runs on the wall clock: time asleep counts against it, and a pause that expired during sleep ends right after wake. **Until relaunch** pauses are unaffected.
+
 ## Terminal agents
 
 During first-run setup, choose **Agent terminals** for each app where you run an agent, such as Orca and macOS Terminal. Open Terminal before the app-selection step to find it under running apps. No-halla finds supported agents attached to a terminal and pauses the hosting shell session and its children, including running tool calls. The host window and tabs without agents stay usable. While protection is in the Frozen state, No-halla scans for new agent sessions every five seconds.
