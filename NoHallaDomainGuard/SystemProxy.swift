@@ -223,12 +223,18 @@ final class SystemProxyManager {
     }
 
     private func apply(_ service: String, state: ProxyState, secure: Bool) -> Bool {
-        if state.enabled && !state.server.isEmpty {
-            let setOK = command([secure ? "-setsecurewebproxy" : "-setwebproxy", service, state.server, "\(state.port)"])
-            let stateOK = command([secure ? "-setsecurewebproxystate" : "-setwebproxystate", service, "on"])
-            return setOK && stateOK
-        }
-        return command([secure ? "-setsecurewebproxystate" : "-setwebproxystate", service, "off"])
+        let setOK = command([
+            secure ? "-setsecurewebproxy" : "-setwebproxy",
+            service,
+            state.server,
+            "\(state.port)",
+        ])
+        let stateOK = command([
+            secure ? "-setsecurewebproxystate" : "-setwebproxystate",
+            service,
+            state.enabled ? "on" : "off",
+        ])
+        return setOK && stateOK
     }
 
     private func command(_ arguments: [String]) -> Bool {
