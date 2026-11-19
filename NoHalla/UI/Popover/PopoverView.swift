@@ -27,7 +27,8 @@ struct PopoverView: View {
                 ipv4: snapshot.currentIPv4,
                 ipv6: snapshot.currentIPv6,
                 vpnInterface: snapshot.vpnInterface,
-                trusted: snapshot.trusted,
+                trusted: snapshot.currentIPv4 == nil ? nil : snapshot.trusted,
+                note: networkNote,
                 onAddCurrentIP: { appState.send(.addCurrentIP) },
                 onRefresh: { appState.send(.retryCheck) }
             )
@@ -185,6 +186,9 @@ struct PopoverView: View {
                     .font(.system(size: DesignTokens.typeSmall))
                     .foregroundStyle(DesignTokens.muted)
                     .fixedSize(horizontal: false, vertical: true)
+                Button(L10n.string("ui.resume-protection")) { appState.send(.resumeProtection) }
+                    .buttonStyle(.borderedProminent)
+                    .frame(maxWidth: .infinity)
             }
         case .checking:
             Button(L10n.string("status.checking")) {}
@@ -224,6 +228,13 @@ struct PopoverView: View {
     private var untilText: String? {
         if status == .paused, let until = snapshot.pauseUntil { return Self.timeString(until) }
         if status == .bypassing, let until = snapshot.bypassUntil { return Self.timeString(until) }
+        return nil
+    }
+
+    /// Explanatory note for the network card (R54): setup vs unverifiable IP.
+    private var networkNote: String? {
+        if status == .setup { return L10n.string("empty.noTrusted") }
+        if snapshot.currentIPv4 == nil { return L10n.string("empty.offline") }
         return nil
     }
 
@@ -267,7 +278,46 @@ struct PopoverView: View {
     }
 }
 
-#Preview("Popover states") {
-    PopoverView()
-        .environmentObject(AppState())
+#Preview("Protected") {
+    PopoverView().environmentObject(AppState.preview(.protected))
+}
+
+#Preview("Checking") {
+    PopoverView().environmentObject(AppState.preview(.checking, ipv4: nil, vpn: nil, trusted: false))
+}
+
+#Preview("Grace") {
+    PopoverView().environmentObject(AppState.preview(.grace, ipv4: "198.51.100.7", trusted: false, graceRemaining: 5))
+}
+
+#Preview("Frozen") {
+    PopoverView().environmentObject(AppState.preview(.frozen, ipv4: "198.51.100.7", trusted: false, frozen: ["com.anthropic.claudefordesktop", "com.todesktop.230313mzl4w4u92"]))
+}
+
+#Preview("Unknown") {
+    PopoverView().environmentObject(AppState.preview(.unknown, ipv4: nil, vpn: nil, trusted: false))
+}
+
+#Preview("Paused") {
+    PopoverView().environmentObject(AppState.preview(.paused, pauseUntil: Date().addingTimeInterval(3600)))
+}
+
+#Preview("Paused until relaunch") {
+    PopoverView().environmentObject(AppState.preview(.paused, pauseUntil: nil))
+}
+
+#Preview("Disabled") {
+    PopoverView().environmentObject(AppState.preview(.disabled))
+}
+
+#Preview("Setup") {
+    PopoverView().environmentObject(AppState.preview(.setup, trusted: false, trustedAddresses: []))
+}
+
+#Preview("Bypassing") {
+    PopoverView().environmentObject(AppState.preview(.bypassing, ipv4: "198.51.100.7", trusted: false, bypassUntil: Date().addingTimeInterval(300)))
+}
+
+#Preview("Empty apps") {
+    PopoverView().environmentObject(AppState.preview(.protected, apps: []))
 }

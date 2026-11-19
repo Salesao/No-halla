@@ -92,7 +92,18 @@ final class AppState: ObservableObject {
 
     /// Forwards a user intent to the engine.
     func send(_ action: UserAction) {
-        Task { await engine.handle(action) }
+        Task {
+            await engine.handle(action)
+            // R53: actions that mutate the engine config directly (addCurrentIP,
+            // setProtectionEnabled) persist to disk but not to this bridge;
+            // reload so the UI and onboarding finish() see the fresh config.
+            switch action {
+            case .addCurrentIP, .setProtectionEnabled, .resumeProtection:
+                self.config = configStore.load()
+            default:
+                break
+            }
+        }
     }
 
     /// Persists a config change and notifies the engine (FR-27/37).
@@ -115,5 +126,58 @@ final class AppState: ObservableObject {
             let denied = await notificationCoordinator.isPermissionDenied()
             notificationsDenied = denied
         }
+    }
+
+    /// Mock bridge for SwiftUI previews (R61): an inert AppState (engine not
+    /// started) with an injected snapshot/config so every UI state renders.
+    static func preview(
+        _ status: UIStatus,
+        ipv4: String? = "203.0.113.5",
+        ipv6: String? = nil,
+        vpn: String? = "utun3",
+        trusted: Bool = true,
+        graceRemaining: Int? = nil,
+        bypassUntil: Date? = nil,
+        pauseUntil: Date? = nil,
+        frozen: Set<String> = [],
+        running: Set<String> = ["com.anthropic.claudefordesktop", "com.todesktop.230313mzl4w4u92"],
+        trustedAddresses: [String] = ["203.0.113.5"],
+        apps: [ProtectedApp] = [
+            ProtectedApp(bundleID: "com.anthropic.claudefordesktop", name: "Claude", enabled: true),
+            ProtectedApp(bundleID: "com.todesktop.230313mzl4w4u92", name: "Cursor", enabled: true),
+            ProtectedApp(bundleID: "com.openai.chat", name: "ChatGPT", enabled: true)
+        ]
+    ) -> AppState {
+        let state = AppState()
+        var config = AppConfig.defaults
+        config.onboardingCompleted = true
+        config.trustedAddresses = trustedAddresses
+        config.protectedApps = apps
+        state.config = config
+        let machineStatus: ProtectionStatus
+        switch status {
+        case .setup, .checking: machineStatus = .checking
+        case .protected, .bypassing: machineStatus = .protected
+        case .grace: machineStatus = .grace
+        case .frozen: machineStatus = .frozen
+        case .unknown: machineStatus = .unknown
+        case .paused: machineStatus = .paused
+        case .disabled: machineStatus = .disabled
+        }
+        state.snapshot = EngineSnapshot(
+            status: machineStatus,
+            uiStatus: status,
+            currentIPv4: ipv4,
+            currentIPv6: ipv6,
+            vpnInterface: vpn,
+            trusted: trusted,
+            graceRemaining: graceRemaining,
+            bypassUntil: bypassUntil,
+            pauseUntil: pauseUntil,
+            frozenBundleIDs: frozen,
+            runningBundleIDs: running,
+            lastCheck: Date()
+        )
+        return state
     }
 }

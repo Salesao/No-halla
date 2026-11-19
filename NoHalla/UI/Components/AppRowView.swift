@@ -35,7 +35,7 @@ struct AppRowView: View {
                     .lineLimit(1)
                 Text(stateText)
                     .font(.system(size: DesignTokens.typeSmall))
-                    .foregroundStyle(DesignTokens.muted)
+                    .foregroundStyle(runState == .frozen ? DesignTokens.red : DesignTokens.muted)
             }
             Spacer(minLength: DesignTokens.spacing2)
             Toggle(isOn: Binding(get: { app.enabled }, set: { onToggle($0) })) {

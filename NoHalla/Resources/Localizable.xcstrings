@@ -673,6 +673,22 @@
         }
       }
     },
+    "onboarding.step": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %d of 3"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шаг %d из 3"
+          }
+        }
+      }
+    },
     "quit.body": {
       "localizations": {
         "en": {
@@ -893,6 +909,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Защита выключена до %@"
+          }
+        }
+      }
+    },
+    "status.paused-until-relaunch": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protection off until relaunch"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Защита выключена до перезапуска"
           }
         }
       }

@@ -46,6 +46,8 @@ enum UserAction {
     case addCurrentIP
     case setProtectionEnabled(Bool)
     case configChanged(AppConfig)
+    /// R55: end a manual-resume bypass early and re-check immediately.
+    case resumeProtection
 }
 
 /// Notification intent; throttling lives in the coordinator (S2).
@@ -230,6 +232,9 @@ actor ProtectionEngine {
             requestImmediateCheck()
         case .addCurrentIP:
             await addCurrentIP()
+        case .resumeProtection:
+            // End the bypass window and force an immediate re-check (R55).
+            await applyEvent(.bypassExpired)
         case .setProtectionEnabled(let enabled):
             config.protection.enabled = enabled
             try? configStore.save(config)

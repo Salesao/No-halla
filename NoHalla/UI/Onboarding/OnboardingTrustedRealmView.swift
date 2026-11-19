@@ -37,6 +37,12 @@ struct OnboardingTrustedRealmView: View {
             Button(L10n.string("ui.trust-this-ip")) { appState.send(.addCurrentIP) }
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
+                .disabled(appState.snapshot.currentIPv4 == nil)
+            if appState.snapshot.currentIPv4 == nil {
+                Text(L10n.string("ui.connect-to-your-vpn-before-trusting-this-address"))
+                    .font(.system(size: DesignTokens.typeSmall))
+                    .foregroundStyle(DesignTokens.muted)
+            }
 
             VStack(alignment: .leading, spacing: DesignTokens.spacing1) {
                 TextField(L10n.string("ui.enter-an-ipv4-ipv6-or-cidr-address"), text: $manualIP)
@@ -65,6 +71,7 @@ struct OnboardingTrustedRealmView: View {
                 Spacer()
                 Button(L10n.string("ui.finish"), action: onFinish)
                     .buttonStyle(.borderedProminent)
+                    .disabled(appState.config.trustedAddresses.isEmpty)
             }
         }
         .padding(DesignTokens.spacing5)

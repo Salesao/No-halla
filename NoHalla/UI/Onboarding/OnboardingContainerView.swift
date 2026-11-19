@@ -57,11 +57,14 @@ struct OnboardingContainerView: View {
                     .frame(width: 6, height: 6)
             }
         }
-        .accessibilityLabel("Step \(step + 1) of 3")
+        .accessibilityLabel(L10n.string("onboarding.step", step + 1))
     }
 
     private func finish(includeApps: Bool) {
-        var config = appState.config
+        // R53: read the freshest persisted config — "Trust this IP" on step 3
+        // writes via the engine (addCurrentIP), so a stale appState.config would
+        // drop the trusted IP and leave protection in setup.
+        var config = appState.configStore.load()
         config.onboardingCompleted = true
         if includeApps {
             for app in selectedApps where !config.protectedApps.contains(where: { $0.bundleID == app.bundleID }) {

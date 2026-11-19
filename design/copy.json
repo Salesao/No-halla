@@ -618,5 +618,13 @@
   "notification.app-count": {
     "en": "%d apps",
     "ru": "%d приложения"
+  },
+  "status.paused-until-relaunch": {
+    "en": "Protection off until relaunch",
+    "ru": "Защита выключена до перезапуска"
+  },
+  "onboarding.step": {
+    "en": "Step %d of 3",
+    "ru": "Шаг %d из 3"
   }
 }

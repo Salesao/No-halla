@@ -52,8 +52,9 @@ struct StatusPillView: View {
     static func tint(for status: UIStatus) -> Color {
         switch status {
         case .protected: return DesignTokens.green
-        case .checking, .grace, .bypassing: return DesignTokens.orange
-        case .frozen: return DesignTokens.blue
+        case .checking: return DesignTokens.muted
+        case .grace, .bypassing: return DesignTokens.orange
+        case .frozen: return DesignTokens.red
         case .unknown, .setup: return DesignTokens.orange
         case .paused, .disabled: return DesignTokens.muted
         }
@@ -67,7 +68,10 @@ struct StatusPillView: View {
         case .grace: return L10n.string("status.grace", graceRemaining ?? 0)
         case .frozen: return L10n.string("status.frozen")
         case .unknown: return L10n.string("status.unknown")
-        case .paused: return L10n.string("status.paused", untilText ?? "")
+        case .paused:
+            // R57: "until relaunch" has no clock time; use a dedicated label.
+            if let untilText = untilText { return L10n.string("status.paused", untilText) }
+            return L10n.string("status.paused-until-relaunch")
         case .disabled: return L10n.string("status.disabled")
         case .bypassing: return L10n.string("status.bypass", untilText ?? "")
         }
