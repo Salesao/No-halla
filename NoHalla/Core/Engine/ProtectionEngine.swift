@@ -411,22 +411,18 @@ actor ProtectionEngine {
     // MARK: - Freeze / resume (sequential on this actor)
 
     private func performFreeze(_ reason: FreezeReason) async {
+        // C1: effect-boundary guard — never freeze while protection is inactive
+        // (empty trusted list or master switch off), even if a stale effect arrives.
+        guard !config.trustedAddresses.isEmpty, config.protection.enabled else { return }
         let apps = config.protectedApps.filter { $0.enabled }
         // C2: set metadata and configure durable per-process persistence BEFORE
-        // the controller signals, so each stopped process is recorded first.
+        // the controller signals, so each stopped process is recorded first. The
+        // controller's queue is the single journal owner; no engine save here.
         frozenSince = Date()
         freezeReason = reason
         configureControllerPersistence(reason: reason)
         let frozen = await controller.freeze(apps)
         frozenProcesses = frozen
-        let state = PersistedState(
-            schemaVersion: 1,
-            frozen: frozen,
-            frozenSince: frozenSince,
-            reason: reason,
-            lastKnownIP: currentIPv4?.description
-        )
-        try? stateStore.save(state)
         let count = Set(frozen.map { $0.bundleID }).count
         AppLog.engine.info("Froze \(count, privacy: .public) apps (reason \(reason.rawValue, privacy: .public))")
         onNotification?(NotificationEvent(kind: .frozen, frozenCount: count))
@@ -434,14 +430,15 @@ actor ProtectionEngine {
 
     /// C2: give the concrete controller a persistence hook that writes the frozen
     /// set durably (synchronous atomic write) before each SIGSTOP. Metadata is
-    /// captured by value so the hook runs safely on the controller's queue.
+    /// captured by value so the hook is immutable once created; setPersist
+    /// synchronizes installation (engine actor) with reads (controller queue).
     private func configureControllerPersistence(reason: FreezeReason?) {
         guard let processController = controller as? ProcessController else { return }
         let store = stateStore
         let since = frozenSince ?? Date()
         let ip = currentIPv4?.description
         let reasonValue = reason ?? freezeReason
-        processController.persist = { records in
+        processController.setPersist { records in
             let state = PersistedState(
                 schemaVersion: 1,
                 frozen: records,
@@ -460,11 +457,13 @@ actor ProtectionEngine {
     }
 
     private func performResumeAll() async {
+        // C2: the controller persists the emptied journal on its queue; configure
+        // the hook first and do not clear from the actor (avoids a stale overwrite).
+        configureControllerPersistence(reason: freezeReason)
         let resumed = await controller.resumeAll()
         frozenProcesses = []
         frozenSince = nil
         freezeReason = nil
-        try? stateStore.clear()
         if !resumed.isEmpty {
             let count = Set(resumed.map { $0.bundleID }).count
             AppLog.engine.info("Resumed \(count, privacy: .public) apps")
@@ -476,21 +475,11 @@ actor ProtectionEngine {
         // C1: never freeze new instances while the trusted list is empty (setup).
         guard machine.status == .frozen, !config.trustedAddresses.isEmpty else { return }
         let apps = config.protectedApps.filter { $0.enabled }
+        // C2: controller queue owns the journal (persistNow after prune/freeze);
+        // no engine save/clear here that could overwrite a newer record.
         configureControllerPersistence(reason: freezeReason)
         let frozen = await controller.reconcile(apps)
         frozenProcesses = frozen
-        if frozen.isEmpty {
-            try? stateStore.clear()
-        } else {
-            let state = PersistedState(
-                schemaVersion: 1,
-                frozen: frozen,
-                frozenSince: frozenSince,
-                reason: freezeReason,
-                lastKnownIP: currentIPv4?.description
-            )
-            try? stateStore.save(state)
-        }
         publishSnapshot()
     }
 
@@ -505,11 +494,16 @@ actor ProtectionEngine {
         // (grace/bypass/pause) and reset to checking so reconcile won't freeze new
         // instances. Adding an address later re-activates protection via a check.
         if newConfig.trustedAddresses.isEmpty {
-            await performResumeAll()
+            // C1: invalidate pending effects SYNCHRONOUSLY before the first await,
+            // so an expired grace/bypass cannot issue a freeze during the resume
+            // suspension. Reset the machine so stale grace/freeze effects are inert.
             cancelGrace()
             cancelBypass()
             cancelPause()
             machine = ProtectionStateMachine()
+            // Resume our own processes; the controller queue orders this after any
+            // already-issued freeze, so nothing is left paused in setup.
+            await performResumeAll()
             await applyEvent(.appStarted(configValid: true))
             if !newConfig.protection.enabled {
                 await applyEvent(.protectionDisabled)

@@ -24,10 +24,19 @@ final class ProcessController: ProcessControlling {
     private let watchdogPIDProvider: () -> Int32?
     /// Tracked frozen processes keyed by pid (idempotence + identity records).
     private var frozen: [Int32: FrozenProcess] = [:]
-    /// C2: durable persistence hook, configured by the engine. Called BEFORE
-    /// each SIGSTOP (and after removals) so every stopped process is recoverable
-    /// even if the app crashes mid-batch. Returns false on write failure.
-    var persist: (([FrozenProcess]) -> Bool)?
+    /// C2: durable persistence hook. The controller's serial queue is the single
+    /// serialized owner of the frozen journal; the hook is set by the engine
+    /// (actor) and read on the queue, so access is lock-synchronized. Metadata is
+    /// captured by value inside the hook (immutable once created).
+    private var persistHandler: (([FrozenProcess]) -> Bool)?
+    private let persistLock = NSLock()
+
+    /// C2: install the journal writer (thread-safe; called from the engine actor).
+    func setPersist(_ handler: @escaping ([FrozenProcess]) -> Bool) {
+        persistLock.lock()
+        persistHandler = handler
+        persistLock.unlock()
+    }
 
     init(selfPID: Int32 = getpid(), watchdogPIDProvider: @escaping () -> Int32?) {
         self.selfPID = selfPID
@@ -98,7 +107,10 @@ final class ProcessController: ProcessControlling {
 
         // C2: record the process durably BEFORE stopping it, so a crash between
         // SIGSTOP and publication still leaves it recoverable by the watchdog /
-        // next launch. If the record cannot be persisted, do not stop it.
+        // next launch. If the record cannot be persisted, do not stop it. A crash
+        // after this write but before the signal leaves an "incomplete intent":
+        // recovery sends an identity-checked SIGCONT, which is a benign no-op on
+        // a still-running process — never a claim of owning someone else's stop.
         let record = FrozenProcess(pid: pid, startTimeSec: start.sec, startTimeUsec: start.usec, bundleID: bundleID, path: path)
         frozen[pid] = record
         guard persistNow() else {
@@ -106,11 +118,24 @@ final class ProcessController: ProcessControlling {
             AppLog.process.warning("Persist failed; not freezing pid \(pid, privacy: .public)")
             return
         }
+        // C2: re-verify identity immediately before the signal, after the file
+        // I/O above (the pid could have been reused during the write).
+        guard let current = ProcessEnumerator.startTime(of: pid),
+              current.sec == start.sec, current.usec == start.usec else {
+            frozen.removeValue(forKey: pid)
+            _ = persistNow()
+            return
+        }
         if kill(pid, SIGSTOP) == 0 {
             AppLog.process.info("Froze pid \(pid, privacy: .public)")
         } else {
-            handleSignalError(errno, pid: pid, action: "SIGSTOP")
+            // C2: a failed STOP (e.g. EPERM) means the process is NOT stopped;
+            // roll back the pre-write in memory and journal so it is not treated
+            // as our frozen process nor skipped on later attempts.
+            let err = errno
+            frozen.removeValue(forKey: pid)
             _ = persistNow()
+            AppLog.process.warning("SIGSTOP failed for pid \(pid, privacy: .public) errno \(err, privacy: .public); rolled back")
         }
     }
 
@@ -182,9 +207,13 @@ final class ProcessController: ProcessControlling {
 
     /// C2: durably record the current frozen set. Fail-safe: with no persistence
     /// configured, return false so a process is never stopped unrecoverably.
+    /// The hook is read under the lock (set from the engine actor).
     private func persistNow() -> Bool {
-        guard let persist = persist else { return false }
-        return persist(Array(frozen.values))
+        persistLock.lock()
+        let handler = persistHandler
+        persistLock.unlock()
+        guard let handler = handler else { return false }
+        return handler(Array(frozen.values))
     }
 
     // MARK: - Helpers
