@@ -10,6 +10,7 @@
 //
 
 import SwiftUI
+import ServiceManagement
 
 @main
 struct NoHallaApp: App {
@@ -17,12 +18,30 @@ struct NoHallaApp: App {
 
     private var appState: AppState { appDelegate.appState }
 
+    init() {
+        // SMAppService.mainApp must run inside the app bundle. The local reset
+        // script uses this early exit before the normal application lifecycle.
+        guard Array(CommandLine.arguments.dropFirst()) == ["--reset-login-item"] else { return }
+        do {
+            let service = SMAppService.mainApp
+            if service.status == .enabled || service.status == .requiresApproval {
+                try service.unregister()
+            }
+            print("NOHALLA_LOGIN_ITEM_RESET_OK")
+            exit(EXIT_SUCCESS)
+        } catch {
+            fputs("No-halla could not disable launch at login: \(error.localizedDescription)\n", stderr)
+            exit(EXIT_FAILURE)
+        }
+    }
+
     var body: some Scene {
         WindowGroup(L10n.string("brand.name")) {
             MainWindowView()
                 .environmentObject(appState)
         }
         .windowResizability(.contentSize)
+        .defaultSize(width: 520, height: 600)
 
         MenuBarExtra {
             PopoverView()
