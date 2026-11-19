@@ -41,7 +41,7 @@ let dryRun = arguments.contains("--dry-run")
 let runOnce = arguments.contains("--once")
 let restoreOnly = arguments.contains("--restore")
 
-var proxyPort: UInt16 = 53
+var proxyPort: UInt16 = 8844
 var positional: [String] = []
 var index = 1
 while index < arguments.count {
@@ -62,7 +62,7 @@ guard let config = loadConfig(configPath) else {
 }
 
 let stateDirectory = URL(fileURLWithPath: config.statePath).deletingLastPathComponent()
-let manifestURL = dryRun ? stateDirectory.appendingPathComponent("dns-restore.json") : DomainGuardProtocol.manifestURL
+let manifestURL = dryRun ? stateDirectory.appendingPathComponent("proxy-restore.json") : DomainGuardProtocol.manifestURL
 let statusURL = dryRun ? stateDirectory.appendingPathComponent("guard-status.json") : DomainGuardProtocol.statusURL
 
 let runner = GuardRunner(

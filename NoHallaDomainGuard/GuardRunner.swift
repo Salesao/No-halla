@@ -2,9 +2,9 @@
 //  GuardRunner.swift
 //  NoHallaDomainGuard
 //
-//  Applies the guard state to hosts, the loopback DNS proxy, and system DNS
-//  (D47). The runner is the only place that decides ordering; every privileged
-//  action is delegated to SystemDNSManager.
+//  Applies the guard state to hosts, the loopback HTTP proxy, and the system
+//  proxy (D48). The runner is the only place that decides ordering; privileged
+//  actions are delegated to SystemProxyManager.
 //
 
 import Darwin
@@ -21,10 +21,10 @@ final class GuardRunner {
     private let proxyPort: UInt16
     private let logger = Logger(subsystem: "dev.nohalla.NoHalla", category: "guard")
 
-    private var proxy: DNSProxy?
-    private var dns: SystemDNSManager?
-    private var suffixMode: DomainGuardSuffixMode = .unavailable
-    private var dnsSwitched = false
+    private var proxy: HTTPProxy?
+    private var systemProxy: SystemProxyManager?
+    private var proxyMode: DomainGuardProxyMode = .unavailable
+    private var proxySwitched = false
     private var reason = ""
     private var lastPublished = Date.distantPast
     private var lastSignature = ""
@@ -36,7 +36,7 @@ final class GuardRunner {
         statusURL: URL,
         manifestURL: URL,
         dryRun: Bool,
-        proxyPort: UInt16 = 53
+        proxyPort: UInt16 = 8844
     ) {
         self.config = config
         self.statePath = statePath
@@ -60,24 +60,23 @@ final class GuardRunner {
         return status
     }
 
-    /// Restores saved DNS and clears hosts without touching the state file.
+    /// Restores the saved system proxy and clears hosts without touching the
+    /// state file.
     func restoreOnly() {
-        let manager = dns ?? SystemDNSManager(
+        let manager = systemProxy ?? SystemProxyManager(
             runner: ProcessRunner(),
             services: SystemEnvironment.services(),
-            upstreams: SystemEnvironment.upstreams(),
             manifestURL: manifestURL,
             dryRun: dryRun
         )
         _ = manager.restore()
-        dns = nil
+        systemProxy = nil
         proxy?.stop()
         proxy = nil
         writeHosts([])
-        suffixMode = .unavailable
-        dnsSwitched = false
+        proxyMode = .unavailable
+        proxySwitched = false
         reason = "restored"
-        flushDNSCache()
         publish(makeStatus())
     }
 
@@ -87,84 +86,69 @@ final class GuardRunner {
         writeHosts(DomainBlocklist.hostsLines(for: domains))
 
         if proxy == nil {
-            let proxy = DNSProxy(
+            let proxy = HTTPProxy(
                 port: proxyPort,
-                suffixes: DomainBlocklist.normalized(domains),
-                upstreams: SystemEnvironment.upstreams()
+                suffixes: DomainBlocklist.normalized(domains)
             )
             do {
                 try proxy.start()
                 self.proxy = proxy
             } catch {
-                suffixMode = .unavailable
-                dnsSwitched = false
+                proxyMode = .unavailable
+                proxySwitched = false
                 reason = "cannot listen on 127.0.0.1:\(proxyPort): \(error)"
                 logger.error("\(self.reason, privacy: .public)")
                 return
             }
         }
-        proxy?.update(suffixes: DomainBlocklist.normalized(domains), upstreams: SystemEnvironment.upstreams())
+        proxy?.update(suffixes: DomainBlocklist.normalized(domains))
 
-        if dns == nil {
-            let manager = SystemDNSManager(
+        if systemProxy == nil {
+            let manager = SystemProxyManager(
                 runner: ProcessRunner(),
                 services: SystemEnvironment.services(),
-                upstreams: SystemEnvironment.upstreams(),
                 manifestURL: manifestURL,
                 dryRun: dryRun
             )
-            dns = manager
-            apply(manager.captureAndSwitch())
-            flushDNSCache()
-        } else if let dns {
-            apply(dns.reconcile())
+            systemProxy = manager
+            apply(manager.captureAndSwitch(port: proxyPort))
+        } else if let systemProxy {
+            apply(systemProxy.reconcile(port: proxyPort))
         }
     }
 
     private func release() {
-        let hadManifest = FileManager.default.fileExists(atPath: manifestURL.path)
-        let wasActive = dns != nil || suffixMode != .unavailable
-        let manager = dns ?? SystemDNSManager(
+        let manager = systemProxy ?? SystemProxyManager(
             runner: ProcessRunner(),
             services: SystemEnvironment.services(),
-            upstreams: SystemEnvironment.upstreams(),
             manifestURL: manifestURL,
             dryRun: dryRun
         )
         _ = manager.restore()
-        dns = nil
+        systemProxy = nil
         proxy?.stop()
         proxy = nil
         writeHosts([])
-        suffixMode = .unavailable
-        dnsSwitched = false
+        proxyMode = .unavailable
+        proxySwitched = false
         reason = "protection released"
-        if wasActive || hadManifest { flushDNSCache() }
     }
 
-    private func apply(_ result: DNSApplyResult) {
+    private func apply(_ result: ProxyApplyResult) {
         switch result {
         case .applied:
-            suffixMode = .active
-            dnsSwitched = true
+            proxyMode = .active
+            proxySwitched = true
             reason = ""
         case .degraded(let why):
-            suffixMode = .degraded
-            dnsSwitched = true
+            proxyMode = .degraded
+            proxySwitched = true
             reason = why
         case .unavailable(let why):
-            suffixMode = .unavailable
-            dnsSwitched = false
+            proxyMode = .unavailable
+            proxySwitched = false
             reason = why
         }
-    }
-
-    /// A switch to loopback only affects new lookups; the system cache would
-    /// keep serving pre-block answers. Only the root helper can flush it.
-    private func flushDNSCache() {
-        guard !dryRun else { return }
-        _ = ProcessRunner().run("/usr/bin/dscacheutil", ["-flushcache"])
-        _ = ProcessRunner().run("/usr/bin/killall", ["-HUP", "mDNSResponder"])
     }
 
     // MARK: - State and files
@@ -205,15 +189,15 @@ final class GuardRunner {
     private func makeStatus() -> DomainGuardStatus {
         DomainGuardStatus(
             protocolVersion: DomainGuardProtocol.version,
-            suffixMode: suffixMode,
-            dnsSwitched: dnsSwitched,
+            proxyMode: proxyMode,
+            proxySwitched: proxySwitched,
             reason: reason,
             updatedAt: Date()
         )
     }
 
     private func publish(_ status: DomainGuardStatus) {
-        let signature = "\(status.suffixMode.rawValue)|\(status.dnsSwitched)|\(status.reason)"
+        let signature = "\(status.proxyMode.rawValue)|\(status.proxySwitched)|\(status.reason)"
         let now = Date()
         if signature == lastSignature, now.timeIntervalSince(lastPublished) < 30 { return }
         do {
