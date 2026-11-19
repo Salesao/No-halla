@@ -626,5 +626,37 @@
   "onboarding.step": {
     "en": "Step %d of 3",
     "ru": "Шаг %d из 3"
+  },
+  "ui.protection-mode": {
+    "en": "Protection mode",
+    "ru": "Режим защиты"
+  },
+  "ui.mode-vpn": {
+    "en": "VPN tunnel",
+    "ru": "VPN-туннель"
+  },
+  "ui.mode-ip": {
+    "en": "IP whitelist",
+    "ru": "Белый список IP"
+  },
+  "ui.mode-vpn-helper": {
+    "en": "Freeze apps when the VPN tunnel drops. No external IP check.",
+    "ru": "Замораживать приложения при падении VPN-туннеля. Без внешней проверки IP."
+  },
+  "ui.mode-ip-helper": {
+    "en": "Freeze apps when the current public IP is not in the trusted list.",
+    "ru": "Замораживать приложения, если текущий публичный IP не в доверенном списке."
+  },
+  "network.vpn": {
+    "en": "VPN",
+    "ru": "VPN"
+  },
+  "network.vpnConnected": {
+    "en": "Connected",
+    "ru": "Подключён"
+  },
+  "network.vpnDisconnected": {
+    "en": "Disconnected",
+    "ru": "Отключён"
   }
 }

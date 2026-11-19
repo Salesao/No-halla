@@ -18,6 +18,7 @@ struct DashboardView: View {
     private var snapshot: EngineSnapshot { appState.snapshot }
     private var status: UIStatus { appState.uiStatus }
     private var apps: [ProtectedApp] { appState.config.protectedApps }
+    private var vpnMode: Bool { appState.config.protection.mode == .vpnInterface }
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
@@ -27,7 +28,8 @@ struct DashboardView: View {
                 ipv4: snapshot.currentIPv4,
                 ipv6: snapshot.currentIPv6,
                 vpnInterface: snapshot.vpnInterface,
-                trusted: snapshot.currentIPv4 == nil ? nil : snapshot.trusted,
+                trusted: vpnMode ? snapshot.trusted : (snapshot.currentIPv4 == nil ? nil : snapshot.trusted),
+                vpnMode: vpnMode,
                 note: networkNote,
                 onAddCurrentIP: { appState.send(.addCurrentIP) },
                 onRefresh: { appState.send(.retryCheck) }
@@ -220,6 +222,7 @@ struct DashboardView: View {
     }
 
     private var networkNote: String? {
+        if vpnMode { return nil }
         if status == .setup { return L10n.string("empty.noTrusted") }
         if snapshot.currentIPv4 == nil { return L10n.string("empty.offline") }
         return nil

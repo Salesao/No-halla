@@ -159,6 +159,47 @@ final class NetworkMonitor {
         return nil
     }
 
+    /// Name of the active VPN tunnel interface, or nil when the VPN is down.
+    /// Unlike `vpnInterfaceName`, this requires a GLOBAL address on a
+    /// utun/ipsec/ppp/tun interface — excluding loopback (127.x / ::1) and
+    /// link-local (169.254.x / fe80::) — so system tunnels that only carry a
+    /// link-local address (e.g. iCloud Private Relay) are not mistaken for the
+    /// user's VPN. Used by the VPN-tunnel protection mode (no external query).
+    func activeVPNInterface() -> String? {
+        var interfaces: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&interfaces) == 0, let head = interfaces else { return nil }
+        defer { freeifaddrs(head) }
+
+        var cursor: UnsafeMutablePointer<ifaddrs>? = head
+        while let current = cursor {
+            let entry = current.pointee
+            cursor = entry.ifa_next
+            guard let address = entry.ifa_addr, let rawName = entry.ifa_name else { continue }
+            let name = String(cString: rawName)
+            guard name.hasPrefix("utun") || name.hasPrefix("ipsec")
+                || name.hasPrefix("ppp") || name.hasPrefix("tun") else { continue }
+            let family = Int32(address.pointee.sa_family)
+            if family == AF_INET {
+                let octets = address.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { pointer -> [UInt8] in
+                    let raw = pointer.pointee.sin_addr.s_addr // network byte order
+                    return [UInt8(raw & 0xff), UInt8((raw >> 8) & 0xff), UInt8((raw >> 16) & 0xff), UInt8((raw >> 24) & 0xff)]
+                }
+                let isLoopback = octets[0] == 127
+                let isLinkLocal = octets[0] == 169 && octets[1] == 254
+                if !isLoopback && !isLinkLocal { return name }
+            } else if family == AF_INET6 {
+                let bytes = address.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) { pointer in
+                    withUnsafeBytes(of: pointer.pointee.sin6_addr) { Array($0) }
+                }
+                let isLinkLocal = bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80
+                let isLoopback = bytes[0..<15].allSatisfy { $0 == 0 } && bytes[15] == 1
+                let isUnspecified = bytes.allSatisfy { $0 == 0 }
+                if !isLinkLocal && !isLoopback && !isUnspecified { return name }
+            }
+        }
+        return nil
+    }
+
     // MARK: - Event handling (serial queue)
 
     private func handlePathUpdate(_ path: NWPath) {

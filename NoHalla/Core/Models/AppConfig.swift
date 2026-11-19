@@ -72,6 +72,55 @@ struct ProtectionSettings: Codable, Equatable {
     var checkIPv6: Bool
     var requireVPNInterface: Bool
     var manualResumeBypassMinutes: Int
+    /// Owner-requested hybrid: decide by public-IP whitelist (external query to
+    /// learn the IP) or by the local VPN tunnel interface (no external query).
+    var mode: ProtectionMode
+
+    enum CodingKeys: String, CodingKey {
+        case enabled, graceSeconds, checkIntervalSeconds, freezeWhenUnknown
+        case checkIPv6, requireVPNInterface, manualResumeBypassMinutes, mode
+    }
+
+    init(
+        enabled: Bool,
+        graceSeconds: Int,
+        checkIntervalSeconds: Int,
+        freezeWhenUnknown: Bool,
+        checkIPv6: Bool,
+        requireVPNInterface: Bool,
+        manualResumeBypassMinutes: Int,
+        mode: ProtectionMode = .vpnInterface
+    ) {
+        self.enabled = enabled
+        self.graceSeconds = graceSeconds
+        self.checkIntervalSeconds = checkIntervalSeconds
+        self.freezeWhenUnknown = freezeWhenUnknown
+        self.checkIPv6 = checkIPv6
+        self.requireVPNInterface = requireVPNInterface
+        self.manualResumeBypassMinutes = manualResumeBypassMinutes
+        self.mode = mode
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try container.decode(Bool.self, forKey: .enabled)
+        graceSeconds = try container.decode(Int.self, forKey: .graceSeconds)
+        checkIntervalSeconds = try container.decode(Int.self, forKey: .checkIntervalSeconds)
+        freezeWhenUnknown = try container.decode(Bool.self, forKey: .freezeWhenUnknown)
+        checkIPv6 = try container.decode(Bool.self, forKey: .checkIPv6)
+        requireVPNInterface = try container.decode(Bool.self, forKey: .requireVPNInterface)
+        manualResumeBypassMinutes = try container.decode(Int.self, forKey: .manualResumeBypassMinutes)
+        // Older configs predate `mode`; default to the VPN-tunnel mode.
+        mode = try container.decodeIfPresent(ProtectionMode.self, forKey: .mode) ?? .vpnInterface
+    }
+}
+
+/// How protection decides trust (owner-requested hybrid switch).
+enum ProtectionMode: String, Codable, Equatable {
+    /// Local VPN tunnel interface presence — no external query.
+    case vpnInterface
+    /// Public-IP whitelist — an external endpoint learns the current IP.
+    case ipWhitelist
 }
 
 /// External IP verification settings (brief §5.4).

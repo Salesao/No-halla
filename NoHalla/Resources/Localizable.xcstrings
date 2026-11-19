@@ -417,6 +417,54 @@
         }
       }
     },
+    "network.vpn": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VPN"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VPN"
+          }
+        }
+      }
+    },
+    "network.vpnConnected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключён"
+          }
+        }
+      }
+    },
+    "network.vpnDisconnected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnected"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключён"
+          }
+        }
+      }
+    },
     "network.vpnInterface": {
       "localizations": {
         "en": {
@@ -1793,6 +1841,70 @@
         }
       }
     },
+    "ui.mode-ip": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IP whitelist"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Белый список IP"
+          }
+        }
+      }
+    },
+    "ui.mode-ip-helper": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freeze apps when the current public IP is not in the trusted list."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Замораживать приложения, если текущий публичный IP не в доверенном списке."
+          }
+        }
+      }
+    },
+    "ui.mode-vpn": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VPN tunnel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VPN-туннель"
+          }
+        }
+      }
+    },
+    "ui.mode-vpn-helper": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freeze apps when the VPN tunnel drops. No external IP check."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Замораживать приложения при падении VPN-туннеля. Без внешней проверки IP."
+          }
+        }
+      }
+    },
     "ui.no": {
       "localizations": {
         "en": {
@@ -2093,6 +2205,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Защита приложения %@"
+          }
+        }
+      }
+    },
+    "ui.protection-mode": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protection mode"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Режим защиты"
           }
         }
       }

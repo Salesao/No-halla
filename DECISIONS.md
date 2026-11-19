@@ -112,3 +112,13 @@ This deviates from the brief's pure menu bar agent architecture (FR-1/§8.8) by 
 - The owner's existing `config.json` was updated to match (`freezeWhenUnknown=false`, `quorum=1`).
 
 **Tradeoff accepted by owner:** if the VPN drops AND the check endpoints are unreachable, the IP cannot be determined and apps are NOT frozen (protection does not trigger in that moment). Simplicity is prioritized over the fail-safe freeze. Public-IP discovery still requires an external endpoint (the computer cannot know its public IP locally); the simplification is in the decision logic, not in eliminating discovery. Deviates from brief §13 defaults (freezeWhenUnknown=true, quorum=2) by owner request.
+
+## 2026-11-19 — User-requested hybrid protection mode (direct owner request)
+
+**Decision (owner: «переключатель — или по IP, или по VPN-туннелю; запрос чтобы узнать IP — без проблем»).** Added a protection mode switch (`ProtectionSettings.mode`, `ProtectionMode` enum), default `.vpnInterface`:
+- **`.vpnInterface` (VPN tunnel, no external query):** the engine decides trust purely locally via `NetworkMonitor.activeVPNInterface()` — a utun/ipsec/ppp/tun interface carrying a GLOBAL address (excludes loopback 127.x/::1 and link-local 169.254.x/fe80::, so system tunnels like iCloud Private Relay are not mistaken for the VPN). VPN present → allowed (Protected); VPN absent → disallowed (grace → freeze). Deterministic, no `unknown` state, no endpoint dependency. Verified on the owner's machine: detects `utun4` (198.18.0.1), ignores link-local-only system utun interfaces.
+- **`.ipWhitelist` (public-IP whitelist):** the existing IPVerifier flow (external endpoint learns the current public IP, compared to the trusted list). The owner accepts the external query as the necessary way to learn the public IP. Simplified defaults remain (quorum 1, freezeWhenUnknown false).
+- `ProtectionSettings.mode` decodes with a default (`.vpnInterface`) so pre-existing configs without the field still load. `deriveUIStatus` shows `setup` (empty trusted list) only in IP-whitelist mode. The network card shows VPN tunnel status in VPN mode and the IP fields in IP mode. Settings → Protection has a segmented mode picker with per-mode helper text.
+- New L10n keys (D22 additive): ui.protection-mode, ui.mode-vpn, ui.mode-ip, ui.mode-vpn-helper, ui.mode-ip-helper, network.vpn, network.vpnConnected, network.vpnDisconnected (165 keys total).
+
+This supersedes the earlier «remove verification entirely» discussion: public-IP matching inherently requires an external query (the computer cannot know its public IP locally), so the hybrid offers a truly query-free VPN-tunnel mode alongside the IP-whitelist mode. Clean universal build green.

@@ -268,6 +268,11 @@ actor ProtectionEngine {
     // MARK: - Verification
 
     private func runCheck() async -> Bool {
+        // VPN-tunnel mode: decide locally by the VPN interface — no external query.
+        if config.protection.mode == .vpnInterface {
+            return await runVPNInterfaceCheck()
+        }
+        // IP-whitelist mode: learn the current public IP via the endpoints.
         let online = monitor.isOnline
         guard let result = await verifier.check(config: config, online: online) else {
             // Throttled or backed off: keep current state.
@@ -296,6 +301,24 @@ actor ProtectionEngine {
         case .unknown: event = .noQuorum
         }
         await applyEvent(event)
+        return true
+    }
+
+    /// VPN-tunnel protection mode (owner-requested): the VPN interface presence
+    /// is the trust signal — present → allowed, absent → disallowed. Purely local
+    /// (getifaddrs), deterministic, no external query and no unknown state.
+    private func runVPNInterfaceCheck() async -> Bool {
+        let vpn = monitor.activeVPNInterface()
+        lastCheck = Date()
+        currentIPv4 = nil
+        currentIPv6 = nil
+        lastIPv6Verified = false
+        lastVerdictAllowed = (vpn != nil)
+        if let bypassDeadline = bypassDeadline, bypassDeadline > Date() {
+            publishSnapshot()
+            return true
+        }
+        await applyEvent(vpn != nil ? .ipAllowed : .ipDisallowed)
         return true
     }
 
@@ -693,7 +716,9 @@ actor ProtectionEngine {
     // MARK: - Snapshot
 
     private func deriveUIStatus() -> UIStatus {
-        if config.trustedAddresses.isEmpty { return .setup }
+        // Setup (empty trusted list) applies only to IP-whitelist mode; the
+        // VPN-tunnel mode uses the interface presence, not a trusted IP list.
+        if config.protection.mode == .ipWhitelist && config.trustedAddresses.isEmpty { return .setup }
         if let bypassDeadline = bypassDeadline, bypassDeadline > Date() { return .bypassing }
         switch machine.status {
         case .initializing, .checking: return .checking
@@ -723,7 +748,7 @@ actor ProtectionEngine {
             uiStatus: deriveUIStatus(),
             currentIPv4: currentIPv4?.description,
             currentIPv6: currentIPv6?.description,
-            vpnInterface: monitor.vpnInterfaceName(),
+            vpnInterface: monitor.activeVPNInterface(),
             trusted: lastVerdictAllowed,
             graceRemaining: graceRemaining(),
             bypassUntil: bypassDeadline,

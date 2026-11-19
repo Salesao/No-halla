@@ -17,18 +17,19 @@ struct NetworkCardView: View {
     let vpnInterface: String?
     /// nil = unknown/unverifiable (render "—"); true/false = known trust.
     let trusted: Bool?
+    /// VPN-tunnel protection mode: show the tunnel status instead of the IP.
+    var vpnMode: Bool = false
     var note: String? = nil
     var onAddCurrentIP: (() -> Void)? = nil
     var onRefresh: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing2) {
-            field(label: L10n.string("network.currentIP"), value: ipv4 ?? "—", mono: true)
-            if let ipv6 = ipv6 {
-                field(label: "IPv6", value: ipv6, mono: true)
+            if vpnMode {
+                vpnFields
+            } else {
+                ipFields
             }
-            field(label: L10n.string("network.vpnInterface"), value: vpnInterface ?? "—", mono: false)
-            field(label: L10n.string("network.trusted"), value: trustedText, mono: false)
 
             if let note = note {
                 Text(note)
@@ -38,7 +39,7 @@ struct NetworkCardView: View {
             }
 
             HStack(spacing: DesignTokens.spacing2) {
-                if trusted == false, ipv4 != nil, let onAddCurrentIP = onAddCurrentIP {
+                if !vpnMode, trusted == false, ipv4 != nil, let onAddCurrentIP = onAddCurrentIP {
                     Button(L10n.string("network.addCurrentIP"), action: onAddCurrentIP)
                         .buttonStyle(.bordered)
                         .frame(minHeight: DesignTokens.targetMin)
@@ -71,6 +72,33 @@ struct NetworkCardView: View {
     private var trustedText: String {
         guard let trusted = trusted else { return "—" }
         return trusted ? L10n.string("ui.yes") : L10n.string("ui.no")
+    }
+
+    /// IP-whitelist mode fields.
+    private var ipFields: some View {
+        Group {
+            field(label: L10n.string("network.currentIP"), value: ipv4 ?? "—", mono: true)
+            if let ipv6 = ipv6 {
+                field(label: "IPv6", value: ipv6, mono: true)
+            }
+            field(label: L10n.string("network.vpnInterface"), value: vpnInterface ?? "—", mono: false)
+            field(label: L10n.string("network.trusted"), value: trustedText, mono: false)
+        }
+    }
+
+    /// VPN-tunnel mode fields: tunnel status (no IP, no external check).
+    private var vpnFields: some View {
+        let connected = vpnInterface != nil
+        return Group {
+            field(
+                label: L10n.string("network.vpn"),
+                value: connected ? L10n.string("network.vpnConnected") : L10n.string("network.vpnDisconnected"),
+                mono: false
+            )
+            if let vpnInterface = vpnInterface {
+                field(label: L10n.string("network.vpnInterface"), value: vpnInterface, mono: true)
+            }
+        }
     }
 
     private func field(label: String, value: String, mono: Bool) -> some View {

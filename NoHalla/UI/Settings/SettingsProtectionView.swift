@@ -31,6 +31,22 @@ struct SettingsProtectionView: View {
                 }
             }
 
+            Section(L10n.string("ui.protection-mode")) {
+                Picker("", selection: Binding(
+                    get: { protection.mode },
+                    set: { newValue in updateProtection { $0.mode = newValue } }
+                )) {
+                    Text(L10n.string("ui.mode-vpn")).tag(ProtectionMode.vpnInterface)
+                    Text(L10n.string("ui.mode-ip")).tag(ProtectionMode.ipWhitelist)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                Text(protection.mode == .vpnInterface ? L10n.string("ui.mode-vpn-helper") : L10n.string("ui.mode-ip-helper"))
+                    .font(.system(size: DesignTokens.typeSmall))
+                    .foregroundStyle(DesignTokens.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Section(L10n.string("ui.preferences")) {
                 SettingRowView(label: L10n.string("ui.grace-period"), helper: L10n.string("ui.apps-freeze-after-this-delay-when-the-ip-changes")) {
                     HStack {
