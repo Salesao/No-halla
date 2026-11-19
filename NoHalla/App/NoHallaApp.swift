@@ -3,9 +3,9 @@
 //  NoHalla
 //
 //  SwiftUI entry point. A MenuBarExtra agent (LSUIElement) whose template glyph
-//  tracks the derived UI status (design/ICONS.md). S1 shows a placeholder
-//  popover; S3 replaces it with the full design and adds Settings/onboarding
-//  scenes.
+//  tracks the derived UI status (design/ICONS.md) with a VoiceOver label
+//  (design/ACCESSIBILITY.md). Scenes: the full popover, the four-tab Settings
+//  window, and an onboarding window opened on first launch (FR-2).
 //
 
 import SwiftUI
@@ -13,6 +13,7 @@ import SwiftUI
 @main
 struct NoHallaApp: App {
     @NSApplicationDelegateAdaptor(NoHallaAppDelegate.self) private var appDelegate
+    @Environment(\.openWindow) private var openWindow
 
     private var appState: AppState { appDelegate.appState }
 
@@ -24,13 +25,24 @@ struct NoHallaApp: App {
             Image(DesignTokens.menuBarImageName(for: appState.uiStatus))
                 .renderingMode(.template)
                 .accessibilityLabel(L10n.string(DesignTokens.menuBarAccessibilityKey(for: appState.uiStatus)))
+                .task {
+                    if !appState.config.onboardingCompleted {
+                        openWindow(id: "onboarding")
+                    }
+                }
         }
         .menuBarExtraStyle(.window)
 
         Settings {
-            // S3 replaces this with SettingsRootView (four tabs).
-            Text(L10n.string("brand.name"))
-                .padding(24)
+            SettingsRootView()
+                .environmentObject(appState)
         }
+
+        Window(L10n.string("brand.name"), id: "onboarding") {
+            OnboardingContainerView()
+                .environmentObject(appState)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
     }
 }
