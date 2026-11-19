@@ -433,6 +433,22 @@
         }
       }
     },
+    "notification.app-count": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d apps"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d приложения"
+          }
+        }
+      }
+    },
     "notification.frozen.body": {
       "localizations": {
         "en": {
@@ -445,6 +461,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ваш IP изменился на %@. %@ ждут у ворот, пока VPN не вернётся."
+          }
+        }
+      }
+    },
+    "notification.frozen.reason-changed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a new address"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "новый адрес"
           }
         }
       }

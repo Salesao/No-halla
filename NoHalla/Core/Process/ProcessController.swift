@@ -125,6 +125,16 @@ final class ProcessController: ProcessControlling {
     // MARK: - Reconcile (FR-24)
 
     private func reconcileSync(_ apps: [ProtectedApp]) -> [FrozenProcess] {
+        let activeBundleIDs = Set(apps.filter { $0.enabled }.map { $0.bundleID })
+        // Resume processes of apps removed or disabled from protection (FR-24):
+        // they must not stay SIGSTOP until a full Resume all.
+        for pid in Array(frozen.keys) {
+            guard let record = frozen[pid] else { continue }
+            if !activeBundleIDs.contains(record.bundleID) {
+                resumeOne(pid: pid, record: record)
+                frozen.removeValue(forKey: pid)
+            }
+        }
         // Drop processes that exited or whose pid was reused since freezing.
         for pid in Array(frozen.keys) {
             guard let record = frozen[pid] else { continue }
@@ -143,6 +153,15 @@ final class ProcessController: ProcessControlling {
             }
         }
         return Array(frozen.values)
+    }
+
+    /// Identity-checked SIGCONT for one tracked record (PID-reuse guard).
+    private func resumeOne(pid: Int32, record: FrozenProcess) {
+        guard let start = ProcessEnumerator.startTime(of: pid),
+              start.sec == record.startTimeSec, start.usec == record.startTimeUsec else { return }
+        if kill(pid, SIGCONT) != 0 {
+            handleSignalError(errno, pid: pid, action: "SIGCONT")
+        }
     }
 
     // MARK: - Helpers

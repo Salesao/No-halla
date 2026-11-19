@@ -108,13 +108,14 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate,
         let content = UNMutableNotificationContent()
         content.categoryIdentifier = category
         content.sound = .default
-        let apps = Self.appsDescription(event.frozenCount)
+        let apps = L10n.string("notification.app-count", event.frozenCount)
         switch event.kind {
         case .frozen:
             content.title = L10n.string("notification.frozen.title")
-            // NotificationEvent carries no address, so the IP slot gets a
-            // generic descriptor; the apps slot gets the frozen app count.
-            content.body = L10n.string("notification.frozen.body", "a new address", apps)
+            // NotificationEvent carries no address (S1 seam unchanged), so the
+            // IP slot gets a localized descriptor; the apps slot a localized
+            // count. No hardcoded language fragments (FR-30, R35).
+            content.body = L10n.string("notification.frozen.body", L10n.string("notification.frozen.reason-changed"), apps)
         case .resumed:
             content.title = L10n.string("notification.resumed.title")
             content.body = L10n.string("notification.resumed.body", apps)
@@ -221,9 +222,5 @@ final class NotificationCoordinator: NSObject, UNUserNotificationCenterDelegate,
         case .resumed: return resumedCategoryIdentifier
         case .unknown: return unknownCategoryIdentifier
         }
-    }
-
-    private static func appsDescription(_ count: Int) -> String {
-        count == 1 ? "1 app" : "\(count) apps"
     }
 }

@@ -14,6 +14,7 @@
 //
 
 import AppKit
+import Darwin
 import Foundation
 import OSLog
 
@@ -190,12 +191,23 @@ actor ProtectionEngine {
         await performResumeAll()
     }
 
-    /// Startup recovery of stale frozen records (FR-6/42). The controller
-    /// verifies pid + start time before each SIGCONT.
+    /// Startup recovery of stale frozen records (FR-6/42). Resumes directly
+    /// from the persisted records: the controller's in-memory tracking is empty
+    /// after a restart, so each state.json entry is identity-checked (pid +
+    /// start time) and sent SIGCONT here, then the state is cleared. A reused
+    /// or vanished pid is never signaled.
     func recoverStaleFrozen() async {
         guard let state = stateStore.load(), !state.frozen.isEmpty else { return }
         AppLog.engine.info("Recovering \(state.frozen.count, privacy: .public) stale frozen records")
-        _ = await controller.resumeAll()
+        for record in state.frozen {
+            guard let start = ProcessEnumerator.startTime(of: record.pid),
+                  start.sec == record.startTimeSec, start.usec == record.startTimeUsec else {
+                continue
+            }
+            if kill(record.pid, SIGCONT) != 0 {
+                AppLog.engine.warning("Recovery SIGCONT pid \(record.pid, privacy: .public) errno \(errno, privacy: .public)")
+            }
+        }
         frozenProcesses = []
         try? stateStore.clear()
     }

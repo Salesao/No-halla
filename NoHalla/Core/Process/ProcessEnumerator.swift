@@ -120,31 +120,29 @@ enum ProcessEnumerator {
         return info
     }
 
-    /// Fills a PID buffer through a libproc listing call. These calls
-    /// return the number of bytes written on success, or the required
-    /// buffer size in bytes when the buffer is too small — in the latter
-    /// case the buffer is grown and the call retried (bounded).
+    /// Fills a PID buffer through a libproc listing call. These calls return
+    /// the NUMBER OF PIDS (not bytes): on success the count placed in the
+    /// buffer, or the total count needed when the buffer is too small. The
+    /// buffer size argument is in bytes. When the returned count exceeds the
+    /// capacity the buffer is grown and the call retried (bounded).
     private static func listPIDs(
         initialCapacity: Int,
         list: (UnsafeMutableRawPointer?, Int32) -> Int32
     ) -> [Int32] {
-        let stride = MemoryLayout<pid_t>.stride
-        var capacity = max(initialCapacity, stride)
+        var capacity = max(initialCapacity, 1)
         for _ in 0..<6 {
             var buffer = [pid_t](repeating: 0, count: capacity)
             let result = buffer.withUnsafeMutableBytes { raw in
                 list(raw.baseAddress, Int32(raw.count))
             }
             if result <= 0 { return [] }
-            let bytes = Int(result)
-            if bytes <= capacity * stride {
-                let count = bytes / stride
+            let count = Int(result)
+            if count <= capacity {
                 return Array(buffer.prefix(count)).filter { $0 > 0 }
             }
-            // Overflow: the kernel reported the required size in bytes.
-            // Grow past it (and at least double) to absorb table growth
-            // between calls.
-            capacity = max(bytes / stride + 1, capacity * 2)
+            // Overflow: the kernel reported the total pid count needed.
+            // Grow past it (and at least double) to absorb table growth.
+            capacity = max(count + 64, capacity * 2)
         }
         return []
     }
