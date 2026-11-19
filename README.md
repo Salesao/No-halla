@@ -40,6 +40,12 @@ The watchdog binary is embedded at `No-halla.app/Contents/MacOS/NoHallaWatchdog`
 
 Config and state live in `~/Library/Application Support/NoHalla/` (`config.json`, `state.json`, atomic writes).
 
+## Crash recovery and its limitation
+
+No-halla records each process it intends to freeze **before** sending `SIGSTOP`, so a crash cannot leave a stopped app unrecorded. If No-halla crashes, the embedded watchdog resumes the recorded apps within ~2 s; the next launch also recovers any stale records. Both paths verify the process id **and start time** before sending `SIGCONT`, so a reused pid is never signaled (D29, FR-41/42).
+
+**Ownership limitation (accepted).** The record proves *which* process was frozen, not *who* paused it. In a narrow window — No-halla wrote the record but crashed before issuing `SIGSTOP`, and another agent (for example a debugger) independently paused the same process inside a protected app bundle — recovery may resume a pause No-halla did not create. This residual risk is accepted by design (full recovery is prioritized). It is narrowed by the safety rules (only processes inside a selected `.app`, owned by you, not system/deny-listed). **Recommendation:** avoid using debuggers or other third-party pauses on protected apps while No-halla is active. See `DECISIONS.md` (D29).
+
 ## Launch at login
 
 Settings → General → *Launch at login* uses `SMAppService.mainApp`. With an ad-hoc signature macOS may refuse registration; the error is shown inline and the toggle is not changed silently.

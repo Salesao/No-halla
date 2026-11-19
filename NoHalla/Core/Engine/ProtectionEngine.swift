@@ -203,6 +203,9 @@ actor ProtectionEngine {
     /// did not reach disk) are treated safely: SIGCONT is a benign no-op on a
     /// still-running process, and an identity mismatch skips a reused pid — so a
     /// stale record never causes harm nor claims ownership of another's stop.
+    /// D29 (spec-v2, owner-approved): identity-checked intent recovery — G1
+    /// (FR-41/42) prioritized; the narrow G2 ownership window is an accepted
+    /// residual risk (see DECISIONS.md D29 / README "Crash recovery").
     func recoverStaleFrozen() async {
         guard let state = stateStore.load(), !state.frozen.isEmpty else { return }
         AppLog.engine.info("Recovering \(state.frozen.count, privacy: .public) stale frozen records")

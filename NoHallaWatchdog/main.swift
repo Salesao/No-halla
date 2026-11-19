@@ -84,6 +84,10 @@ func logError(_ message: String) {
 /// Best-effort resume of every frozen process whose identity still matches,
 /// then removal of the state file. A missing file means the app quit
 /// normally and already cleaned up — nothing to do.
+/// D29 (spec-v2, owner-approved): identity-checked intent recovery — G1
+/// (FR-41/42) prioritized; the narrow G2 ownership window (a pause created by
+/// another agent in the crash-before-SIGSTOP window) is an accepted residual
+/// risk, narrowed by SafetyGuard. See DECISIONS.md D29 / README "Crash recovery".
 func recoverFrozenProcesses(statePath: String) {
     let fileManager = FileManager.default
     guard fileManager.fileExists(atPath: statePath) else { return }
