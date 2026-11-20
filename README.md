@@ -4,7 +4,7 @@
 
 **When your VPN drops, No-halla can pause a whole Mac app or just the terminal sessions running AI agents.** Say you have Codex working in Orca and Claude Code in macOS Terminal. Enable **Agent terminals** for both apps and those sessions pause together, including the commands the agents started. A build or SSH session in another tab keeps running. When the VPN returns, both agents resume.
 
-**[Download No-halla 0.9.0](https://github.com/Salesao/No-halla/releases/download/v0.9.0/No-halla-0.9.0.dmg)** · [First launch](#first-launch) · [Build from source](docs/USER_GUIDE.md#build-from-source) · [Troubleshooting](docs/USER_GUIDE.md#troubleshooting)
+**[Download No-halla 0.9.1](https://github.com/Salesao/No-halla/releases/download/v0.9.1/No-halla-0.9.1.dmg)** · [First launch](#first-launch) · [Build from source](docs/USER_GUIDE.md#build-from-source) · [Troubleshooting](docs/USER_GUIDE.md#troubleshooting)
 
 ## Protection in action
 
@@ -14,7 +14,7 @@
 
 ## Install
 
-Open the DMG, drag **No-halla** to **Applications**, then open it. Version 0.9.0 runs on **macOS 13 or later**, on Apple silicon and Intel. The download is ad-hoc signed. If macOS asks for approval, use **System Settings → Privacy & Security**. [ZIP](https://github.com/Salesao/No-halla/releases/download/v0.9.0/No-halla-0.9.0.zip) · [SHA-256 checksums](https://github.com/Salesao/No-halla/releases/download/v0.9.0/SHA256SUMS.txt)
+Open the DMG, drag **No-halla** to **Applications**, then open it. Version 0.9.1 runs on **macOS 13 or later**, on Apple silicon and Intel. The download is ad-hoc signed. If macOS asks for approval, use **System Settings → Privacy & Security**. [ZIP](https://github.com/Salesao/No-halla/releases/download/v0.9.1/No-halla-0.9.1.zip) · [SHA-256 checksums](https://github.com/Salesao/No-halla/releases/download/v0.9.1/SHA256SUMS.txt)
 
 ## First launch
 
@@ -24,4 +24,4 @@ Open the DMG, drag **No-halla** to **Applications**, then open it. Version 0.9.0
 
 **What a pause covers.** No-halla uses `SIGSTOP` to pause user-space execution. macOS can still send buffered data or finish existing connections, and an AI request already sent can finish on the server. Packet-level blocking requires a firewall.
 
-For site blocking, the 0.9.0 package includes the helper that blocks a domain and its subdomains through the system proxy. Existing connections and apps that ignore the proxy can bypass it. [Site blocker setup](docs/USER_GUIDE.md#blocked-sites) · [Recovery and privacy](docs/USER_GUIDE.md#recovery-and-privacy) · [Removal](docs/USER_GUIDE.md#removal) · [MIT license](LICENSE)
+For site blocking, the 0.9.1 package includes the helper that blocks a domain and its subdomains through the system proxy. Existing connections and apps that ignore the proxy can bypass it. [Site blocker setup](docs/USER_GUIDE.md#blocked-sites) · [Recovery and privacy](docs/USER_GUIDE.md#recovery-and-privacy) · [Removal](docs/USER_GUIDE.md#removal) · [MIT license](LICENSE)
