@@ -114,9 +114,20 @@ actor ProtectionEngine {
     private var lastGraceRemaining: Int?
     private var bypassDeadline: Date?
     private var pauseDeadline: Date?
-    /// FR-44: true from willSleep until didWake. Freeze effects and checks are
-    /// suppressed while set; wall-clock deadlines are re-evaluated on wake.
+    /// FR-44: true from willSleep until wake is evidenced. Freeze effects,
+    /// resumes and checks are suppressed while set; wall-clock deadlines are
+    /// re-evaluated on wake. Cleared by didWake, redundant wake signals
+    /// (screensDidWake / sessionDidBecomeActive), any user action, or the
+    /// hard cap below — a missed wake notification must not disable
+    /// protection indefinitely.
     private var isAsleep = false
+    /// Wall-clock stamp of the false→true transition; basis for the cap.
+    private var sleepStartedAt: Date?
+    /// FR-44: a .resumeAll effect suppressed by sleep. The machine already
+    /// committed its transition (e.g. .protected/.paused/.disabled), so wake()
+    /// must issue the resume regardless of machine status; until then the
+    /// frozen records are kept so the UI and recovery stay truthful.
+    private var resumeDeferred = false
     /// Hard-bounded grace period after wake for a VPN tunnel to re-establish.
     /// Only set on wake; cleared by the settle timer or an observed interface.
     private var vpnSettleDeadline: Date?
@@ -132,6 +143,8 @@ actor ProtectionEngine {
     private var pendingChecks = 0
     private var wakeObserver: NSObjectProtocol?
     private var sleepObserver: NSObjectProtocol?
+    private var screensWakeObserver: NSObjectProtocol?
+    private var sessionWakeObserver: NSObjectProtocol?
     private var launchObserver: NSObjectProtocol?
     private var started = false
 
@@ -181,6 +194,16 @@ actor ProtectionEngine {
         ) { [weak self] _ in
             Task { await self?.willSleep() }
         }
+        screensWakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: nil
+        ) { [weak self] _ in
+            Task { await self?.redundantWakeSignal() }
+        }
+        sessionWakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.sessionDidBecomeActiveNotification, object: nil, queue: nil
+        ) { [weak self] _ in
+            Task { await self?.redundantWakeSignal() }
+        }
         launchObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: nil
         ) { [weak self] _ in
@@ -218,17 +241,27 @@ actor ProtectionEngine {
         vpnSettleTimer = nil
         vpnSettleDeadline = nil
         isAsleep = false
+        sleepStartedAt = nil
+        resumeDeferred = false
         if let wakeObserver = wakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
         }
         if let sleepObserver = sleepObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(sleepObserver)
         }
+        if let screensWakeObserver = screensWakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(screensWakeObserver)
+        }
+        if let sessionWakeObserver = sessionWakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(sessionWakeObserver)
+        }
         if let launchObserver = launchObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(launchObserver)
         }
         wakeObserver = nil
         sleepObserver = nil
+        screensWakeObserver = nil
+        sessionWakeObserver = nil
         launchObserver = nil
         await performResumeAll()
         // D32: a graceful quit must not leave sites blocked. A crash keeps the
@@ -268,6 +301,13 @@ actor ProtectionEngine {
     // MARK: - User actions
 
     func handle(_ action: UserAction) async {
+        // A user action proves the machine is awake: recover a stuck sleep
+        // flag (missed wake notification) through the normal wake path so
+        // stale grace/deadlines are reconciled before the intent runs.
+        if isAsleep {
+            AppLog.engine.info("User action while sleep flag set; forcing wake recovery")
+            await wake()
+        }
         switch action {
         case .freezeNow:
             await applyEvent(.freezeNowTapped)
@@ -310,30 +350,76 @@ actor ProtectionEngine {
     /// FR-44: no freeze while asleep. Wall-clock deadlines stay; every timer
     /// re-evaluates against them on wake instead of catching up.
     private func willSleep() async {
+        if !isAsleep { sleepStartedAt = Date() }
         isAsleep = true
         AppLog.engine.info("System will sleep; freeze effects suppressed")
     }
 
     private func wake() async {
         isAsleep = false
+        sleepStartedAt = nil
+        // Arm stale-batch recovery before any post-wake check can run.
+        await verifier.noteWake()
+        // Open the settle window before the first post-wake verdict; keep an
+        // already-active window so redundant wake signals cannot extend it.
+        if config.protection.mode == .vpnInterface, vpnSettleDeadline == nil {
+            startVPNSettleWindow()
+        }
+        // FR-44: flush a resume that sleep suppressed mid-effect. The machine
+        // already left .frozen, so no later verdict would emit .resumeAll;
+        // issue it here before any new verdict can re-freeze.
+        if resumeDeferred {
+            if await performResumeAll() {
+                resumeDeferred = false
+            }
+        }
         // A grace countdown from before sleep must never freeze on a stale
         // verdict: cancel its effect and let the fresh check re-enter
         // grace/freeze through the machine (frozen stays frozen — R1).
+        var checkQueued = false
         if machine.status == .grace || machine.status == .unknown {
+            // .networkChanged emits .immediateCheck from both states, so the
+            // trailing request below would be a duplicate batch.
             await applyEvent(.networkChanged)
+            checkQueued = true
         }
         // Sleep does not consume dispatch time: re-evaluate wall-clock
         // deadlines now; an expired one fires instead of being extended.
         await reconcileBypassDeadline()
         await reconcilePauseDeadline()
-        if config.protection.mode == .vpnInterface {
-            startVPNSettleWindow()
-        }
-        // FR-12: recreate timers (no catch-up) and check immediately.
+        // FR-12: recreate timers (no catch-up) and check immediately unless
+        // the transition above already queued one.
         startPeriodicTimer()
         startReconcileTimer()
-        await verifier.noteWake()
-        requestImmediateCheck()
+        if !checkQueued {
+            requestImmediateCheck()
+        }
+    }
+
+    /// FR-44 backstop: screensDidWake and sessionDidBecomeActive also prove
+    /// the machine is awake. Recover only when the sleep flag is still set
+    /// (didWake missed): a plain display wake or session switch without a
+    /// preceding willSleep must not run wake recovery — it would cancel a
+    /// live grace and open the VPN settle window without any sleep.
+    private func redundantWakeSignal() async {
+        guard isAsleep else { return }
+        AppLog.engine.info("Wake evidenced by redundant signal; recovering missed didWake")
+        await wake()
+    }
+
+    /// Hard cap on the sleep flag (FR-44 backstop). 12 h exceeds a normal
+    /// overnight sleep; while the machine truly sleeps no dispatch timer
+    /// fires, so the cap can only elapse on a tick after the machine is
+    /// actually running again — exactly the stuck-flag case. A mere timer
+    /// fire never clears the flag; only the elapsed cap does, loudly.
+    private static let maximumSleepFlagAge: TimeInterval = 12 * 60 * 60
+
+    private func expireStaleSleepFlag() async {
+        guard isAsleep, let since = sleepStartedAt else { return }
+        let age = Date().timeIntervalSince(since)
+        guard age >= Self.maximumSleepFlagAge else { return }
+        AppLog.engine.error("Sleep flag stuck for \(Int(age), privacy: .public)s (wake notification missed); forcing wake recovery")
+        await wake()
     }
 
     /// After wake a VPN client may still be re-establishing its tunnel. A
@@ -369,6 +455,7 @@ actor ProtectionEngine {
     // MARK: - Verification
 
     private func runCheck() async -> Bool {
+        await expireStaleSleepFlag()
         // FR-12: no checks while asleep.
         guard !isAsleep else { return false }
         // VPN-tunnel mode: decide locally by the VPN interface — no external query.
@@ -381,6 +468,14 @@ actor ProtectionEngine {
             // Throttled or backed off: keep current state.
             return false
         }
+        // FR-44: willSleep may have landed while the batch was in flight.
+        // A stale verdict must not transition the machine (an allowed one
+        // would resume from .frozen); discard it — the post-wake check
+        // produces a fresh verdict.
+        guard !isAsleep else {
+            AppLog.engine.info("Discarding IP verdict: system went to sleep during the check")
+            return false
+        }
         lastCheck = Date()
         manualRefreshInFlight = false
         currentIPv4 = result.currentIPv4
@@ -391,6 +486,12 @@ actor ProtectionEngine {
         // FR-44: end a wall-clock-expired bypass before applying any verdict.
         if let deadline = bypassDeadline, deadline <= Date() {
             await reconcileBypassDeadline()
+        }
+        // FR-44: the bypass reconciliation above can suspend; re-check before
+        // applying a verdict so a stale allowed one cannot resume from .frozen.
+        guard !isAsleep else {
+            AppLog.engine.info("Discarding IP verdict: system went to sleep during bypass reconciliation")
+            return false
         }
 
         // R2: an active manual-resume bypass suppresses freezing (FR-22). The
@@ -430,6 +531,12 @@ actor ProtectionEngine {
         if let bypassDeadline = bypassDeadline, bypassDeadline > Date() {
             publishSnapshot()
             return true
+        }
+        // FR-44: the bypass reconciliation above can suspend; re-check before
+        // applying a verdict so a stale allowed one cannot resume from .frozen.
+        guard !isAsleep else {
+            AppLog.engine.info("Discarding VPN verdict: system went to sleep during the check")
+            return false
         }
         // Post-wake settle (FR-14): a VPN client may still be re-establishing
         // its tunnel. Inside the bounded window a missing interface yields no
@@ -488,7 +595,14 @@ actor ProtectionEngine {
             case .freeze(let reason):
                 await performFreeze(reason)
             case .resumeAll:
-                await performResumeAll()
+                if await performResumeAll() {
+                    resumeDeferred = false
+                } else {
+                    // FR-44: the resume was suppressed by sleep. The machine
+                    // already committed the transition; remember the deferred
+                    // resume so wake() issues it regardless of machine status.
+                    resumeDeferred = true
+                }
             case .startBypass(let minutes):
                 startBypass(minutes)
             case .cancelBypass:
@@ -503,7 +617,11 @@ actor ProtectionEngine {
                 // C2: no independent state write here. This effect always follows
                 // .resumeAll, whose controller queue already persisted the emptied
                 // journal; an actor-side clear could delete a newer record.
-                frozenProcesses = []
+                // A sleep-suppressed resume keeps the records: the deferred
+                // resume at wake still needs them (and the UI must not lie).
+                if !resumeDeferred {
+                    frozenProcesses = []
+                }
             }
         }
 
@@ -577,8 +695,17 @@ actor ProtectionEngine {
         // D30: an app frozen only at agent-terminal scope keeps its window —
         // the app itself is never stopped.
         WindowMinimizer.promptAccessibilityOnce()
-        for app in apps where app.freezeScope == .app { WindowMinimizer.minimizeApp(bundleID: app.bundleID) }
+        let minimizedApps = apps.filter { $0.freezeScope == .app }
+        for app in minimizedApps { WindowMinimizer.minimizeApp(bundleID: app.bundleID) }
         try? await Task.sleep(nanoseconds: 400_000_000)
+        // FR-44: willSleep may have landed during the settle await. Abort
+        // before any persistence or signal and undo the minimization — the
+        // apps are still running, so there is nothing to SIGCONT.
+        guard !isAsleep else {
+            for app in minimizedApps { WindowMinimizer.restoreApp(bundleID: app.bundleID) }
+            AppLog.engine.info("Freeze aborted: system went to sleep during the minimize settle")
+            return
+        }
         // C2: set metadata and configure durable per-process persistence BEFORE
         // the controller signals, so each stopped process is recorded first. The
         // controller's queue is the single journal owner; no engine save here.
@@ -620,13 +747,34 @@ actor ProtectionEngine {
         }
     }
 
-    private func performResumeAll() async {
+    /// Returns false when the resume was suppressed by sleep (FR-44); the
+    /// caller must keep the frozen records and defer the resume to wake().
+    @discardableResult
+    private func performResumeAll() async -> Bool {
+        // FR-44: never SIGCONT while the machine sleeps. A stale allowed
+        // verdict leaves apps frozen; the post-wake check resumes them.
+        // stop() clears isAsleep first, so the normal quit path always resumes.
+        guard !isAsleep else {
+            AppLog.engine.info("Resume suppressed: system asleep")
+            return false
+        }
         // C2: the controller persists the emptied journal on its queue; configure
         // the hook first and do not clear from the actor (avoids a stale overwrite).
         configureControllerPersistence(reason: freezeReason)
         let resumed = await controller.resumeAll()
+        // FR-44: willSleep may have landed while the controller queue was
+        // draining (the actor is free during the continuation). SIGCONT was
+        // already issued and the journal emptied — that cannot be recalled;
+        // complete the bookkeeping truthfully. Only window restore is skipped:
+        // a sleeping session cannot process AX actions, and wake() re-checks.
+        let asleepNow = isAsleep
+        if asleepNow {
+            AppLog.engine.info("Resume completed as system went to sleep; window restore deferred")
+        }
         // User preference: restore minimized/hidden windows after SIGCONT.
-        for record in resumed { WindowMinimizer.restoreApp(pid: record.pid) }
+        if !asleepNow {
+            for record in resumed { WindowMinimizer.restoreApp(pid: record.pid) }
+        }
         frozenProcesses = []
         frozenSince = nil
         freezeReason = nil
@@ -635,9 +783,11 @@ actor ProtectionEngine {
             AppLog.engine.info("Resumed \(count, privacy: .public) apps")
             onNotification?(NotificationEvent(kind: .resumed, frozenCount: count))
         }
+        return true
     }
 
     private func reconcile() async {
+        await expireStaleSleepFlag()
         // C1: never freeze new instances while the trusted list is empty (setup).
         guard machine.status == .frozen, !setupIncomplete else { return }
         guard !isAsleep else { return }
@@ -672,8 +822,14 @@ actor ProtectionEngine {
             cancelPause()
             machine = ProtectionStateMachine()
             // Resume our own processes; the controller queue orders this after any
-            // already-issued freeze, so nothing is left paused in setup.
-            await performResumeAll()
+            // already-issued freeze, so nothing is left paused in setup. If sleep
+            // suppresses it, wake() flushes the deferred resume (the machine was
+            // just reset, so no later effect would emit .resumeAll).
+            if await performResumeAll() {
+                resumeDeferred = false
+            } else {
+                resumeDeferred = true
+            }
             await applyEvent(.appStarted(configValid: true))
             if !newConfig.protection.enabled {
                 await applyEvent(.protectionDisabled)

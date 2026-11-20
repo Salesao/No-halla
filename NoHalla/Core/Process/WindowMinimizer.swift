@@ -69,6 +69,14 @@ enum WindowMinimizer {
         }
     }
 
+    /// Restores windows of the running app with the given bundle ID. Used by
+    /// the freeze abort path: the app was never stopped, so only the
+    /// minimization needs undoing.
+    static func restoreApp(bundleID: String) {
+        guard let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == bundleID }) else { return }
+        restoreApp(pid: app.processIdentifier)
+    }
+
     private static func performOnWindows(pid: Int32, action: (AXUIElement) -> Void) {
         let axApp = AXUIElementCreateApplication(pid)
         var value: CFTypeRef?
