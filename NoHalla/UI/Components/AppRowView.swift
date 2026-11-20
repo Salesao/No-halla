@@ -2,7 +2,7 @@
 //  AppRowView.swift
 //  NoHalla
 //
-//  Protected-app row (design/COMPONENTS.md): 44 pt row, 20 pt icon, a toggle
+//  Protected-app row: 44 pt row, 20 pt icon, a toggle
 //  whose label includes the app name, run-state text, and a 1 pt waiting rim
 //  plus Frozen label when frozen. Toggling changes protection without removing
 //  the row.

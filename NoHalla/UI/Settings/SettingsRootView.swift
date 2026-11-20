@@ -2,7 +2,7 @@
 //  SettingsRootView.swift
 //  NoHalla
 //
-//  Settings window root (design §7.4, COMPONENTS.md settings toolbar): four
+//  Settings window root: four
 //  icon-and-text tabs (General/Protection/Advanced/About); the selected tab's
 //  icon and text are blue with a 1 pt bronze underline. Window 680×520.
 //

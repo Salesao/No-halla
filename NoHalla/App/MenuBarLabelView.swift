@@ -2,7 +2,7 @@
 //  MenuBarLabelView.swift
 //  NoHalla
 //
-//  Menu bar glyph + VoiceOver label (design/ICONS.md, ACCESSIBILITY.md). C3:
+//  Menu bar glyph + VoiceOver label. C3:
 //  observes the shared AppState so the glyph and spoken status update whenever
 //  the engine snapshot changes — without opening the popover and without a
 //  second engine. Image and label derive from the same uiStatus.

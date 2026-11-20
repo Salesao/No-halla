@@ -2,7 +2,7 @@
 //  NetworkCardView.swift
 //  NoHalla
 //
-//  Network field group (design/COMPONENTS.md): label/value pairs read together,
+//  Network field group: label/value pairs read together,
 //  monospace IP, a separate refresh button with a descriptive label, and an
 //  "Add current IP" action only when the address is known and untrusted.
 //  Unknown/offline values show an em dash with an explanatory note (R54);

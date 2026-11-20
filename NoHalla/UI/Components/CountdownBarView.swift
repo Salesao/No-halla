@@ -2,7 +2,7 @@
 //  CountdownBarView.swift
 //  NoHalla
 //
-//  Grace countdown (design/COMPONENTS.md): linear bar plus text. At Reduce
+//  Grace countdown: linear bar plus text. At Reduce
 //  Motion the bar snaps on each tick instead of animating.
 //
 

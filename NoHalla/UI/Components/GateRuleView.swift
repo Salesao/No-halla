@@ -2,7 +2,7 @@
 //  GateRuleView.swift
 //  NoHalla
 //
-//  Decorative bronze divider with 24 strokes (design/COMPONENTS.md, ornament
+//  Decorative bronze divider with 24 strokes (ornament
 //  tokens). Hidden from assistive technology; carries no meaning.
 //
 

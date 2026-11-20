@@ -2,7 +2,7 @@
 //  GateSceneView.swift
 //  NoHalla
 //
-//  Decorative gate/fjord vignette (design/COMPONENTS.md). Shares the GateScene
+//  Decorative gate/fjord vignette. Shares the GateScene
 //  asset; treated as decoration with actions kept outside the image.
 //
 

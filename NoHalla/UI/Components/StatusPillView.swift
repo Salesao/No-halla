@@ -2,7 +2,7 @@
 //  StatusPillView.swift
 //  NoHalla
 //
-//  Protection badge (design/COMPONENTS.md): state glyph plus semantic label
+//  Protection badge: state glyph plus semantic label
 //  inside a 1 pt decorative bronze rim. The status is read before the lore;
 //  bronze carries no status meaning (D3). Wraps long translations.
 //

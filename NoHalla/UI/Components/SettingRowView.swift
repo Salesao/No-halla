@@ -2,7 +2,7 @@
 //  SettingRowView.swift
 //  NoHalla
 //
-//  Shared settings row (design/COMPONENTS.md): a label lane with helper text
+//  Shared settings row: a label lane with helper text
 //  beneath the label and a trailing control aligned on the trailing edge.
 //
 

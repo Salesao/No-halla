@@ -26,7 +26,7 @@ CATALOG = ROOT / "NoHalla" / "Resources" / "Assets.xcassets"
 SVG_NS = "http://www.w3.org/2000/svg"
 ET.register_namespace("", SVG_NS)
 
-# Symbol id -> imageset name (design/ICONS.md).
+# Symbol id -> imageset name.
 MENUBAR_SYMBOLS = {
     "protected": "MenuBarProtected",
     "checking": "MenuBarGrace",

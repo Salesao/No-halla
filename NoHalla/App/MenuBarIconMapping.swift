@@ -2,14 +2,14 @@
 //  MenuBarIconMapping.swift
 //  NoHalla
 //
-//  Maps a derived UI status to its menu bar template glyph (design/ICONS.md).
+//  Maps a derived UI status to its menu bar template glyph.
 //  The mapping lives here (s1-wiring) because it depends on UIStatus.
 //
 
 import Foundation
 
 extension DesignTokens {
-    /// Menu bar imageset name for a UI status (ICONS.md).
+    /// Menu bar imageset name for a UI status.
     static func menuBarImageName(for status: UIStatus) -> String {
         switch status {
         case .protected:
@@ -25,7 +25,7 @@ extension DesignTokens {
         }
     }
 
-    /// VoiceOver label key for a menu bar status (design/ACCESSIBILITY.md).
+    /// VoiceOver label key for a menu bar status.
     static func menuBarAccessibilityKey(for status: UIStatus) -> String {
         switch status {
         case .protected:
