@@ -128,6 +128,9 @@ actor ProtectionEngine {
     /// must issue the resume regardless of machine status; until then the
     /// frozen records are kept so the UI and recovery stay truthful.
     private var resumeDeferred = false
+    /// FR-44: pids resumed while sleep landed during the controller
+    /// continuation; their window restore was skipped and wake() owns it.
+    private var pendingWindowRestore: [Int32] = []
     /// Hard-bounded grace period after wake for a VPN tunnel to re-establish.
     /// Only set on wake; cleared by the settle timer or an observed interface.
     private var vpnSettleDeadline: Date?
@@ -243,6 +246,7 @@ actor ProtectionEngine {
         isAsleep = false
         sleepStartedAt = nil
         resumeDeferred = false
+        pendingWindowRestore = []
         if let wakeObserver = wakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
         }
@@ -358,6 +362,18 @@ actor ProtectionEngine {
     private func wake() async {
         isAsleep = false
         sleepStartedAt = nil
+        // D51: cancel a pre-sleep grace countdown SYNCHRONOUSLY before the
+        // first await — a graceTick queued during wake()'s suspensions must
+        // not fire .graceExpired on the stale verdict. The machine transition
+        // below still re-enters grace/freeze only via the fresh check.
+        if machine.status == .grace || machine.status == .unknown {
+            cancelGrace()
+        }
+        // Window restores deferred when sleep landed mid-resume.
+        if !pendingWindowRestore.isEmpty {
+            for pid in pendingWindowRestore { WindowMinimizer.restoreApp(pid: pid) }
+            pendingWindowRestore = []
+        }
         // Arm stale-batch recovery before any post-wake check can run.
         await verifier.noteWake()
         // Open the settle window before the first post-wake verdict; keep an
@@ -770,6 +786,7 @@ actor ProtectionEngine {
         let asleepNow = isAsleep
         if asleepNow {
             AppLog.engine.info("Resume completed as system went to sleep; window restore deferred")
+            pendingWindowRestore.append(contentsOf: resumed.map { $0.pid })
         }
         // User preference: restore minimized/hidden windows after SIGCONT.
         if !asleepNow {
