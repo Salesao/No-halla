@@ -166,7 +166,7 @@ struct OnboardingTrustedRealmView: View {
                 Button(L10n.string("ui.back"), action: onBack)
                     .buttonStyle(.bordered)
                 Spacer()
-                Button(L10n.string("ui.continue"), action: onContinue)
+                Button(L10n.string("ui.finish"), action: onContinue)
                     .buttonStyle(.borderedProminent)
                     .disabled(!canContinue)
             }

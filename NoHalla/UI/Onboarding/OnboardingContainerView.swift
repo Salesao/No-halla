@@ -2,8 +2,8 @@
 //  OnboardingContainerView.swift
 //  NoHalla
 //
-//  Four-step onboarding (design §7.3, FR-2/3/10, D36): intro, apps, trusted
-//  realm (mode + IPs), blocked sites, with progress dots. Finish persists
+//  Three-step onboarding (design §7.3, FR-2/3/10, D36): intro, apps, trusted
+//  realm (mode + IPs), with progress dots. Finish persists
 //  onboardingCompleted, the selected apps and launch-at-login (SMAppService,
 //  inline error on failure), then requests notification permission (FR-29).
 //  Embedded in the main window, which switches to the dashboard once
@@ -37,16 +37,11 @@ struct OnboardingContainerView: View {
                         onBack: { step = 0 },
                         onContinue: { step = 2 }
                     )
-                case 2:
+                default:
                     OnboardingTrustedRealmView(
                         launchAtLogin: $launchAtLogin,
                         onBack: { step = 1 },
-                        onContinue: { step = 3 }
-                    )
-                default:
-                    OnboardingDomainsView(
-                        onBack: { step = 2 },
-                        onFinish: { finish(includeApps: true) }
+                        onContinue: { finish(includeApps: true) }
                     )
                 }
             }
@@ -57,7 +52,7 @@ struct OnboardingContainerView: View {
 
     private var progressDots: some View {
         HStack(spacing: DesignTokens.spacing2) {
-            ForEach(0..<4, id: \.self) { index in
+            ForEach(0..<3, id: \.self) { index in
                 Capsule()
                     .fill(index == step ? DesignTokens.action : DesignTokens.line)
                     .frame(width: index == step ? 28 : 18, height: 4)

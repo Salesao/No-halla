@@ -75,8 +75,6 @@ actor ProtectionEngine {
     private let controller: ProcessControlling
     private let verifier: IPVerifier
     private let monitor: NetworkMonitor
-    /// D32: publishes the block/allow state the root helper applies to hosts.
-    private let domainGuard: DomainGuardWriting
 
     // MARK: - Published callbacks
 
@@ -156,15 +154,13 @@ actor ProtectionEngine {
         stateStore: StateStore,
         controller: ProcessControlling,
         verifier: IPVerifier,
-        monitor: NetworkMonitor,
-        domainGuard: DomainGuardWriting? = nil
+        monitor: NetworkMonitor
     ) {
         self.configStore = configStore
         self.stateStore = stateStore
         self.controller = controller
         self.verifier = verifier
         self.monitor = monitor
-        self.domainGuard = domainGuard ?? DomainGuardWriter(directory: configStore.directoryURL)
         self.config = configStore.load()
     }
 
@@ -268,9 +264,6 @@ actor ProtectionEngine {
         sessionWakeObserver = nil
         launchObserver = nil
         await performResumeAll()
-        // D32: a graceful quit must not leave sites blocked. A crash keeps the
-        // last state (fail-closed) until the next launch republishes it.
-        domainGuard.update(active: false, domains: config.effectiveDomainBlocklist)
     }
 
     /// Startup recovery of stale frozen records (FR-6/42). Resumes directly
@@ -1127,25 +1120,7 @@ actor ProtectionEngine {
         return Set(running.compactMap { $0.bundleIdentifier }.filter { protectedIDs.contains($0) })
     }
 
-    /// D32: the guard blocks only while the IP is not proven trusted.
-    private var domainGuardActive: Bool {
-        guard config.protection.enabled, !setupIncomplete else { return false }
-        switch machine.status {
-        case .protected, .paused, .disabled:
-            return false
-        case .initializing, .checking, .grace, .frozen, .unknown:
-            return true
-        }
-    }
-
     private func publishSnapshot() {
-        // D32: block only while the IP is not proven trusted. Pause and the
-        // master switch are explicit user overrides; setup (empty trusted
-        // list) is inactive (FR-10).
-        // D32/D48: with no domain rules there is nothing to guard; keep the proxy
-        // and the system proxy untouched.
-        let hasDomains = !config.effectiveDomainBlocklist.isEmpty
-        domainGuard.update(active: domainGuardActive && hasDomains, domains: config.effectiveDomainBlocklist)
         let snapshot = EngineSnapshot(
             status: machine.status,
             uiStatus: deriveUIStatus(),

@@ -139,7 +139,7 @@ def main():
             print(f"App: {APP}\nRunning No-halla processes: {len(running_processes())}")
             print(f"Would stop the app, disable launch at login, and clear {DATA} (keeping the lock file).")
             print("Would clear app preferences, caches and saved window state, then reopen the app.")
-            print("The system domain guard and macOS notification permission are retained.")
+            print("macOS notification permission is retained.")
         else:
             reset(executable)
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:

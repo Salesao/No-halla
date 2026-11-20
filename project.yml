@@ -37,11 +37,6 @@ targets:
         codeSign: true
         copy:
           destination: executables
-      - target: NoHallaDomainGuard
-        embed: true
-        codeSign: true
-        copy:
-          destination: executables
   NoHallaWatchdog:
     type: tool
     platform: macOS
@@ -51,19 +46,6 @@ targets:
       base:
         PRODUCT_NAME: NoHallaWatchdog
         PRODUCT_BUNDLE_IDENTIFIER: dev.nohalla.NoHallaWatchdog
-        CODE_SIGN_IDENTITY: "-"
-        ENABLE_HARDENED_RUNTIME: YES
-        SWIFT_VERSION: "5.0"
-  NoHallaDomainGuard:
-    type: tool
-    platform: macOS
-    sources:
-      - path: NoHallaDomainGuard
-      - path: NoHalla/Core/Guard
-    settings:
-      base:
-        PRODUCT_NAME: NoHallaDomainGuard
-        PRODUCT_BUNDLE_IDENTIFIER: dev.nohalla.NoHallaDomainGuard
         CODE_SIGN_IDENTITY: "-"
         ENABLE_HARDENED_RUNTIME: YES
         SWIFT_VERSION: "5.0"

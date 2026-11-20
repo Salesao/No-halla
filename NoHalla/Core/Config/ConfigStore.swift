@@ -24,9 +24,6 @@ final class ConfigStore {
     private static let currentSchemaVersion = 2
 
     private let directory: URL
-    /// Directory this store reads/writes. The D32 domain-guard state file
-    /// lives next to config.json so paths follow any injected directory.
-    var directoryURL: URL { directory }
     private var configURL: URL { directory.appendingPathComponent("config.json") }
 
     /// True when the last load hit corrupt JSON or repaired invalid fields.
@@ -144,49 +141,6 @@ final class ConfigStore {
             }
         }
         config.trustedAddresses = trusted
-
-        // D32: the guard only ever sees normalized hostnames. Drop invalid or
-        // duplicate entries here so a hand-edited config cannot reach /etc/hosts.
-        let domains = DomainBlocklist.normalized(config.domainBlocklist)
-        if domains != config.domainBlocklist {
-            AppLog.engine.error("Dropped invalid or duplicate blocked domains")
-            repaired = true
-        }
-        config.domainBlocklist = domains
-
-        // D33: imported packages are untrusted input too. Keep at most 32,
-        // drop empty ones, re-normalize domains, clamp text, fix duplicate ids.
-        var packages: [DomainPackage] = []
-        for raw in config.domainPackages {
-            guard packages.count < 32 else {
-                AppLog.engine.error("Dropped domain packages beyond the limit of 32")
-                repaired = true
-                break
-            }
-            let packageDomains = DomainBlocklist.normalized(raw.domains)
-            guard !packageDomains.isEmpty else {
-                AppLog.engine.error("Dropped a domain package without valid domains")
-                repaired = true
-                continue
-            }
-            var name = raw.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            if name.isEmpty { name = "Package" }
-            if name.count > DomainPackageDocument.maxNameLength {
-                name = String(name.prefix(DomainPackageDocument.maxNameLength))
-            }
-            var note = raw.note
-            if let text = note, text.count > DomainPackageDocument.maxNoteLength {
-                note = String(text.prefix(DomainPackageDocument.maxNoteLength))
-            }
-            var id = raw.id
-            if id.isEmpty || packages.contains(where: { $0.id == id }) {
-                id = UUID().uuidString
-            }
-            let package = DomainPackage(id: id, name: name, note: note, domains: packageDomains, enabled: raw.enabled)
-            if package != raw { repaired = true }
-            packages.append(package)
-        }
-        config.domainPackages = packages
 
         if repaired {
             lastLoadWasCorrupt = true

@@ -23,35 +23,11 @@ During first-run setup, choose **Agent terminals** for each app where you run an
 
 Recognized CLIs include Claude Code, Codex, Antigravity, Gemini, Grok Build, GitHub Copilot, Cursor, Factory Droid, Amp, Kiro, Aider, OpenCode, Crush, Goose and OpenHands. Detached agents and sessions inside `tmux` or `screen` fall outside this detection. [Agent catalog](../NoHalla/Core/Process/AgentDetector.swift)
 
-## Blocked sites
-
-App freezing runs as the current user. To block sites too, open **Settings → Protection → Blocked sites**, add a domain and choose **Install…**. macOS requests administrator approval for the optional helper. The 0.9.0 package includes the helper that blocks a domain and its subdomains through the system web proxy.
-
-With the current helper, an entry such as `example.org` also covers `api.example.org`. During checks, grace, unknown or frozen states, the helper directs system HTTP/HTTPS proxy traffic to `127.0.0.1:8844`. It rejects matching hostnames and forwards other requests without inspecting TLS. The rule applies across apps using the system proxy. Existing connections and clients that ignore the proxy can bypass suffix blocking. If the port is unavailable, exact-name entries in `/etc/hosts` provide limited coverage.
-
-On a trusted result, protection off or normal quit, the helper restores the saved proxy settings and removes its hosts entries. A crash leaves an active block in place. Reinstall the helper from Settings after replacing an older build. You can also install the bundled helper from Terminal.
-
-```bash
-sudo bash "/Applications/No-halla.app/Contents/Resources/install-domain-guard.sh"
-```
-
-You can drop a plain-text or JSON domain list onto **Blocked sites**. **Import package…** previews a shareable JSON package before adding it. Packages can be enabled individually, exported or dragged into Finder. Imports are limited to 1 MB, 32 packages and 256 domains per package.
-
-```json
-{
-  "schemaVersion": 1,
-  "name": "Work services",
-  "note": "Use these sites on the work VPN",
-  "author": "Example team",
-  "domains": ["example.org"]
-}
-```
-
 ## Recovery and privacy
 
 Before sending `SIGSTOP`, No-halla records the process identity. It checks ownership, bundle membership (or ancestry for agent sessions), PID and start time. System processes, No-halla and its watchdog are excluded. On quit, SIGTERM or SIGINT, No-halla resumes frozen processes with `SIGCONT`. An embedded watchdog handles crashes, and the next launch checks for stale records. If a debugger independently stopped the same process between recording and freezing it, recovery may also release the debugger’s pause.
 
-Configuration and recovery state are written atomically under `~/Library/Application Support/NoHalla/`. No-halla has no accounts or telemetry. Public-IP lookups contact the configured HTTPS endpoints, including the address lookup on the onboarding trust screen. The optional proxy also forwards allowed client traffic. IPs are masked at normal log levels. **Settings → Advanced → Export diagnostics** writes a local archive containing configuration, state and available recent logs. The archive can include trusted addresses.
+Configuration and recovery state are written atomically under `~/Library/Application Support/NoHalla/`. No-halla has no accounts or telemetry. Public-IP lookups contact the configured HTTPS endpoints, including the address lookup on the onboarding trust screen. IPs are masked at normal log levels. **Settings → Advanced → Export diagnostics** writes a local archive containing configuration, state and available recent logs. The archive can include trusted addresses.
 
 ## Troubleshooting
 
@@ -80,6 +56,5 @@ To create a DMG, ZIP and checksum file in `dist/`, run `./scripts/package.sh` fr
 ## Removal
 
 1. Turn off **Launch at login** in General settings.
-2. If you installed the site blocker, choose **Uninstall…** in Protection settings while the app is still present. It restores the saved system proxy settings and removes the helper and its hosts entries.
-3. Quit No-halla so frozen apps resume, then delete **No-halla.app** from Applications.
-4. If you also want to delete preferences and recovery files stored in Application Support, remove `~/Library/Application Support/NoHalla/`.
+2. Quit No-halla so frozen apps resume, then delete **No-halla.app** from Applications.
+3. If you also want to delete preferences and recovery files stored in Application Support, remove `~/Library/Application Support/NoHalla/`.

@@ -180,8 +180,8 @@
     "ru": "Закрывайте ворота, когда падает VPN"
   },
   "onboarding.1.body": {
-    "en": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate and blocked sites stop loading until your VPN returns.",
-    "ru": "No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, а заблокированные домены перестают открываться, пока VPN не вернётся."
+    "en": "No-halla watches your IP. If it leaves the trusted realm, selected apps wait at the gate until your VPN returns.",
+    "ru": "No-halla следит за IP. Если он покидает доверенный мир, выбранные приложения ждут у ворот, пока VPN не вернётся."
   },
   "onboarding.2.title": {
     "en": "Choose who waits at the gate",
@@ -202,18 +202,6 @@
   "onboarding.launchAtLogin": {
     "en": "Launch No-halla at login",
     "ru": "Запускать No-halla при входе"
-  },
-  "onboarding.4.title": {
-    "en": "Blocked sites",
-    "ru": "Заблокированные сайты"
-  },
-  "onboarding.4.body": {
-    "en": "Optional: these domains and all their subdomains will not load while the IP is not trusted.",
-    "ru": "Необязательно: эти домены и все их поддомены не будут открываться, пока IP недоверенный."
-  },
-  "onboarding.4.helper": {
-    "en": "Shared packages can be imported later in Settings → Protection.",
-    "ru": "Общие пакеты можно импортировать позже в Settings → Protection."
   },
   "onboarding.skip": {
     "en": "Skip setup",
@@ -623,182 +611,6 @@
     "en": "min",
     "ru": "мин"
   },
-  "ui.domain-guard": {
-    "en": "Blocked sites",
-    "ru": "Заблокированные сайты"
-  },
-  "ui.domain-guard-add": {
-    "en": "Add domain",
-    "ru": "Добавить домен"
-  },
-  "ui.domain-list-drop-hint": {
-    "en": "Drop a domain list (.txt or .json) here.",
-    "ru": "Перетащите сюда список доменов (.txt или .json)."
-  },
-  "ui.domain-list-added": {
-    "en": "%d domains added.",
-    "ru": "Добавлено доменов: %d."
-  },
-  "ui.domain-list-added-skipped": {
-    "en": "%d added, %d skipped.",
-    "ru": "Добавлено %d, пропущено %d."
-  },
-  "ui.domain-list-none-new": {
-    "en": "No new domains.",
-    "ru": "Новых доменов нет."
-  },
-  "ui.domain-list-import-failed": {
-    "en": "Couldn't read that list.",
-    "ru": "Не удалось прочитать список."
-  },
-  "ui.domain-list-empty": {
-    "en": "No valid hostnames found.",
-    "ru": "Валидных хостов не найдено."
-  },
-  "ui.domain-list-too-large": {
-    "en": "That list is too large.",
-    "ru": "Список слишком большой."
-  },
-  "ui.domain-guard-limit": {
-    "en": "The list is full (256 domains). Remove one before adding another.",
-    "ru": "Список заполнен (256 доменов). Удалите один, чтобы добавить новый."
-  },
-  "ui.domain-guard-reinstall": {
-    "en": "The installed root helper predates subdomain blocking. Reinstall it to cover subdomains.",
-    "ru": "Установленный root-helper не умеет блокировать поддомены. Переустановите его, чтобы включить их."
-  },
-  "ui.domain-guard-reinstall-action": {
-    "en": "Reinstall…",
-    "ru": "Переустановить…"
-  },
-  "ui.domain-guard-suffix-warning": {
-    "en": "Subdomain blocking is unavailable: %@.",
-    "ru": "Блокировка поддоменов недоступна: %@."
-  },
-  "ui.domain-guard-helper": {
-    "en": "While protection is on and the IP is not proven trusted, these domains and all their subdomains do not load. The block uses the system proxy: apps that ignore it, and connections already open, bypass it.",
-    "ru": "Пока защита включена и IP не подтверждён доверенным, эти домены и все их поддомены не открываются. Блокировка идёт через системный прокси: приложения, которые его игнорируют, и уже открытые соединения её обходят."
-  },
-  "ui.domain-guard-not-installed": {
-    "en": "The root helper is not installed, so this list has no effect yet.",
-    "ru": "Root-helper не установлен, поэтому список пока не действует."
-  },
-  "ui.domain-guard-install": {
-    "en": "Install…",
-    "ru": "Установить…"
-  },
-  "ui.domain-guard-copy-command": {
-    "en": "Copy command",
-    "ru": "Скопировать команду"
-  },
-  "ui.domain-guard-copied": {
-    "en": "Copied",
-    "ru": "Скопировано"
-  },
-  "ui.domain-guard-installed": {
-    "en": "Root helper installed.",
-    "ru": "Root-helper установлен."
-  },
-  "ui.domain-guard-install-failed": {
-    "en": "Installation failed. Copy the command and run it in Terminal.",
-    "ru": "Установка не удалась. Скопируйте команду и выполните её в Terminal."
-  },
-  "ui.domain-guard-uninstall": {
-    "en": "Uninstall…",
-    "ru": "Удалить…"
-  },
-  "ui.domain-guard-uninstall-failed": {
-    "en": "Couldn't remove the helper.",
-    "ru": "Не удалось удалить root-helper."
-  },
-  "ui.domain-guard-edit": {
-    "en": "Blocked site",
-    "ru": "Заблокированный сайт"
-  },
-  "ui.domain-guard-placeholder": {
-    "en": "example.com",
-    "ru": "example.com"
-  },
-  "ui.domain-guard-invalid": {
-    "en": "Enter a hostname like example.com",
-    "ru": "Введите имя хоста, например example.com"
-  },
-  "ui.domain-packages": {
-    "en": "Shared packages",
-    "ru": "Общие пакеты"
-  },
-  "ui.domain-packages-import": {
-    "en": "Import package…",
-    "ru": "Импортировать пакет…"
-  },
-  "ui.domain-packages-export": {
-    "en": "Export package",
-    "ru": "Экспортировать пакет"
-  },
-  "ui.domain-packages-export-list": {
-    "en": "Export list…",
-    "ru": "Экспортировать список…"
-  },
-  "ui.domain-packages-helper": {
-    "en": "Packages are JSON files with a domain list. Drag a package out to share it, or drop a .json file here to import. Disable a package without deleting it.",
-    "ru": "Пакеты — это JSON-файлы со списком доменов. Перетащите пакет, чтобы поделиться, или бросьте сюда .json-файл для импорта. Пакет можно отключить, не удаляя."
-  },
-  "ui.domain-packages-drag": {
-    "en": "Drag to share this package",
-    "ru": "Перетащите, чтобы поделиться пакетом"
-  },
-  "ui.domain-packages-empty": {
-    "en": "No packages yet.",
-    "ru": "Пакетов пока нет."
-  },
-  "ui.domain-packages-domain-count": {
-    "en": "%d domains",
-    "ru": "%d доменов"
-  },
-  "ui.domain-packages-enabled": {
-    "en": "Enabled",
-    "ru": "Включён"
-  },
-  "ui.domain-packages-import-failed": {
-    "en": "Import failed",
-    "ru": "Импорт не удался"
-  },
-  "ui.domain-packages-invalid": {
-    "en": "Not a valid No-halla package.",
-    "ru": "Это не пакет No-halla."
-  },
-  "ui.domain-packages-too-large": {
-    "en": "Package is too large.",
-    "ru": "Пакет слишком большой."
-  },
-  "ui.domain-packages-unsupported": {
-    "en": "Unsupported package version.",
-    "ru": "Неподдерживаемая версия пакета."
-  },
-  "ui.domain-packages-limit": {
-    "en": "Too many packages (max 32).",
-    "ru": "Слишком много пакетов (максимум 32)."
-  },
-  "ui.domain-packages-preview-title": {
-    "en": "Import package",
-    "ru": "Импорт пакета"
-  },
-  "ui.domain-packages-preview-count": {
-    "en": "%d domains, %d new",
-    "ru": "%d доменов, %d новых"
-  },
-  "ui.domain-packages-preview-duplicates": {
-    "en": "%d already blocked",
-    "ru": "%d уже заблокированы"
-  },
-  "ui.domain-packages-preview-author": {
-    "en": "by %@",
-    "ru": "автор: %@"
-  },
-  "ui.domain-packages-import-action": {
-    "en": "Import",
-    "ru": "Импортировать"
-  },
   "ui.ok": {
     "en": "OK",
     "ru": "ОК"
@@ -858,9 +670,5 @@
   "network.vpnDisconnected": {
     "en": "Disconnected",
     "ru": "Отключён"
-  },
-  "ui.domain-guard-card-helper": {
-    "en": "These sites stay blocked while protection is on and your IP isn't trusted.",
-    "ru": "Эти сайты остаются заблокированными, пока защита включена, а IP не подтверждён доверенным."
   }
 }

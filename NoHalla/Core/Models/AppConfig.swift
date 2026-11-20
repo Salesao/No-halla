@@ -23,29 +23,6 @@ struct AppConfig: Codable, Equatable {
     var notifications: Bool
     var language: AppLanguage
     var logLevel: LogLevel
-    /// D32: hostnames blocked while protection is active and the IP is not
-    /// trusted. Normalized and capped by ConfigStore on load. Absent in older
-    /// configs, hence the custom decoder.
-    var domainBlocklist: [String]
-    /// D33: imported shared packages. Only enabled packages contribute to the
-    /// guard; `id` is local, the file format has no identity.
-    var domainPackages: [DomainPackage]
-
-    /// Manual entries plus every enabled package, normalized and deduped —
-    /// the exact list published to the root helper.
-    var effectiveDomainBlocklist: [String] {
-        var combined = domainBlocklist
-        for package in domainPackages where package.enabled {
-            combined.append(contentsOf: package.domains)
-        }
-        return DomainBlocklist.normalized(combined)
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case schemaVersion, onboardingCompleted, protection, trustedAddresses
-        case protectedApps, ipCheck, launchAtLogin, notifications, language, logLevel
-        case domainBlocklist, domainPackages
-    }
 
     init(
         schemaVersion: Int,
@@ -57,9 +34,7 @@ struct AppConfig: Codable, Equatable {
         launchAtLogin: Bool,
         notifications: Bool,
         language: AppLanguage,
-        logLevel: LogLevel,
-        domainBlocklist: [String] = [],
-        domainPackages: [DomainPackage] = []
+        logLevel: LogLevel
     ) {
         self.schemaVersion = schemaVersion
         self.onboardingCompleted = onboardingCompleted
@@ -71,26 +46,6 @@ struct AppConfig: Codable, Equatable {
         self.notifications = notifications
         self.language = language
         self.logLevel = logLevel
-        self.domainBlocklist = domainBlocklist
-        self.domainPackages = domainPackages
-    }
-
-    /// Tolerates configs written before D32: a missing `domainBlocklist` means
-    /// the guard has nothing to block. Every other key was already required.
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
-        onboardingCompleted = try container.decode(Bool.self, forKey: .onboardingCompleted)
-        protection = try container.decode(ProtectionSettings.self, forKey: .protection)
-        trustedAddresses = try container.decode([String].self, forKey: .trustedAddresses)
-        protectedApps = try container.decode([ProtectedApp].self, forKey: .protectedApps)
-        ipCheck = try container.decode(IPCheckSettings.self, forKey: .ipCheck)
-        launchAtLogin = try container.decode(Bool.self, forKey: .launchAtLogin)
-        notifications = try container.decode(Bool.self, forKey: .notifications)
-        language = try container.decode(AppLanguage.self, forKey: .language)
-        logLevel = try container.decode(LogLevel.self, forKey: .logLevel)
-        domainBlocklist = try container.decodeIfPresent([String].self, forKey: .domainBlocklist) ?? []
-        domainPackages = try container.decodeIfPresent([DomainPackage].self, forKey: .domainPackages) ?? []
     }
 
     /// Factory defaults. Per owner request (simple whitelist model): only freeze
@@ -118,9 +73,7 @@ struct AppConfig: Codable, Equatable {
         launchAtLogin: true,
         notifications: true,
         language: .system,
-        logLevel: .info,
-        domainBlocklist: [],
-        domainPackages: []
+        logLevel: .info
     )
 }
 
