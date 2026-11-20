@@ -4,7 +4,7 @@
 
 **When your VPN drops, No-halla can pause a whole Mac app or just the terminal sessions running AI agents.** Say you have Codex working in Orca and Claude Code in macOS Terminal. Enable **Agent terminals** for both apps and those sessions pause together, including the commands the agents started. A build or SSH session in another tab keeps running. When the VPN returns, both agents resume.
 
-**[Download No-halla 0.9.1](https://github.com/Salesao/No-halla/releases/download/v0.9.1/No-halla-0.9.1.dmg)** · [First launch](#first-launch) · [Build from source](docs/USER_GUIDE.md#build-from-source) · [Troubleshooting](docs/USER_GUIDE.md#troubleshooting)
+**[Download No-halla 0.9.2](https://github.com/Salesao/No-halla/releases/download/v0.9.2/No-halla-0.9.2.dmg)** · [First launch](#first-launch) · [Build from source](docs/USER_GUIDE.md#build-from-source) · [Troubleshooting](docs/USER_GUIDE.md#troubleshooting)
 
 ## Protection in action
 
@@ -14,7 +14,7 @@
 
 ## Install
 
-Open the DMG, drag **No-halla** to **Applications**, then open it. Version 0.9.1 runs on **macOS 13 or later**, on Apple silicon and Intel. The download is ad-hoc signed. If macOS asks for approval, use **System Settings → Privacy & Security**. [ZIP](https://github.com/Salesao/No-halla/releases/download/v0.9.1/No-halla-0.9.1.zip) · [SHA-256 checksums](https://github.com/Salesao/No-halla/releases/download/v0.9.1/SHA256SUMS.txt)
+Open the DMG, drag **No-halla** to **Applications**, then open it. Version 0.9.2 runs on **macOS 13 or later**, on Apple silicon and Intel. The download is ad-hoc signed. If macOS asks for approval, use **System Settings → Privacy & Security**. [ZIP](https://github.com/Salesao/No-halla/releases/download/v0.9.2/No-halla-0.9.2.zip) · [SHA-256 checksums](https://github.com/Salesao/No-halla/releases/download/v0.9.2/SHA256SUMS.txt)
 
 ## First launch
 
