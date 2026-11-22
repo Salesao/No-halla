@@ -4,7 +4,19 @@
 
 **Когда пропадает VPN, No-halla может поставить на паузу целое приложение или только сеансы терминала, в которых работают ИИ-агенты.** Допустим, Codex запущен в Orca, а Claude Code — в стандартном «Терминале» macOS. Если для обоих приложений выбрать «Терминалы агентов», при обрыве VPN оба сеанса встанут на паузу вместе с командами, запущенными агентами. В соседних вкладках без агентов можно по-прежнему собирать проект и работать по SSH. Когда VPN вернётся, агенты продолжат с того же места.
 
-**[Скачать No-halla 0.9.2](https://github.com/Salesao/No-halla/releases/download/v0.9.2/No-halla-0.9.2.dmg)** · [Первый запуск](#первый-запуск) · [Сборка из исходников](docs/USER_GUIDE.ru.md#сборка-из-исходников) · [Решение проблем](docs/USER_GUIDE.ru.md#решение-проблем)
+**[Скачать No-halla 0.9.2](https://github.com/Salesao/No-halla/releases/download/v0.9.2/No-halla-0.9.2.dmg)** · [Расширение Chrome](https://chromewebstore.google.com/detail/fnphlcfgnfnfachhcofhggpnhjcibieh) · [Расширение Firefox](https://addons.mozilla.org/en-US/firefox/addon/no-halla-gate/) · [Первый запуск](#первый-запуск) · [Сборка из исходников](docs/USER_GUIDE.ru.md#сборка-из-исходников) · [Решение проблем](docs/USER_GUIDE.ru.md#решение-проблем)
+
+## Расширения для браузеров
+
+Расширения для Chrome и Firefox блокируют список доменов, когда публичный IP не входит в доверенный список. Это самостоятельные артефакты: macOS-приложение для них не нужно, и они не читают его конфигурацию. Оба хранят настройки и последний вердикт локально; единственный внешний запрос — настроенный HTTPS-эндпоинт проверки IP.
+
+### Где взять расширения
+
+- **Chrome Web Store:** [Установить No-halla Gate](https://chromewebstore.google.com/detail/fnphlcfgnfnfachhcofhggpnhjcibieh) (Chrome 121+). Для разработки загрузите `extension/` как unpacked; см. [extension/README.ru.md](extension/README.ru.md).
+- **Firefox AMO:** [Установить No-halla Gate](https://addons.mozilla.org/en-US/firefox/addon/no-halla-gate/) (Firefox 140+). Для разработки загрузите `extension-firefox/manifest.json` через `about:debugging`; см. [extension-firefox/README.ru.md](extension-firefox/README.ru.md).
+- **Превью для сторов:** [store-assets/README.md](store-assets/README.md) — скриншоты, промо-изображения и тексты для Chrome и AMO.
+
+Оба артефакта версии **1.0.0**, используют общие токены и источник EN/RU-копи. Сборка для Firefox подготовлена к подписи в AMO.
 
 ## Защита в работе
 

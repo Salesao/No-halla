@@ -4,7 +4,19 @@
 
 **When your VPN drops, No-halla can pause a whole Mac app or just the terminal sessions running AI agents.** Say you have Codex working in Orca and Claude Code in macOS Terminal. Enable **Agent terminals** for both apps and those sessions pause together, including the commands the agents started. A build or SSH session in another tab keeps running. When the VPN returns, both agents resume.
 
-**[Download No-halla 0.9.2](https://github.com/Salesao/No-halla/releases/download/v0.9.2/No-halla-0.9.2.dmg)** · [First launch](#first-launch) · [Build from source](docs/USER_GUIDE.md#build-from-source) · [Troubleshooting](docs/USER_GUIDE.md#troubleshooting)
+**[Download No-halla 0.9.2](https://github.com/Salesao/No-halla/releases/download/v0.9.2/No-halla-0.9.2.dmg)** · [Chrome extension](https://chromewebstore.google.com/detail/fnphlcfgnfnfachhcofhggpnhjcibieh) · [Firefox extension](https://addons.mozilla.org/en-US/firefox/addon/no-halla-gate/) · [First launch](#first-launch) · [Build from source](docs/USER_GUIDE.md#build-from-source) · [Troubleshooting](docs/USER_GUIDE.md#troubleshooting)
+
+## Browser extensions
+
+The Chrome and Firefox extensions block a list of domains when your public IP is not trusted. They are standalone artifacts: the macOS app is not required, and they do not read its configuration. Both keep settings and the last verdict locally; the only outbound request is the configured HTTPS IP-check endpoint.
+
+### Get the extensions
+
+- **Chrome Web Store:** [Install No-halla Gate](https://chromewebstore.google.com/detail/fnphlcfgnfnfachhcofhggpnhjcibieh) (Chrome 121+). For development, load `extension/` unpacked; see [extension/README.md](extension/README.md).
+- **Firefox AMO:** [Install No-halla Gate](https://addons.mozilla.org/en-US/firefox/addon/no-halla-gate/) (Firefox 140+). For development, load `extension-firefox/manifest.json` via `about:debugging`; see [extension-firefox/README.md](extension-firefox/README.md).
+- **Store previews:** [store-assets/README.md](store-assets/README.md) has the Chrome/AMO screenshots, promotional tiles and listing copy.
+
+Both artifacts are version **1.0.0** and share the design tokens and EN/RU copy source. The Firefox build is prepared for AMO signing.
 
 ## Protection in action
 
