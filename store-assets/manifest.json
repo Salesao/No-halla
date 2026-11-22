@@ -1,0 +1,131 @@
+{
+  "generatedAt": "2026-11-22T10:48:23.171Z",
+  "files": [
+    {
+      "path": "store-assets/chrome/en/1-protected-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "6a02eaca199a8bcfca66cf092a436ad9b5062439a08d3fa71f30231a8843ddb9"
+    },
+    {
+      "path": "store-assets/chrome/en/2-blocked-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "fe5de6cf446dcd2cff475393cfad821bacd7581ed6e313c169cd4f74ae5cb3cf"
+    },
+    {
+      "path": "store-assets/chrome/en/3-settings-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "7d5a5bfa9ae59019aabdf80fc1a197e987e013314296f4f866d7e35e8835b8f5"
+    },
+    {
+      "path": "store-assets/chrome/en/4-unknown-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "d338270087e0fcd56eaf40745076adc9fb9631cd693ef49a000ecccc9526cc14"
+    },
+    {
+      "path": "store-assets/chrome/ru/1-protected-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "e60def8c2d47240db6839d9393ffc1598e3203c5175ff103a69ae69164379df2"
+    },
+    {
+      "path": "store-assets/chrome/ru/2-blocked-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "265dcb8922d1ca395190f9242f29b722ddca59c265a84314e606b44e3117a60d"
+    },
+    {
+      "path": "store-assets/chrome/ru/3-settings-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "3f41e0a3a6ac25fcb27dc815cda012f61d46a110d6a23d4a5616d4713d14bdf4"
+    },
+    {
+      "path": "store-assets/chrome/ru/4-unknown-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "666f204cbe2dd70cdccb100a4a54608f516901d78e74e0649f7d259d0d51ad12"
+    },
+    {
+      "path": "store-assets/firefox/en/1-protected-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "1f191ec20c3b2ab3dd21b4b6ccc745670c8429c90b0038d181fb10fb6b5afd8b"
+    },
+    {
+      "path": "store-assets/firefox/en/2-blocked-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "6e99f7a120a0850f5ce6b6849b376befa4c8277cfe03662b4228371c6032e8e8"
+    },
+    {
+      "path": "store-assets/firefox/en/3-settings-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "0d8572ee46c170f7052df6ff194586a98a7ef8b2ba0b245f288941ec59739ca9"
+    },
+    {
+      "path": "store-assets/firefox/en/4-unknown-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "bb120af3de2581ed4ccbcbb9f7d7009c1e0874c630deabd02dad3b21d4e18bfd"
+    },
+    {
+      "path": "store-assets/firefox/ru/1-protected-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "96247c4c1b6e60c2c254023b1b90fa12fbccf80a8829010509df944fc9e6b91a"
+    },
+    {
+      "path": "store-assets/firefox/ru/2-blocked-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "aaefe605c78d152dbe09ee917d5c089592bc2b6f15317bc5dabdea1d00d5bd0c"
+    },
+    {
+      "path": "store-assets/firefox/ru/3-settings-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "110991a41559532f89b053d032d7f5b2a287716e6a276c81a7d6d1758fb0d9e6"
+    },
+    {
+      "path": "store-assets/firefox/ru/4-unknown-1280x800.png",
+      "width": 1280,
+      "height": 800,
+      "sha256": "865b864792925b8db506b843c2b30dbe4f03328d4b1efce2ed510ba6d8b2bf57"
+    },
+    {
+      "path": "store-assets/chrome/small-promo-en.png",
+      "width": 440,
+      "height": 280,
+      "sha256": "69767f934660a5ff567c10787c7b9fd78522cd83716460d51d24a646ac2db837"
+    },
+    {
+      "path": "store-assets/chrome/marquee-promo-en.png",
+      "width": 1400,
+      "height": 560,
+      "sha256": "d2db716c3a6908c8d524d4c90dd6ab6171b841db311262a22fbee5a5ba1ef565"
+    },
+    {
+      "path": "store-assets/chrome/small-promo-ru.png",
+      "width": 440,
+      "height": 280,
+      "sha256": "2df312db9634a5ba22b9ce1987f049e6ee72058dd913138560b6bcd2dea736a0"
+    },
+    {
+      "path": "store-assets/chrome/marquee-promo-ru.png",
+      "width": 1400,
+      "height": 560,
+      "sha256": "0423cf53db5d40cb5d95f3ada03cdcc6cd643aba7a4214a2115029dbf34ad4ec"
+    },
+    {
+      "path": "store-assets/icons/no-halla-gate-128.png",
+      "width": 128,
+      "height": 128,
+      "sha256": "7ff355c2a51a25b7b3ebe886ad257db5fc1a140ed9af18cf71ef9275c3a661a0"
+    }
+  ]
+}
