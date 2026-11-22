@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "No-halla Gate",
+  "version": "1.0.0",
+  "description": "Blocks a user-defined domain list unless the current public IPv4 address is in a trusted list.",
+  "default_locale": "en",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "gate@nohalla.dev",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+  "permissions": [
+    "declarativeNetRequest",
+    "webRequest",
+    "storage",
+    "alarms",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://ipinfo.io/*"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
+  ],
+  "background": {
+    "scripts": ["src/background.js"],
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "ui/popup.html",
+    "default_title": "No-halla Gate",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "options_ui": {
+    "page": "ui/options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "ui/blocked.html",
+        "ui/blocked.css",
+        "ui/blocked.js",
+        "ui/tokens.css",
+        "src/browser.js",
+        "src/i18n.js",
+        "_locales/*/messages.json"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

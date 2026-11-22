@@ -1,0 +1,22 @@
+{
+  "gate.blocked.leak": {
+    "en": "The first request after an IP change may still reach the site. This is a Firefox extension limit.",
+    "ru": "Первый запрос после смены IP может всё же дойти до сайта. Это ограничение расширений Firefox."
+  },
+  "gate.error.permission": {
+    "en": "Firefox access was denied — the domain was not added.",
+    "ru": "Доступ Firefox отклонён — домен не добавлен."
+  },
+  "gate.options.backgroundCheckHelp": {
+    "en": "Off by default.\n\nWhen on: the extension checks your public IP automatically at the chosen interval, even if no listed site is open. The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site.\n\nNote: Firefox may delay automatic checks.",
+    "ru": "По умолчанию эта функция отключена.\n\nЕсли включить: расширение будет автоматически проверять ваш публичный IP через заданные промежутки времени, даже если сайты из списка не открыты. Результат проверки будет действовать для всех сайтов в списке.\n\nЕсли оставить выключенной: IP будет проверяться только при открытии сайта из списка.\n\nВажно: Firefox может задерживать автоматические проверки."
+  },
+  "gate.options.domainsHelp": {
+    "en": "Subdomains are covered. Firefox asks for access to each domain.",
+    "ru": "Поддомены покрываются. Firefox спросит доступ к каждому домену."
+  },
+  "gate.options.intervalHelp": {
+    "en": "Seconds between background checks. Firefox uses this interval as-is; the browser can still delay a check while it is busy or asleep.",
+    "ru": "Секунды между фоновыми проверками. Firefox использует этот интервал как есть; браузер всё равно может задержать проверку, если занят или находится в спящем режиме."
+  }
+}

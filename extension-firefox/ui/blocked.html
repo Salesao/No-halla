@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title data-i18n="gate.blocked.title"></title>
+    <link rel="stylesheet" href="tokens.css">
+    <link rel="stylesheet" href="blocked.css">
+    <script type="module" src="blocked.js"></script>
+  </head>
+  <body>
+    <main class="blocked">
+      <section
+        class="blocked-card"
+        id="blocked-card"
+        aria-labelledby="blocked-heading"
+        aria-busy="false"
+      >
+        <p class="blocked-kicker" data-i18n="gate.blocked.title"></p>
+        <h1 class="blocked-heading" id="blocked-heading"></h1>
+        <p class="blocked-reason" id="blocked-reason" aria-live="polite"></p>
+        <p class="blocked-fact" id="blocked-current-ip"></p>
+        <p class="blocked-fact" id="blocked-last-check"></p>
+        <div class="blocked-actions">
+          <button
+            class="button button--primary"
+            id="blocked-check"
+            type="button"
+            data-i18n="gate.blocked.checkAgain"
+          ></button>
+          <button
+            class="button button--secondary"
+            id="blocked-settings"
+            type="button"
+            data-i18n="gate.blocked.settings"
+          ></button>
+        </div>
+        <p class="blocked-message" id="blocked-message" role="status" aria-live="polite"></p>
+        <p class="blocked-note" data-i18n="gate.blocked.leak"></p>
+      </section>
+    </main>
+  </body>
+</html>
