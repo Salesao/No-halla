@@ -1,0 +1,190 @@
+/*
+  Blocked page. Colors, spacing, radii and type come from tokens.css only.
+  No external assets and no CSS imports — the page works in a frame.
+*/
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font: var(--fs-body)/1.5 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+.blocked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--sp-5);
+}
+
+.blocked-card {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--sp-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-window);
+}
+
+/* Bronze is decoration only: a hairline on the kicker, never a status. */
+.blocked-kicker {
+  margin: 0;
+  padding-left: var(--sp-2);
+  border-left: 2px solid var(--bronze);
+  color: var(--muted);
+  font-size: var(--fs-small);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.blocked-heading {
+  margin: var(--sp-2) 0 var(--sp-3);
+  font-size: var(--fs-hero);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.blocked-reason {
+  margin: 0 0 var(--sp-3);
+  color: var(--muted);
+  min-height: 1.5em;
+}
+
+.blocked-reason.status-protected {
+  color: var(--green);
+}
+
+.blocked-reason.status-untrusted {
+  color: var(--red);
+}
+
+.blocked-reason.status-unknown {
+  color: var(--orange);
+}
+
+.blocked-reason.status-degraded {
+  color: var(--red);
+}
+
+.blocked-reason.status-disabled {
+  color: var(--muted);
+}
+
+.blocked-reason.status-setup {
+  color: var(--orange);
+}
+
+.blocked-fact {
+  margin: 0 0 var(--sp-1);
+  color: var(--muted);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.blocked-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button--primary {
+  background: var(--action);
+  border-color: var(--action);
+  color: var(--on-action);
+}
+
+.button--primary:hover {
+  opacity: 0.92;
+}
+
+.button--secondary {
+  background: var(--control);
+  border-color: var(--control-line);
+  color: var(--text);
+}
+
+.button--secondary:hover {
+  opacity: 0.88;
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+
+.button[disabled] {
+  cursor: default;
+  opacity: 0.55;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.blocked-message {
+  margin: var(--sp-3) 0 0;
+  color: var(--text);
+}
+
+.blocked-message:empty {
+  display: none;
+}
+
+.blocked-note {
+  margin: var(--sp-4) 0 0;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+/* Narrow frames: keep the card inside the viewport. */
+@media (max-width: 480px) {
+  .blocked {
+    padding: var(--sp-3);
+  }
+
+  .blocked-card {
+    padding: var(--sp-4);
+  }
+
+  .blocked-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

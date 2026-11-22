@@ -1,0 +1,227 @@
+{
+  "gate_blocked_checkAgain": {
+    "message": "Check again"
+  },
+  "gate_blocked_currentIP": {
+    "message": "Current IP: %s"
+  },
+  "gate_blocked_degraded": {
+    "message": "Blocking rules could not be verified. Settings were left untouched."
+  },
+  "gate_blocked_disabled": {
+    "message": "Protection is off. Enable it in Settings."
+  },
+  "gate_blocked_heading": {
+    "message": "%s is blocked"
+  },
+  "gate_blocked_headingGeneric": {
+    "message": "This site is blocked"
+  },
+  "gate_blocked_lastCheck": {
+    "message": "Last check: %s"
+  },
+  "gate_blocked_leak": {
+    "message": "The first request after an IP change may still reach the site. This is a Chrome extension limit."
+  },
+  "gate_blocked_reason_setup": {
+    "message": "The trusted list is empty. Add your current IP in Settings."
+  },
+  "gate_blocked_reason_unknown": {
+    "message": "The IP check failed, so the gate stays closed."
+  },
+  "gate_blocked_reason_untrusted": {
+    "message": "Your public IP is not in the trusted list."
+  },
+  "gate_blocked_settings": {
+    "message": "Open settings"
+  },
+  "gate_blocked_title": {
+    "message": "The gate is closed"
+  },
+  "gate_blocked_unblocked": {
+    "message": "Verified. Reload the site to continue."
+  },
+  "gate_common_unknown": {
+    "message": "unknown"
+  },
+  "gate_error_address": {
+    "message": "Enter a valid IPv4 address or CIDR."
+  },
+  "gate_error_addressLimit": {
+    "message": "Up to %d trusted addresses."
+  },
+  "gate_error_checkFailed": {
+    "message": "Could not verify the IP."
+  },
+  "gate_error_config": {
+    "message": "Settings are damaged. Blocking rules were left in place."
+  },
+  "gate_error_domainLimit": {
+    "message": "Up to %d domains."
+  },
+  "gate_error_duplicate": {
+    "message": "This domain is already in the list."
+  },
+  "gate_error_endpoint": {
+    "message": "The endpoint must be a valid HTTPS URL."
+  },
+  "gate_error_generic": {
+    "message": "Something went wrong."
+  },
+  "gate_error_hostname": {
+    "message": "Enter a valid domain without scheme, path, or port."
+  },
+  "gate_error_interval": {
+    "message": "The interval must be at least %d seconds."
+  },
+  "gate_error_permission": {
+    "message": "Chrome access was denied — the domain was not added."
+  },
+  "gate_error_siteUnavailable": {
+    "message": "Open a regular website first."
+  },
+  "gate_options_add": {
+    "message": "Add"
+  },
+  "gate_options_addCurrentIP": {
+    "message": "Add current IP"
+  },
+  "gate_options_addCurrentSite": {
+    "message": "Add current site"
+  },
+  "gate_options_backgroundCheck": {
+    "message": "Background IP check"
+  },
+  "gate_options_backgroundCheckHelp": {
+    "message": "Off by default.\n\nWhen on: the extension checks your public IP automatically at the chosen interval, even if no listed site is open. The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site.\n\nNote: Chrome may delay automatic checks."
+  },
+  "gate_options_domainPlaceholder": {
+    "message": "example.com"
+  },
+  "gate_options_domains": {
+    "message": "Domains"
+  },
+  "gate_options_domainsHelp": {
+    "message": "Subdomains are covered. Chrome asks for access to each domain."
+  },
+  "gate_options_endpoint": {
+    "message": "IP check endpoint"
+  },
+  "gate_options_endpointHelp": {
+    "message": "HTTPS only. Must return the public IPv4 as plain text."
+  },
+  "gate_options_interval": {
+    "message": "Interval (seconds)"
+  },
+  "gate_options_intervalHelp": {
+    "message": "Seconds between background checks. Values below 30 s may be raised to 30 s by Chrome."
+  },
+  "gate_options_language": {
+    "message": "Language"
+  },
+  "gate_options_languageEn": {
+    "message": "English"
+  },
+  "gate_options_languageRu": {
+    "message": "Russian"
+  },
+  "gate_options_languageSystem": {
+    "message": "System"
+  },
+  "gate_options_noDomains": {
+    "message": "No domains added."
+  },
+  "gate_options_remove": {
+    "message": "Remove"
+  },
+  "gate_options_save": {
+    "message": "Save"
+  },
+  "gate_options_saved": {
+    "message": "Saved"
+  },
+  "gate_options_subtitle": {
+    "message": "Block listed domains when your public IP is untrusted."
+  },
+  "gate_options_title": {
+    "message": "No-halla Gate settings"
+  },
+  "gate_options_trusted": {
+    "message": "Trusted IP addresses"
+  },
+  "gate_options_trustedHelp": {
+    "message": "IPv4 or CIDR, e.g. 203.0.113.7 or 203.0.113.0/24."
+  },
+  "gate_options_trustedPlaceholder": {
+    "message": "203.0.113.7"
+  },
+  "gate_popup_checkNow": {
+    "message": "Check now"
+  },
+  "gate_popup_currentIP": {
+    "message": "Current IP"
+  },
+  "gate_popup_lastCheck": {
+    "message": "Last check: %s"
+  },
+  "gate_popup_master": {
+    "message": "Protection"
+  },
+  "gate_popup_never": {
+    "message": "never"
+  },
+  "gate_popup_otherExtensions": {
+    "message": "Other extensions can override this block."
+  },
+  "gate_popup_repository": {
+    "message": "Application repository"
+  },
+  "gate_popup_settings": {
+    "message": "Settings"
+  },
+  "gate_popup_title": {
+    "message": "No-halla Gate"
+  },
+  "gate_popup_unknownIP": {
+    "message": "Unknown"
+  },
+  "gate_status_checking": {
+    "message": "Checking…"
+  },
+  "gate_status_degraded": {
+    "message": "Not protected"
+  },
+  "gate_status_degraded_lore": {
+    "message": "Blocking rules could not be verified."
+  },
+  "gate_status_disabled": {
+    "message": "Protection off"
+  },
+  "gate_status_disabled_lore": {
+    "message": "Nothing is blocked."
+  },
+  "gate_status_protected": {
+    "message": "Protected"
+  },
+  "gate_status_protected_lore": {
+    "message": "Your public IP is trusted."
+  },
+  "gate_status_setup": {
+    "message": "Trusted list is empty"
+  },
+  "gate_status_setup_lore": {
+    "message": "With an empty trusted list nothing is trusted."
+  },
+  "gate_status_unknown": {
+    "message": "Can't verify IP"
+  },
+  "gate_status_unknown_lore": {
+    "message": "Fail-closed: listed domains stay blocked."
+  },
+  "gate_status_untrusted": {
+    "message": "Blocked"
+  },
+  "gate_status_untrusted_lore": {
+    "message": "This IP is not in the trusted list."
+  }
+}

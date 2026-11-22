@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "No-halla Gate",
+  "version": "1.0.0",
+  "description": "Blocks a user-defined domain list unless the current public IPv4 address is in a trusted list.",
+  "minimum_chrome_version": "121",
+  "default_locale": "en",
+  "permissions": [
+    "declarativeNetRequest",
+    "webRequest",
+    "storage",
+    "alarms",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://ipinfo.io/*"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
+  ],
+  "background": {
+    "service_worker": "src/sw.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "ui/popup.html",
+    "default_title": "No-halla Gate",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "options_page": "ui/options.html",
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "ui/blocked.html",
+        "ui/blocked.css",
+        "ui/blocked.js",
+        "ui/tokens.css",
+        "src/i18n.js",
+        "_locales/*/messages.json"
+      ],
+      "matches": [
+        "<all_urls>"
+      ],
+      "use_dynamic_url": true
+    }
+  ]
+}

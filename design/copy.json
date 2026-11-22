@@ -670,5 +670,305 @@
   "network.vpnDisconnected": {
     "en": "Disconnected",
     "ru": "Отключён"
+  },
+  "gate.status.protected": {
+    "en": "Protected",
+    "ru": "Защищено"
+  },
+  "gate.status.untrusted": {
+    "en": "Blocked",
+    "ru": "Заблокировано"
+  },
+  "gate.status.unknown": {
+    "en": "Can't verify IP",
+    "ru": "Не удаётся проверить IP"
+  },
+  "gate.status.disabled": {
+    "en": "Protection off",
+    "ru": "Защита выключена"
+  },
+  "gate.status.degraded": {
+    "en": "Not protected",
+    "ru": "Не защищено"
+  },
+  "gate.status.setup": {
+    "en": "Trusted list is empty",
+    "ru": "Список доверенных пуст"
+  },
+  "gate.status.checking": {
+    "en": "Checking…",
+    "ru": "Проверяем…"
+  },
+  "gate.status.protected.lore": {
+    "en": "Your public IP is trusted.",
+    "ru": "Ваш публичный IP доверенный."
+  },
+  "gate.status.untrusted.lore": {
+    "en": "This IP is not in the trusted list.",
+    "ru": "Этот IP не в доверенном списке."
+  },
+  "gate.status.unknown.lore": {
+    "en": "Fail-closed: listed domains stay blocked.",
+    "ru": "Fail-closed: домены из списка заблокированы."
+  },
+  "gate.status.disabled.lore": {
+    "en": "Nothing is blocked.",
+    "ru": "Ничего не блокируется."
+  },
+  "gate.status.degraded.lore": {
+    "en": "Blocking rules could not be verified.",
+    "ru": "Правила блокировки не подтверждены."
+  },
+  "gate.status.setup.lore": {
+    "en": "With an empty trusted list nothing is trusted.",
+    "ru": "С пустым списком доверенных ничего не доверено."
+  },
+  "gate.popup.title": {
+    "en": "No-halla Gate",
+    "ru": "No-halla Gate"
+  },
+  "gate.popup.currentIP": {
+    "en": "Current IP",
+    "ru": "Текущий IP"
+  },
+  "gate.popup.unknownIP": {
+    "en": "Unknown",
+    "ru": "Неизвестен"
+  },
+  "gate.popup.checkNow": {
+    "en": "Check now",
+    "ru": "Проверить сейчас"
+  },
+  "gate.popup.settings": {
+    "en": "Settings",
+    "ru": "Настройки"
+  },
+  "gate.popup.master": {
+    "en": "Protection",
+    "ru": "Защита"
+  },
+  "gate.popup.lastCheck": {
+    "en": "Last check: %s",
+    "ru": "Последняя проверка: %s"
+  },
+  "gate.popup.never": {
+    "en": "never",
+    "ru": "никогда"
+  },
+  "gate.popup.otherExtensions": {
+    "en": "Other extensions can override this block.",
+    "ru": "Другие расширения могут перебить блокировку."
+  },
+  "gate.options.title": {
+    "en": "No-halla Gate settings",
+    "ru": "Настройки No-halla Gate"
+  },
+  "gate.options.subtitle": {
+    "en": "Block listed domains when your public IP is untrusted.",
+    "ru": "Блокировать домены из списка, когда публичный IP недоверенный."
+  },
+  "gate.options.domains": {
+    "en": "Domains",
+    "ru": "Домены"
+  },
+  "gate.options.domainsHelp": {
+    "en": "Subdomains are covered. Chrome asks for access to each domain.",
+    "ru": "Поддомены покрываются. Chrome спросит доступ к каждому домену."
+  },
+  "gate.options.domainPlaceholder": {
+    "en": "example.com",
+    "ru": "example.com"
+  },
+  "gate.options.add": {
+    "en": "Add",
+    "ru": "Добавить"
+  },
+  "gate.options.remove": {
+    "en": "Remove",
+    "ru": "Удалить"
+  },
+  "gate.options.noDomains": {
+    "en": "No domains added.",
+    "ru": "Домены не добавлены."
+  },
+  "gate.options.trusted": {
+    "en": "Trusted IP addresses",
+    "ru": "Доверенные IP-адреса"
+  },
+  "gate.options.trustedHelp": {
+    "en": "IPv4 or CIDR, e.g. 203.0.113.7 or 203.0.113.0/24.",
+    "ru": "IPv4 или CIDR, например 203.0.113.7 или 203.0.113.0/24."
+  },
+  "gate.options.trustedPlaceholder": {
+    "en": "203.0.113.7",
+    "ru": "203.0.113.7"
+  },
+  "gate.options.addCurrentIP": {
+    "en": "Add current IP",
+    "ru": "Добавить текущий IP"
+  },
+  "gate.options.endpoint": {
+    "en": "IP check endpoint",
+    "ru": "Эндпоинт проверки IP"
+  },
+  "gate.options.endpointHelp": {
+    "en": "HTTPS only. Must return the public IPv4 as plain text.",
+    "ru": "Только HTTPS. Должен возвращать публичный IPv4 обычным текстом."
+  },
+  "gate.options.language": {
+    "en": "Language",
+    "ru": "Язык"
+  },
+  "gate.options.languageSystem": {
+    "en": "System",
+    "ru": "Системный"
+  },
+  "gate.options.languageEn": {
+    "en": "English",
+    "ru": "English"
+  },
+  "gate.options.languageRu": {
+    "en": "Russian",
+    "ru": "Русский"
+  },
+  "gate.options.backgroundCheck": {
+    "en": "Background IP check",
+    "ru": "Фоновая проверка IP"
+  },
+  "gate.options.backgroundCheckHelp": {
+    "en": "Off by default.\n\nWhen on: the extension checks your public IP automatically at the chosen interval, even if no listed site is open. The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site.\n\nNote: Chrome may delay automatic checks.",
+    "ru": "По умолчанию эта функция отключена.\n\nЕсли включить: расширение будет автоматически проверять ваш публичный IP через заданные промежутки времени, даже если сайты из списка не открыты. Результат проверки будет действовать для всех сайтов в списке.\n\nЕсли оставить выключенной: IP будет проверяться только при открытии сайта из списка.\n\nВажно: Chrome может задерживать автоматические проверки."
+  },
+  "gate.options.interval": {
+    "en": "Interval (seconds)",
+    "ru": "Интервал (секунды)"
+  },
+  "gate.options.intervalHelp": {
+    "en": "Seconds between background checks. Values below 30 s may be raised to 30 s by Chrome.",
+    "ru": "Секунды между фоновыми проверками. Значения меньше 30 с Chrome может поднять до 30 с."
+  },
+  "gate.options.save": {
+    "en": "Save",
+    "ru": "Сохранить"
+  },
+  "gate.options.saved": {
+    "en": "Saved",
+    "ru": "Сохранено"
+  },
+  "gate.error.hostname": {
+    "en": "Enter a valid domain without scheme, path, or port.",
+    "ru": "Введите корректный домен без схемы, пути и порта."
+  },
+  "gate.error.duplicate": {
+    "en": "This domain is already in the list.",
+    "ru": "Этот домен уже в списке."
+  },
+  "gate.error.domainLimit": {
+    "en": "Up to %d domains.",
+    "ru": "Не более %d доменов."
+  },
+  "gate.error.address": {
+    "en": "Enter a valid IPv4 address or CIDR.",
+    "ru": "Введите корректный IPv4-адрес или CIDR."
+  },
+  "gate.error.addressLimit": {
+    "en": "Up to %d trusted addresses.",
+    "ru": "Не более %d доверенных адресов."
+  },
+  "gate.error.endpoint": {
+    "en": "The endpoint must be a valid HTTPS URL.",
+    "ru": "Эндпоинт должен быть корректным HTTPS-адресом."
+  },
+  "gate.error.interval": {
+    "en": "The interval must be at least %d seconds.",
+    "ru": "Интервал должен быть не меньше %d секунд."
+  },
+  "gate.error.permission": {
+    "en": "Chrome access was denied — the domain was not added.",
+    "ru": "Доступ Chrome отклонён — домен не добавлен."
+  },
+  "gate.error.config": {
+    "en": "Settings are damaged. Blocking rules were left in place.",
+    "ru": "Настройки повреждены. Правила блокировки оставлены."
+  },
+  "gate.error.checkFailed": {
+    "en": "Could not verify the IP.",
+    "ru": "Не удалось проверить IP."
+  },
+  "gate.error.generic": {
+    "en": "Something went wrong.",
+    "ru": "Что-то пошло не так."
+  },
+  "gate.blocked.title": {
+    "en": "The gate is closed",
+    "ru": "Ворота закрыты"
+  },
+  "gate.blocked.heading": {
+    "en": "%s is blocked",
+    "ru": "%s заблокирован"
+  },
+  "gate.blocked.headingGeneric": {
+    "en": "This site is blocked",
+    "ru": "Этот сайт заблокирован"
+  },
+  "gate.blocked.reason.untrusted": {
+    "en": "Your public IP is not in the trusted list.",
+    "ru": "Ваш публичный IP не в доверенном списке."
+  },
+  "gate.blocked.reason.unknown": {
+    "en": "The IP check failed, so the gate stays closed.",
+    "ru": "Проверка IP не удалась, поэтому ворота закрыты."
+  },
+  "gate.blocked.reason.setup": {
+    "en": "The trusted list is empty. Add your current IP in Settings.",
+    "ru": "Список доверенных пуст. Добавьте текущий IP в настройках."
+  },
+  "gate.blocked.currentIP": {
+    "en": "Current IP: %s",
+    "ru": "Текущий IP: %s"
+  },
+  "gate.blocked.lastCheck": {
+    "en": "Last check: %s",
+    "ru": "Последняя проверка: %s"
+  },
+  "gate.blocked.checkAgain": {
+    "en": "Check again",
+    "ru": "Проверить снова"
+  },
+  "gate.blocked.settings": {
+    "en": "Open settings",
+    "ru": "Открыть настройки"
+  },
+  "gate.blocked.leak": {
+    "en": "The first request after an IP change may still reach the site. This is a Chrome extension limit.",
+    "ru": "Первый запрос после смены IP может всё же дойти до сайта. Это ограничение расширений Chrome."
+  },
+  "gate.blocked.disabled": {
+    "en": "Protection is off. Enable it in Settings.",
+    "ru": "Защита выключена. Включите её в настройках."
+  },
+  "gate.blocked.unblocked": {
+    "en": "Verified. Reload the site to continue.",
+    "ru": "Проверено. Перезагрузите сайт."
+  },
+  "gate.blocked.degraded": {
+    "en": "Blocking rules could not be verified. Settings were left untouched.",
+    "ru": "Правила блокировки не подтверждены. Настройки не тронуты."
+  },
+  "gate.common.unknown": {
+    "en": "unknown",
+    "ru": "неизвестно"
+  },
+  "gate.options.addCurrentSite": {
+    "en": "Add current site",
+    "ru": "Добавить текущий сайт"
+  },
+  "gate.error.siteUnavailable": {
+    "en": "Open a regular website first.",
+    "ru": "Сначала откройте обычный сайт."
+  },
+  "gate.popup.repository": {
+    "en": "Application repository",
+    "ru": "Репозиторий приложения"
   }
 }

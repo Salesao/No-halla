@@ -7,6 +7,10 @@ sourceLanguage "en" and a translated stringUnit per language. Keys containing
 printf-style placeholders (%d / %@) are plain stringUnits without variations;
 formatting happens at runtime via L10n.string(_:_:) (String(format:)).
 
+Keys under the `gate.` namespace belong to the standalone Chrome extension and
+are generated into extension/_locales by scripts/gen-extension-strings.py. They
+are skipped here so the app catalog contains only app strings.
+
 Only the Python standard library is used. The script is idempotent: it
 rewrites the catalog on every run and fails on malformed entries.
 """
@@ -21,6 +25,8 @@ SOURCE = ROOT / "design" / "copy.json"
 CATALOG = ROOT / "NoHalla" / "Resources" / "Localizable.xcstrings"
 
 LANGUAGES = ("en", "ru")
+# Extension-only copy; scripts/gen-extension-strings.py owns this namespace.
+EXTENSION_PREFIX = "gate."
 # Named placeholders must be normalized to printf-style before generation (D22).
 NAMED_PLACEHOLDER = re.compile(r"\{[a-zA-Z_][a-zA-Z0-9_]*\}")
 
@@ -41,6 +47,8 @@ def main() -> None:
 
     strings = {}
     for key in sorted(copy):
+        if key.startswith(EXTENSION_PREFIX):
+            continue
         entry = copy[key]
         if not isinstance(entry, dict):
             fail(f"key '{key}': expected an object with en/ru values")

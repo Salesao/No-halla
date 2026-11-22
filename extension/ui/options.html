@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="gate.options.title"></title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="options.css">
+  <script type="module" src="options.js"></script>
+</head>
+<body>
+  <main class="page">
+    <header class="page-head">
+      <h1 data-i18n="gate.options.title"></h1>
+      <p class="subtitle" data-i18n="gate.options.subtitle"></p>
+    </header>
+
+    <p id="config-warning" class="banner" role="alert" data-i18n="gate.error.config" hidden></p>
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+
+    <form id="options-form" novalidate>
+      <section class="card" aria-labelledby="domains-title">
+        <h2 id="domains-title" data-i18n="gate.options.domains"></h2>
+        <p class="help" data-i18n="gate.options.domainsHelp"></p>
+        <ul id="domain-list" class="list" data-i18n-aria-label="gate.options.domains"></ul>
+        <div class="row">
+          <input id="domain-input" type="text" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="none"
+                 data-i18n-placeholder="gate.options.domainPlaceholder" data-i18n-aria-label="gate.options.domains">
+          <button id="domain-add" class="btn btn-primary" type="button" data-i18n="gate.options.add"></button>
+        </div>
+        <p id="domains-error" class="error" aria-live="polite"></p>
+      </section>
+
+      <section class="card" aria-labelledby="trusted-title">
+        <h2 id="trusted-title" data-i18n="gate.options.trusted"></h2>
+        <p class="help" data-i18n="gate.options.trustedHelp"></p>
+        <ul id="trusted-list" class="list" data-i18n-aria-label="gate.options.trusted"></ul>
+        <div class="row">
+          <input id="trusted-input" type="text" inputmode="text" autocomplete="off" spellcheck="false" autocapitalize="none"
+                 data-i18n-placeholder="gate.options.trustedPlaceholder" data-i18n-aria-label="gate.options.trusted">
+          <button id="trusted-add" class="btn btn-primary" type="button" data-i18n="gate.options.add"></button>
+        </div>
+        <div class="actions actions-start">
+          <button id="trusted-add-current" class="btn btn-primary" type="button" data-i18n="gate.options.addCurrentIP"></button>
+        </div>
+        <p id="trusted-error" class="error" aria-live="polite"></p>
+      </section>
+
+      <section class="card" aria-labelledby="endpoint-title">
+        <h2 id="endpoint-title" data-i18n="gate.options.endpoint"></h2>
+        <p class="help" data-i18n="gate.options.endpointHelp"></p>
+        <div class="row">
+          <input id="endpoint" type="url" autocomplete="url" spellcheck="false"
+                 data-i18n-aria-label="gate.options.endpoint">
+          <button id="endpoint-save" class="btn-primary" type="button" data-i18n="gate.options.save"></button>
+        </div>
+        <p id="endpoint-error" class="error" aria-live="polite"></p>
+      </section>
+
+      <section class="card" aria-labelledby="settings-title">
+        <h2 id="settings-title" data-i18n="gate.popup.settings"></h2>
+
+        <div class="field">
+          <label for="language" data-i18n="gate.options.language"></label>
+          <select id="language">
+            <option value="system" data-i18n="gate.options.languageSystem"></option>
+            <option value="en" data-i18n="gate.options.languageEn"></option>
+            <option value="ru" data-i18n="gate.options.languageRu"></option>
+          </select>
+        </div>
+
+        <div class="field field-toggle">
+          <input id="background-check" type="checkbox" aria-describedby="background-check-help">
+          <div>
+            <label for="background-check" data-i18n="gate.options.backgroundCheck"></label>
+            <p id="background-check-help" class="help" data-i18n="gate.options.backgroundCheckHelp"></p>
+          </div>
+        </div>
+
+        <div id="interval-field" class="field" hidden>
+          <label for="interval-seconds" data-i18n="gate.options.interval"></label>
+          <input id="interval-seconds" type="number" min="1" step="1" inputmode="numeric">
+          <p class="help" data-i18n="gate.options.intervalHelp"></p>
+        </div>
+
+        <div class="actions">
+          <button id="settings-save" class="btn-primary" type="submit" data-i18n="gate.options.save"></button>
+        </div>
+        <p id="settings-error" class="error" aria-live="polite"></p>
+      </section>
+    </form>
+
+    <footer class="foot">
+      <p data-i18n="gate.popup.otherExtensions"></p>
+      <a
+        class="foot-link"
+        href="https://github.com/Salesao/No-halla"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-i18n="gate.popup.repository"
+      ></a>
+    </footer>
+  </main>
+</body>
+</html>
