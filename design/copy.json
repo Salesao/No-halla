@@ -400,8 +400,8 @@
     "ru": "Удалить"
   },
   "ui.ip-check-endpoints": {
-    "en": "IP check endpoints",
-    "ru": "Сервисы проверки IP"
+    "en": "Main IP check endpoints",
+    "ru": "Основные сервисы проверки IP"
   },
   "ui.reset-to-defaults": {
     "en": "Reset to defaults",
@@ -576,8 +576,48 @@
     "ru": "Защищать %@"
   },
   "ui.edit-ip-check-endpoint": {
-    "en": "Edit IP-check endpoint",
-    "ru": "Изменить адрес проверки IP"
+    "en": "Edit main endpoint",
+    "ru": "Изменить основной эндпоинт"
+  },
+  "ui.add-ip-check-endpoint": {
+    "en": "Add main endpoint",
+    "ru": "Добавить основной эндпоинт"
+  },
+  "ui.fallback-ip-check-endpoints": {
+    "en": "Fallback IP check endpoints",
+    "ru": "Резервные сервисы проверки IP"
+  },
+  "ui.fallback-ip-check-endpoints-help": {
+    "en": "Queried only when no main endpoint answers. Every valid fallback answer must be trusted. Up to 8.",
+    "ru": "Запрашиваются, только если ни один основной сервис не ответил. Каждый валидный ответ должен быть доверенным. До 8."
+  },
+  "ui.add-fallback-endpoint": {
+    "en": "Add fallback endpoint",
+    "ru": "Добавить резервный эндпоинт"
+  },
+  "ui.edit-fallback-endpoint": {
+    "en": "Edit fallback endpoint",
+    "ru": "Изменить резервный эндпоинт"
+  },
+  "ui.known-endpoints": {
+    "en": "Known endpoints",
+    "ru": "Известные эндпоинты"
+  },
+  "ui.custom-endpoint": {
+    "en": "Custom URL…",
+    "ru": "Свой URL…"
+  },
+  "ui.ip-check-endpoints-help": {
+    "en": "Every enabled main HTTPS endpoint is queried in parallel. A failed endpoint is ignored; every valid answer must be trusted.",
+    "ru": "Каждый включённый основной HTTPS-эндпоинт запрашивается параллельно. Недоступный игнорируется; каждый валидный ответ должен быть доверенным."
+  },
+  "ui.endpoint-duplicate": {
+    "en": "This endpoint is already added.",
+    "ru": "Этот эндпоинт уже добавлен."
+  },
+  "ui.endpoint-limit": {
+    "en": "At most %d endpoints.",
+    "ru": "Не больше %d эндпоинтов."
   },
   "ui.included-in-protection": {
     "en": "Included in protection",
@@ -808,12 +848,32 @@
     "ru": "Добавить текущий IP"
   },
   "gate.options.endpoint": {
-    "en": "IP check endpoint",
-    "ru": "Эндпоинт проверки IP"
+    "en": "Main IP check endpoint",
+    "ru": "Основной эндпоинт проверки IP"
   },
   "gate.options.endpointHelp": {
-    "en": "HTTPS only. Must return the public IPv4 as plain text.",
-    "ru": "Только HTTPS. Должен возвращать публичный IPv4 обычным текстом."
+    "en": "HTTPS only; the body must be the public IPv4 as plain text. Pick a known endpoint or type your own. Fallbacks are tried in rotation when this one fails.",
+    "ru": "Только HTTPS; тело — публичный IPv4 обычным текстом. Выберите известный эндпоинт или введите свой. Если он не отвечает, резервные эндпоинты пробуются по очереди."
+  },
+  "gate.options.fallbacks": {
+    "en": "Fallback IP check endpoints",
+    "ru": "Резервные эндпоинты проверки IP"
+  },
+  "gate.options.fallbacksHelp": {
+    "en": "Tried in rotation when the main endpoint fails. Up to 8. Each enabled endpoint sees your IP. The in-tab check uses only endpoints that allow CORS; others are used by the background check.",
+    "ru": "Пробуются по очереди, если основной эндпоинт не отвечает. До 8. Каждый видит ваш IP. Проверка из вкладки использует только эндпоинты с CORS; остальные — фоновая проверка."
+  },
+  "gate.options.fallbackAdd": {
+    "en": "Add",
+    "ru": "Добавить"
+  },
+  "gate.options.noFallbacks": {
+    "en": "No fallback endpoints yet.",
+    "ru": "Резервных эндпоинтов пока нет."
+  },
+  "gate.options.noFallbackOptions": {
+    "en": "No endpoints left",
+    "ru": "Свободных эндпоинтов нет"
   },
   "gate.options.language": {
     "en": "Language",
@@ -836,16 +896,16 @@
     "ru": "Фоновая проверка IP"
   },
   "gate.options.backgroundCheckHelp": {
-    "en": "Off by default.\n\nWhen on: the extension checks your public IP automatically at the chosen interval, even if no listed site is open. The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site.\n\nNote: Chrome may delay automatic checks.",
-    "ru": "По умолчанию эта функция отключена.\n\nЕсли включить: расширение будет автоматически проверять ваш публичный IP через заданные промежутки времени, даже если сайты из списка не открыты. Результат проверки будет действовать для всех сайтов в списке.\n\nЕсли оставить выключенной: IP будет проверяться только при открытии сайта из списка.\n\nВажно: Chrome может задерживать автоматические проверки."
+    "en": "Off by default.\n\nWhen on: while the active tab is a listed domain, the IP is checked about every 2 seconds. If that tab's window is minimized or occluded, a fallback alarm checks at the interval below (minimum 30 seconds). The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site, on browser startup, or via Check now. Switching to another tab or domain stops automatic checks.\n\nNote: the browser may delay the fallback alarm.",
+    "ru": "По умолчанию эта функция отключена.\n\nЕсли включить: пока активная вкладка — домен из списка, IP проверяется примерно каждые 2 секунды. Если окно этой вкладки свёрнуто или перекрыто, срабатывает фоновый alarm с интервалом ниже (минимум 30 секунд). Результат действует для всех сайтов в списке.\n\nЕсли оставить выключенной: IP проверяется только при открытии сайта из списка, при старте браузера или по кнопке «Проверить сейчас». Переключение на другую вкладку или домен останавливает автоматические проверки.\n\nВажно: браузер может задержать фоновый alarm."
   },
   "gate.options.interval": {
-    "en": "Interval (seconds)",
-    "ru": "Интервал (секунды)"
+    "en": "Fallback alarm interval (seconds)",
+    "ru": "Интервал фонового alarm (секунды)"
   },
   "gate.options.intervalHelp": {
-    "en": "Seconds between background checks. Values below 30 s may be raised to 30 s by Chrome.",
-    "ru": "Секунды между фоновыми проверками. Значения меньше 30 с Chrome может поднять до 30 с."
+    "en": "Fallback alarm interval. Minimum 30 seconds; the browser may delay it. It checks an active listed tab whose window is minimized or occluded. While the active tab is a visible listed domain, checks run about every 2 seconds.",
+    "ru": "Интервал фонового alarm. Минимум 30 секунд; браузер может его задержать. Он проверяет активную вкладку домена из списка, когда окно свёрнуто или перекрыто. Пока активная вкладка — видимый домен из списка, проверки идут примерно каждые 2 секунды."
   },
   "gate.options.save": {
     "en": "Save",
@@ -879,9 +939,17 @@
     "en": "The endpoint must be a valid HTTPS URL.",
     "ru": "Эндпоинт должен быть корректным HTTPS-адресом."
   },
+  "gate.error.endpointPermission": {
+    "en": "Host access for the endpoint was denied.",
+    "ru": "Доступ к хосту эндпоинта отклонён."
+  },
   "gate.error.interval": {
     "en": "The interval must be at least %d seconds.",
     "ru": "Интервал должен быть не меньше %d секунд."
+  },
+  "gate.error.fallbackLimit": {
+    "en": "At most %d fallback endpoints.",
+    "ru": "Не больше %d резервных эндпоинтов."
   },
   "gate.error.permission": {
     "en": "Chrome access was denied — the domain was not added.",
