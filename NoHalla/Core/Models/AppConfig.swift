@@ -50,11 +50,13 @@ struct AppConfig: Codable, Equatable {
 
     /// Factory defaults. Per owner request (simple whitelist model): only freeze
     /// on a KNOWN non-whitelisted IP — `freezeWhenUnknown=false` (unknown IP keeps
-    /// apps running). IPv6 checks were removed (owner decision); the default
+    /// apps running). IPv6 checks were removed (owner decision); the main
     /// endpoint is one that routes through the VPN tunnel on split-tunnel hosts.
-    /// Other values per brief §13, endpoints §5.4, logLevel .info per D11.
+    /// Four additional endpoints are factory fallbacks: they are queried only
+    /// when no main endpoint answers. Other values per brief §13, endpoints
+    /// §5.4, logLevel .info per D11.
     static let defaults = AppConfig(
-        schemaVersion: 2,
+        schemaVersion: 3,
         onboardingCompleted: false,
         protection: ProtectionSettings(
             enabled: true,
@@ -67,7 +69,8 @@ struct AppConfig: Codable, Equatable {
         trustedAddresses: [],
         protectedApps: [],
         ipCheck: IPCheckSettings(
-            endpointsV4: ["https://ipinfo.io/ip"],
+            endpointsV4: [IPCheckEndpoint.defaultMain],
+            fallbackEndpointsV4: IPCheckEndpoint.defaultFallbacks,
             timeoutSeconds: 2.5
         ),
         launchAtLogin: true,
@@ -134,10 +137,31 @@ enum ProtectionMode: String, Codable, Equatable {
 }
 
 /// External IP verification settings (brief §5.4; IPv6/quorum removed by
-/// owner decision — every valid answer must be trusted, zero answers is unknown).
+/// owner decision — every valid answer must be trusted, zero answers is
+/// unknown). Main endpoints are queried in parallel; fallback endpoints are
+/// queried only when no main endpoint answers.
 struct IPCheckSettings: Codable, Equatable {
     var endpointsV4: [String]
+    var fallbackEndpointsV4: [String]
     var timeoutSeconds: Double
+
+    enum CodingKeys: String, CodingKey {
+        case endpointsV4, fallbackEndpointsV4, timeoutSeconds
+    }
+
+    init(endpointsV4: [String], fallbackEndpointsV4: [String], timeoutSeconds: Double) {
+        self.endpointsV4 = endpointsV4
+        self.fallbackEndpointsV4 = fallbackEndpointsV4
+        self.timeoutSeconds = timeoutSeconds
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        endpointsV4 = try container.decode([String].self, forKey: .endpointsV4)
+        // Added in schema 3; schema 2 configs are migrated to the defaults.
+        fallbackEndpointsV4 = try container.decodeIfPresent([String].self, forKey: .fallbackEndpointsV4) ?? []
+        timeoutSeconds = try container.decode(Double.self, forKey: .timeoutSeconds)
+    }
 }
 
 /// UI language preference; `system` follows the macOS locale (EN/RU).

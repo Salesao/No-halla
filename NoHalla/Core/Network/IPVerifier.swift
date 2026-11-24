@@ -3,15 +3,16 @@
 //  NoHalla
 //
 //  Public-IPv4 verification (implementation brief §8.2, FR-8/9/13, NFR-8;
-//  owner decision: IPv6 checks removed, single tunnel-routed endpoint).
-//  Every configured HTTPS endpoint is queried in parallel and ALL valid
+//  owner decision: IPv6 checks removed, tunnel-routed main endpoint).
+//  Every configured main HTTPS endpoint is queried in parallel and ALL valid
 //  answers are kept: a split-tunnel host may legitimately expose several
 //  public addresses, and the engine checks each observed address against the
-//  trusted list (all trusted → allowed, any untrusted → disallowed). Zero
-//  answers yields `noQuorum`. Offline produces `noQuorum` without any request.
-//  Batches are throttled to one per 3 s and backed off 5→60 s while endpoints
-//  keep failing. Only HTTPS is used and cross-host redirects are blocked.
-//  Logs mask IPs (FR-39).
+//  trusted list (all trusted → allowed, any untrusted → disallowed). Only when
+//  no main endpoint answers are the fallback endpoints queried, again in
+//  parallel with all valid answers kept. Zero answers in both groups yields
+//  `noQuorum`. Offline produces `noQuorum` without any request. Batches are
+//  throttled to one per 3 s and backed off 5→60 s while endpoints keep failing.
+//  Only HTTPS is used and cross-host redirects are blocked. Logs mask IPs.
 //
 //  Requests keep the endpoint hostname in the URL so URLSession performs
 //  normal SNI and certificate name validation. `IPAddress` parses IPv4 only,
@@ -143,7 +144,19 @@ actor IPVerifier {
         inFlightBatchTimeout = min(max(timeout, 2.5) + 4, Self.maximumBatchTimeout)
         lastBatchStart = now
 
-        let (result, address) = await verify(endpoints: config.ipCheck.endpointsV4, timeout: timeout)
+        let (mainResult, mainAddress) = await verify(endpoints: config.ipCheck.endpointsV4, timeout: timeout)
+        var result = mainResult
+        var address = mainAddress
+        if mainResult.verifiedAddresses.isEmpty, !config.ipCheck.fallbackEndpointsV4.isEmpty {
+            let (fallbackResult, fallbackAddress) = await verify(
+                endpoints: config.ipCheck.fallbackEndpointsV4,
+                timeout: timeout
+            )
+            if !fallbackResult.verifiedAddresses.isEmpty {
+                result = fallbackResult
+                address = fallbackAddress
+            }
+        }
 
         // Only the newest batch may land: a stale pre-sleep batch must not
         // release the in-flight slot of the recovery batch nor feed backoff.

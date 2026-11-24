@@ -21,7 +21,7 @@ final class ConfigStore {
         return base.appendingPathComponent("NoHalla", isDirectory: true)
     }
 
-    private static let currentSchemaVersion = 2
+    private static let currentSchemaVersion = 3
 
     private let directory: URL
     private var configURL: URL { directory.appendingPathComponent("config.json") }
@@ -69,9 +69,10 @@ final class ConfigStore {
     /// Step-wise schema migration. v1 → v2 (owner decision): IPv6 checks and
     /// quorum removed; the old factory-default endpoint list (whose ipify and
     /// ifconfig.me entries bypass domain-routed split tunnels and leak the real
-    /// IP) becomes the single tunnel-routed default; IPv6 trusted entries are
-    /// dropped silently — they can no longer be observed. Files written by a
-    /// newer schema cannot be interpreted safely and are treated as corrupt.
+    /// IP) becomes the tunnel-routed main default; IPv6 trusted entries are
+    /// dropped silently. v2 → v3 adds the four factory fallback endpoints;
+    /// existing custom main lists are kept. Files written by a newer schema
+    /// cannot be interpreted safely and are treated as corrupt.
     private func migrate(_ config: AppConfig) throws -> AppConfig {
         guard config.schemaVersion <= Self.currentSchemaVersion else {
             throw StoreError.unsupportedSchemaVersion(config.schemaVersion)
@@ -88,6 +89,11 @@ final class ConfigStore {
                 config.ipCheck.endpointsV4 = AppConfig.defaults.ipCheck.endpointsV4
             }
             config.trustedAddresses = config.trustedAddresses.filter { TrustedAddress(raw: $0).isValid }
+        }
+        if config.schemaVersion < 3 {
+            // Schema 3 adds a factory fallback list; existing configs keep
+            // their main list and gain the four defaults.
+            config.ipCheck.fallbackEndpointsV4 = AppConfig.defaults.ipCheck.fallbackEndpointsV4
         }
         config.schemaVersion = Self.currentSchemaVersion
         return config
@@ -131,6 +137,22 @@ final class ConfigStore {
         config.ipCheck.endpointsV4 = v4
         repaired = repaired || v4Repaired
 
+        let (fallbackV4, fallbackRepaired) = sanitizeEndpoints(
+            config.ipCheck.fallbackEndpointsV4,
+            defaults: fallback.ipCheck.fallbackEndpointsV4,
+            family: "IPv4 fallback",
+            allowEmpty: true
+        )
+        let mainSet = Set(v4)
+        let dedupedFallback = fallbackV4.filter { !mainSet.contains($0) }
+        var fallbackDedupRepaired = false
+        if dedupedFallback.count != fallbackV4.count {
+            AppLog.engine.error("Dropped fallback endpoint(s) duplicated by a main endpoint")
+            fallbackDedupRepaired = true
+        }
+        config.ipCheck.fallbackEndpointsV4 = dedupedFallback
+        repaired = repaired || fallbackRepaired || fallbackDedupRepaired
+
         var trusted: [String] = []
         for raw in config.trustedAddresses {
             if TrustedAddress(raw: raw).isValid {
@@ -148,29 +170,30 @@ final class ConfigStore {
         return config
     }
 
-    /// Keeps only valid HTTPS endpoints; an emptied list falls back to the
-    /// §5.4 defaults so IP verification stays possible.
-    private func sanitizeEndpoints(_ endpoints: [String], defaults: [String], family: String) -> ([String], Bool) {
-        let valid = endpoints.filter(Self.isHTTPSEndpoint)
+    /// Keeps only valid, unique HTTPS endpoints in order, caps the list, and
+    /// restores defaults for a required (main) list when nothing remains.
+    /// An empty fallback list is allowed.
+    private func sanitizeEndpoints(_ endpoints: [String], defaults: [String], family: String, allowEmpty: Bool = false) -> ([String], Bool) {
+        var seen = Set<String>()
+        let unique = endpoints.filter { endpoint in
+            IPCheckEndpoint.isValid(endpoint) && seen.insert(endpoint).inserted
+        }
         var repaired = false
-        if valid.count != endpoints.count {
-            AppLog.engine.error("Dropped \(endpoints.count - valid.count, privacy: .public) invalid \(family, privacy: .public) endpoint(s)")
+        if unique.count != endpoints.count {
+            AppLog.engine.error("Dropped \(endpoints.count - unique.count, privacy: .public) invalid or duplicate \(family, privacy: .public) endpoint(s)")
             repaired = true
         }
-        if valid.isEmpty {
+        let limited = Array(unique.prefix(IPCheckEndpoint.maxCount))
+        if limited.count != unique.count {
+            AppLog.engine.error("Limited \(family, privacy: .public) endpoints to \(IPCheckEndpoint.maxCount, privacy: .public)")
+            repaired = true
+        }
+        if limited.isEmpty {
+            if allowEmpty { return ([], repaired) }
             AppLog.engine.error("No valid \(family, privacy: .public) endpoints remain; restoring defaults")
             return (defaults, true)
         }
-        return (valid, repaired)
-    }
-
-    private static func isHTTPSEndpoint(_ string: String) -> Bool {
-        guard let url = URL(string: string),
-              url.scheme?.lowercased() == "https",
-              let host = url.host,
-              !host.isEmpty
-        else { return false }
-        return true
+        return (limited, repaired)
     }
 
     // MARK: - Atomic write

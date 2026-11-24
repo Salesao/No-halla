@@ -2,14 +2,17 @@
 //  EndpointEditor.swift
 //  NoHalla
 //
-//  Sheet to edit an IP-check endpoint (design §7.4, FR-8/27, NFR-8). Inline
-//  HTTPS validation; an invalid value is never saved.
+//  Sheet to add or edit an IP-check endpoint (design §7.4, FR-8/27, NFR-8).
+//  Inline HTTPS validation; an invalid value is never saved. Known endpoints
+//  are offered in a menu; the text field still accepts a custom URL.
 //
 
 import SwiftUI
 
 struct EndpointEditor: View {
     let original: String
+    let title: String
+    let validate: ((String) -> String?)?
     let onSave: (String) -> Void
     let onCancel: () -> Void
 
@@ -18,9 +21,19 @@ struct EndpointEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.spacing3) {
-            Text(L10n.string("ui.edit-ip-check-endpoint"))
+            Text(title)
                 .font(.system(size: DesignTokens.typeTitle, weight: .semibold))
                 .foregroundStyle(DesignTokens.text)
+            HStack {
+                Menu(L10n.string("ui.known-endpoints")) {
+                    ForEach(IPCheckEndpoint.presets, id: \.self) { preset in
+                        Button(preset) { value = preset }
+                    }
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                Spacer()
+            }
             TextField(L10n.string("ui.use-an-https-endpoint-that-returns-an-ip-address"), text: $value)
                 .textFieldStyle(.roundedBorder)
                 .frame(maxWidth: .infinity)
@@ -47,8 +60,12 @@ struct EndpointEditor: View {
 
     private func save() {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed), url.scheme?.lowercased() == "https", url.host != nil else {
+        guard IPCheckEndpoint.isValid(trimmed) else {
             error = L10n.string("ui.enter-a-valid-https-url")
+            return
+        }
+        if let message = validate?(trimmed) {
+            error = message
             return
         }
         onSave(trimmed)
@@ -56,5 +73,11 @@ struct EndpointEditor: View {
 }
 
 #Preview {
-    EndpointEditor(original: "https://ipinfo.io/ip", onSave: { _ in }, onCancel: {})
+    EndpointEditor(
+        original: "https://ipinfo.io/ip",
+        title: L10n.string("ui.edit-ip-check-endpoint"),
+        validate: nil,
+        onSave: { _ in },
+        onCancel: {}
+    )
 }

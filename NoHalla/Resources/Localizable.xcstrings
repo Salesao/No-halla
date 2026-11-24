@@ -1185,6 +1185,38 @@
         }
       }
     },
+    "ui.add-fallback-endpoint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add fallback endpoint"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить резервный эндпоинт"
+          }
+        }
+      }
+    },
+    "ui.add-ip-check-endpoint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add main endpoint"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить основной эндпоинт"
+          }
+        }
+      }
+    },
     "ui.add-manually": {
       "localizations": {
         "en": {
@@ -1457,6 +1489,22 @@
         }
       }
     },
+    "ui.custom-endpoint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom URL…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свой URL…"
+          }
+        }
+      }
+    },
     "ui.detect-ip": {
       "localizations": {
         "en": {
@@ -1489,18 +1537,34 @@
         }
       }
     },
-    "ui.edit-ip-check-endpoint": {
+    "ui.edit-fallback-endpoint": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Edit IP-check endpoint"
+            "value": "Edit fallback endpoint"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Изменить адрес проверки IP"
+            "value": "Изменить резервный эндпоинт"
+          }
+        }
+      }
+    },
+    "ui.edit-ip-check-endpoint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit main endpoint"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить основной эндпоинт"
           }
         }
       }
@@ -1517,6 +1581,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Изменить доверенный IP"
+          }
+        }
+      }
+    },
+    "ui.endpoint-duplicate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This endpoint is already added."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот эндпоинт уже добавлен."
+          }
+        }
+      }
+    },
+    "ui.endpoint-limit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "At most %d endpoints."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не больше %d эндпоинтов."
           }
         }
       }
@@ -1581,6 +1677,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Экспорт диагностики…"
+          }
+        }
+      }
+    },
+    "ui.fallback-ip-check-endpoints": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallback IP check endpoints"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Резервные сервисы проверки IP"
+          }
+        }
+      }
+    },
+    "ui.fallback-ip-check-endpoints-help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Queried only when no main endpoint answers. Every valid fallback answer must be trusted. Up to 8."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запрашиваются, только если ни один основной сервис не ответил. Каждый валидный ответ должен быть доверенным. До 8."
           }
         }
       }
@@ -1718,13 +1846,45 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "IP check endpoints"
+            "value": "Main IP check endpoints"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сервисы проверки IP"
+            "value": "Основные сервисы проверки IP"
+          }
+        }
+      }
+    },
+    "ui.ip-check-endpoints-help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every enabled main HTTPS endpoint is queried in parallel. A failed endpoint is ignored; every valid answer must be trusted."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Каждый включённый основной HTTPS-эндпоинт запрашивается параллельно. Недоступный игнорируется; каждый валидный ответ должен быть доверенным."
+          }
+        }
+      }
+    },
+    "ui.known-endpoints": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Known endpoints"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Известные эндпоинты"
           }
         }
       }
