@@ -4,7 +4,7 @@
 
 **Когда пропадает VPN, No-halla может поставить на паузу целое приложение или только сеансы терминала, в которых работают ИИ-агенты.** Допустим, Codex запущен в Orca, а Claude Code — в стандартном «Терминале» macOS. Если для обоих приложений выбрать «Терминалы агентов», при обрыве VPN оба сеанса встанут на паузу вместе с командами, запущенными агентами. В соседних вкладках без агентов можно по-прежнему собирать проект и работать по SSH. Когда VPN вернётся, агенты продолжат с того же места.
 
-**[Скачать No-halla 0.9.2](https://github.com/Salesao/No-halla/releases/download/v0.9.2/No-halla-0.9.2.dmg)** · [Расширение Chrome](https://chromewebstore.google.com/detail/fnphlcfgnfnfachhcofhggpnhjcibieh) · [Расширение Firefox](https://addons.mozilla.org/en-US/firefox/addon/no-halla-gate/) · [Первый запуск](#первый-запуск) · [Сборка из исходников](docs/USER_GUIDE.ru.md#сборка-из-исходников) · [Решение проблем](docs/USER_GUIDE.ru.md#решение-проблем)
+**[Скачать No-halla 0.9.3](https://github.com/Salesao/No-halla/releases/download/v0.9.3/No-halla-0.9.3.dmg)** · [Расширение Chrome](https://chromewebstore.google.com/detail/fnphlcfgnfnfachhcofhggpnhjcibieh) · [Расширение Firefox](https://addons.mozilla.org/en-US/firefox/addon/no-halla-gate/) · [Первый запуск](#первый-запуск) · [Сборка из исходников](docs/USER_GUIDE.ru.md#сборка-из-исходников) · [Решение проблем](docs/USER_GUIDE.ru.md#решение-проблем)
 
 ## Расширения для браузеров
 
@@ -26,7 +26,7 @@
 
 ## Установка
 
-Откройте DMG, перетащите **No-halla** в папку **«Программы»** и запустите. Версия 0.9.2 работает на Mac с чипом Apple или процессором Intel под управлением **macOS 13 и новее**. У сборки локальная подпись ad hoc. Если macOS запросит подтверждение первого запуска, откройте **Системные настройки → Конфиденциальность и безопасность**. [Архив ZIP](https://github.com/Salesao/No-halla/releases/download/v0.9.2/No-halla-0.9.2.zip) · [Контрольные суммы SHA-256](https://github.com/Salesao/No-halla/releases/download/v0.9.2/SHA256SUMS.txt)
+Откройте DMG, перетащите **No-halla** в папку **«Программы»** и запустите. Версия 0.9.3 работает на Mac с чипом Apple или процессором Intel под управлением **macOS 13 и новее**. У сборки локальная подпись ad hoc. Если macOS запросит подтверждение первого запуска, откройте **Системные настройки → Конфиденциальность и безопасность**. [Архив ZIP](https://github.com/Salesao/No-halla/releases/download/v0.9.3/No-halla-0.9.3.zip) · [Контрольные суммы SHA-256](https://github.com/Salesao/No-halla/releases/download/v0.9.3/SHA256SUMS.txt)
 
 ## Первый запуск
 
