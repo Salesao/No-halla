@@ -8,7 +8,8 @@ modified by the extension, and does not read or write the extension state.
 - Minimum Chrome: **121**
 - Vanilla JavaScript ES modules; no build step, no npm dependencies
 - English / Russian UI, light / dark / high-contrast design tokens
-- All outbound traffic is limited to the configured HTTPS IP-check endpoint
+- All outbound traffic is limited to the configured HTTPS IP-check endpoints
+  (the main one plus any fallbacks you add)
 
 ## Install (unpacked)
 
@@ -45,19 +46,48 @@ address is strictly parsed as IPv4 and matched against the trusted list
 
 `unknown` is never treated as trusted. The request uses
 `cache: "no-store"`, `credentials: "omit"`, `redirect: "error"` and a 2.5 s
-abort controller.
+abort controller. A transport failure (`TypeError`, for example
+`ERR_CONNECTION_CLOSED`) is retried once inside a 4 s budget; a timeout, a
+non-2xx response, a redirect and an unparseable body are not retried.
+
+**Tab-context check.** When a tab of a listed domain is already open, the same
+HTTPS check runs inside that tab (`chrome.scripting.executeScript`, isolated
+world) instead of the extension service worker, so it uses the network path
+the page actually uses. That verdict is authoritative; the service-worker check
+runs when no listed tab is available, the tab is restricted, or the endpoint
+does not allow cross-origin reads. A failed tab check never opens the gate.
+
+**Fallback endpoints.** The main endpoint can be picked from a preset list or
+typed (HTTPS only; the body must be a plain IPv4). Up to eight extra endpoints
+can be added from the preset list. A check starts at the next endpoint in the
+rotation and tries up to four sequentially: a valid IPv4 (trusted or
+untrusted) is final; a network error, non-2xx, redirect or unparseable body
+falls through to the next endpoint; if all attempts fail the verdict is
+`unknown`/closed. A valid untrusted address is never retried against another
+endpoint. The in-tab check skips known presets that do not send
+`Access-Control-Allow-Origin` (they are used by the background check only); a
+custom URL is tried and falls through on CORS. HTTP-only services such as
+`ip-api.com` are not offered: a plaintext answer could be rewritten in transit.
+Each enabled endpoint sees your IP. Presets and their CORS capability live in
+`src/endpoints.js`.
 
 **When a check runs.**
 
-- When a request to a listed domain is observed (`chrome.webRequest` watches
-  only the domains in the list; at most one check every 3 s, in-flight checks
-  are deduplicated).
+- When a navigation to a listed domain is observed (`chrome.webRequest` watches
+  only main-frame/sub-frame requests for the listed domains; a recent verdict
+  is reused for 30 s, and in-flight checks are deduplicated).
 - On browser startup and extension install/update.
 - On **Check now** and on the blocked page.
+- While the active tab is a visible listed domain, a content script asks for a
+  check about every 2 seconds, so an IP change is noticed without a navigation.
+  The script is registered only for granted listed domains and only while the
+  background check is on; the background ignores ticks from any other tab.
 - Optionally, in the background. **Background check is off by default.** When
-  enabled, an alarm runs at the chosen interval. Chrome may clamp very short
-  periods to its 30 s alarm floor. Off is the
-  owner's decision: the extension checks when you actually open a listed site.
+  enabled, a 30 s alarm checks only while the active tab is a listed domain
+  (even if the window is minimized or occluded). Switching to another tab or
+  domain makes no automatic request. Chrome may still delay an alarm. Off is
+  the owner's decision: the extension checks when you actually open a listed
+  site.
 
 **Blocking.** Declarative Net Request dynamic rules are built per domain:
 
@@ -90,10 +120,12 @@ with the setup reason until you add an address.
 | `storage` | config and UI state in `chrome.storage.local` |
 | `alarms` | the optional background check |
 | `activeTab` | read the active tab URL when you click the toolbar icon, for **Add current site** |
+| `scripting` | run the IP check inside an already-open listed tab (isolated world) and register the visible-tab heartbeat |
 
 No `notifications`, no `webRequestBlocking`, no `<all_urls>` in
-`host_permissions`. Host access is requested per domain when you add it, plus
-the IP-check endpoint origin. The manifest declares `optional_host_permissions`
+`host_permissions`. Host access is requested per domain when you add it, plus each IP-check endpoint
+origin (the manifest grants only the default `https://ipinfo.io/*`; adding a
+fallback asks for its host). The manifest declares `optional_host_permissions`
 as a pattern so those per-domain prompts are possible; at install only the
 default endpoint origin (`https://ipinfo.io/*`) is granted, and no site access
 is. `web_accessible_resources` matches all sites only so the blocked page
@@ -129,7 +161,27 @@ access and uses `use_dynamic_url: true`.
    site traffic uses IPv4 (different egress) or a corporate proxy with a
    trusted root CA may rewrite the answer. Both can produce a false `trusted`.
    The macOS app has the same limit; one endpoint is used by owner decision.
-10. **Disabling the extension** (user or enterprise policy) removes all rules
+10. **The tab-context check needs an open listed tab and a CORS-capable
+    endpoint.** With no listed tab open (for example, every listed page is
+    already redirected to the blocked page), the service-worker path is used.
+    Chrome treats the in-tab request as cross-origin, so a custom endpoint must
+    send `Access-Control-Allow-Origin`; `ipinfo.io` does. Chrome adds the
+    guarded tab's origin (`Origin: https://listed.example`) to that request;
+    the extension suppresses the `Referer`. If both contexts are wrong, the
+    gate stays closed.
+11. **The heartbeat runs only while the active tab is a visible listed
+    domain.** Switching to another tab or domain stops automatic checks
+    entirely; the 30 s alarm also requires the active tab to be a listed
+    domain (it covers a minimized or occluded window). A tab that is already
+    on the blocked page has no heartbeat, so recovery from there is manual. An
+    active visible listed tab makes about thirty checks a minute; the
+    endpoint's rate limits and the existing backoff still apply.
+12. **Every fallback endpoint is another trust source.** Each enabled endpoint
+    sees your IP; a broken endpoint can add up to 2 s before the next attempt,
+    and every enabled endpoint host must be granted. If all attempts fail the
+    verdict is `unknown` and the gate stays closed. The in-tab check skips
+    endpoints without CORS, so those are used by the background path only.
+13. **Disabling the extension** (user or enterprise policy) removes all rules
     immediately. There is no protection outside Chrome.
 
 ## Files
@@ -138,7 +190,10 @@ access and uses `use_dynamic_url: true`.
 manifest.json          MV3 manifest
 src/cidr.js            strict IPv4/CIDR parse + match
 src/config.js          storage schema, validation, state
+src/endpoints.js       HTTPS endpoint presets and CORS capability
 src/trust.js           endpoint fetch -> verdict
+src/probe.js           same check inside an open listed tab (fallback: SW)
+src/tick.js            active-tab 2 s heartbeat (registered dynamically)
 src/rules.js           DNR rule builder, reconcile, verification
 src/sw.js              orchestration, triggers, messages, alarms, permissions
 src/i18n.js            locale loading, t(), document localization
@@ -202,6 +257,9 @@ permission prompts and split incognito mode remain manual.
 | 12 | Cold service-worker start after a trusted verdict | rules stay until the fresh check | PASS (smoke: rules present on cold start) |
 | 13 | Config replaced while a check is in flight | old verdict never applied; rules never removed under the new config | PASS (smoke: stale check discarded, rules stayed) |
 | 14 | Damaged stored config | settings locked, rules untouched, Save rejected; repair + reload unlocks | PASS (smoke) |
+| 15 | Guarded tab open; the tab path and the service-worker path would get different endpoint answers | verdict comes from the tab-context check; with no listed tab the service-worker check decides | PASS (throwaway CDP harness 2026-11-24: 5/5) |
+| 16 | Active visible listed tab; listed tab in the background; active tab not listed | heartbeat checks about every 2 s; a background listed tab and a non-listed active tab make no automatic request (the 30 s alarm also requires an active listed tab) | PASS (throwaway CDP harness 2026-11-24) |
+| 17 | Main endpoint fails or returns an invalid body; fallback returns a trusted IP; a valid untrusted IP appears on another endpoint | rotation uses the next endpoint; the first valid IPv4 is final; an untrusted address is not retried elsewhere; all attempts fail → `unknown`/closed; the in-tab check skips non-CORS presets | PASS (throwaway Node + CDP harness 2026-11-24) |
 
 To test the IP change without changing networks, point the endpoint at an HTTPS
 mock that returns a fixed untrusted address (for example a local server with a
@@ -210,5 +268,9 @@ certificate Chrome trusts) and use **Check now**.
 ## Privacy
 
 Config and state stay in `chrome.storage.local`. No telemetry, accounts, or
-auto-update. The only outbound request is the configured HTTPS IP-check
-endpoint. Diagnostics are not uploaded anywhere.
+auto-update. The only outbound requests are the configured HTTPS IP-check
+endpoints: the main endpoint plus any fallbacks you add. Each enabled endpoint
+sees your IP; when the check runs from an open listed tab, Chrome also sends
+that tab's origin in the `Origin` header and the extension suppresses the
+`Referer`. The visible-tab heartbeat only asks for that same check; it sends
+no data of its own. Diagnostics are not uploaded anywhere.

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "No-halla Gate",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Blocks a user-defined domain list unless the current public IPv4 address is in a trusted list.",
   "minimum_chrome_version": "121",
   "default_locale": "en",
@@ -10,7 +10,8 @@
     "webRequest",
     "storage",
     "alarms",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "https://ipinfo.io/*"

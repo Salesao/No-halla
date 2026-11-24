@@ -9,11 +9,14 @@ This is the Firefox port of the Chrome artifact in `extension/`. Behavior,
 storage schema, fail-closed policy, and UI are the same; the platform layer
 uses Firefox event pages, `browser.*` promise APIs, and Firefox DNR rules.
 
-- Minimum Firefox: **140** (MV3 event page with an ES-module background,
-  `optional_host_permissions`, and the built-in data-collection declaration)
+- Minimum Firefox: **140** desktop (MV3 event page with an ES-module
+  background, `optional_host_permissions`, and the built-in data-collection
+  declaration); **142** on Firefox for Android, where the data-collection
+  declaration is supported
 - Vanilla JavaScript ES modules; no build step, no npm dependencies
 - English / Russian UI, light / dark / high-contrast design tokens
-- All outbound traffic is limited to the configured HTTPS IP-check endpoint
+- All outbound traffic is limited to the configured HTTPS IP-check endpoints
+  (the main one plus any fallbacks you add)
 
 ## Install
 
@@ -76,21 +79,50 @@ address is strictly parsed as IPv4 and matched against the trusted list
 
 `unknown` is never treated as trusted. The request uses
 `cache: "no-store"`, `credentials: "omit"`, `redirect: "error"` and a 2.5 s
-abort controller.
+abort controller. A transport failure (`TypeError`, for example Firefox's
+intermittent `ERR_CONNECTION_CLOSED`) is retried once inside a 4 s budget; a
+timeout, a non-2xx response, a redirect and an unparseable body are not
+retried.
+
+**Tab-context check.** When a tab of a listed domain is already open, the same
+HTTPS check runs inside that tab (`browser.scripting.executeScript`, isolated
+world) instead of the background event page, so it uses the network path the
+page actually uses. That verdict is authoritative; the background check runs
+when no listed tab is available, the tab is restricted, or the endpoint does
+not allow cross-origin reads. A failed tab check never opens the gate.
+
+**Fallback endpoints.** The main endpoint can be picked from a preset list or
+typed (HTTPS only; the body must be a plain IPv4). Up to eight extra endpoints
+can be added from the preset list. A check starts at the next endpoint in the
+rotation and tries up to four sequentially: a valid IPv4 (trusted or
+untrusted) is final; a network error, non-2xx, redirect or unparseable body
+falls through to the next endpoint; if all attempts fail the verdict is
+`unknown`/closed. A valid untrusted address is never retried against another
+endpoint. The in-tab check skips known presets that do not send
+`Access-Control-Allow-Origin` (they are used by the background check only); a
+custom URL is tried and falls through on CORS. HTTP-only services such as
+`ip-api.com` are not offered: a plaintext answer could be rewritten in transit.
+Each enabled endpoint sees your IP. Presets and their CORS capability live in
+`src/endpoints.js`.
 
 **When a check runs.**
 
-- When a request to a listed domain is observed (`browser.webRequest` watches
-  only the domains in the list; at most one check every 3 s, in-flight checks
-  are deduplicated).
+- When a navigation to a listed domain is observed (`browser.webRequest` watches
+  only main-frame/sub-frame requests for the listed domains; a recent verdict
+  is reused for 30 s, and in-flight checks are deduplicated).
 - On browser startup and extension install/update.
 - On **Check now** and on the blocked page.
+- While the active tab is a visible listed domain, a content script asks for a
+  check about every 2 seconds, so an IP change is noticed without a navigation.
+  The script is registered only for granted listed domains and only while the
+  background check is on; the background ignores ticks from any other tab.
 - Optionally, in the background. **Background check is off by default.** When
-  enabled, an alarm runs at the chosen interval. Firefox does not clamp the
-  interval; `periodInMinutes` is passed to the platform timer as-is. Firefox
-  may still delay an alarm while the browser is busy or asleep, and alarms do
-  not survive a browser restart — the background page recreates the alarm on
-  every cold start. Off is the owner's decision: the extension checks when you
+  enabled, a 30 s alarm checks only while the active tab is a listed domain
+  (even if the window is minimized or occluded). Switching to another tab or
+  domain makes no automatic request. Firefox uses that interval as is, but may
+  still delay an alarm while the browser is busy or asleep, and alarms do not
+  survive a browser restart — the background page recreates the alarm on every
+  cold start. Off is the owner's decision: the extension checks when you
   actually open a listed site.
 
 **Blocking.** Declarative Net Request dynamic rules are built per domain:
@@ -129,10 +161,12 @@ with the setup reason until you add an address.
 | `storage` | config and UI state in `browser.storage.local` |
 | `alarms` | the optional background check |
 | `activeTab` | read the active tab URL when you click the toolbar icon, for **Add current site** |
+| `scripting` | run the IP check inside an already-open listed tab (isolated world) and register the visible-tab heartbeat |
 
 No `notifications`, no `webRequestBlocking`, no `<all_urls>` in
 `host_permissions`. Host access is requested per domain when you add it, plus
-the IP-check endpoint origin. The manifest declares
+each IP-check endpoint origin (the manifest grants only the default
+`https://ipinfo.io/*`; adding a fallback asks for its host). The manifest declares
 `optional_host_permissions` as a pattern so those per-domain prompts are
 possible; at install only the default endpoint origin (`https://ipinfo.io/*`)
 is granted, and no site access is.
@@ -158,15 +192,18 @@ Firefox 140+ shows the built-in data-collection consent from
 `browser_specific_settings.gecko.data_collection_permissions`. The manifest
 declares `required: ["none"]`: the extension does not send any data payload to
 its author or a third party, and it has no telemetry, accounts, analytics, or
-crash reporting.
+crash reporting. Firefox for Android only supports this declaration from 142,
+so `browser_specific_settings.gecko_android.strict_min_version` is `142.0`
+while desktop keeps `140.0`; without that split AMO warns that the Android
+minimum predates the declaration.
 
-The configured IP-check endpoint necessarily sees the source IP of its own
-HTTPS request, as any request to that server does. The returned address is
-matched against the trusted list and stored in `browser.storage.local` inside
-the browser; it is not sent anywhere else. The default endpoint is
-`https://ipinfo.io/ip`; changing it changes which third party sees the request.
-This is documented in the Privacy section and should be restated in the AMO
-submission notes.
+Each configured IP-check endpoint (the main one and any fallbacks) necessarily
+sees the source IP of its own HTTPS request, as any request to that server does.
+The returned address is matched against the trusted list and stored in
+`browser.storage.local` inside the browser; it is not sent anywhere else. The
+default main endpoint is `https://ipinfo.io/ip`; changing it or adding fallbacks
+changes which third parties see the request. This is documented in the Privacy
+section and should be restated in the AMO submission notes.
 
 ## Honest limits
 
@@ -198,7 +235,26 @@ submission notes.
    site traffic uses IPv4 (different egress), or a corporate proxy with a
    trusted root CA may rewrite the answer. Both can produce a false `trusted`.
    The macOS app has the same limit; one endpoint is used by owner decision.
-10. **Disabling the extension** (user or enterprise policy) removes all rules
+10. **The tab-context check needs an open listed tab and a CORS-capable
+    endpoint.** With no listed tab open (for example, every listed page is
+    already redirected to the blocked page), the background path is used.
+    Firefox treats MV3 content-script requests as cross-origin, so a custom
+    endpoint must opt in with `Access-Control-Allow-Origin`; `ipinfo.io` does.
+    The request carries no cookies or credentials, and the extension suppresses
+    the `Referer`. If both contexts are wrong, the gate stays closed.
+11. **The heartbeat runs only while the active tab is a visible listed
+    domain.** Switching to another tab or domain stops automatic checks
+    entirely; the 30 s alarm also requires the active tab to be a listed
+    domain (it covers a minimized or occluded window). A tab that is already
+    on the blocked page has no heartbeat, so recovery from there is manual. An
+    active visible listed tab makes about thirty checks a minute; the
+    endpoint's rate limits and the existing backoff still apply.
+12. **Every fallback endpoint is another trust source.** Each enabled endpoint
+    sees your IP; a broken endpoint can add up to 2 s before the next attempt,
+    and every enabled endpoint host must be granted. If all attempts fail the
+    verdict is `unknown` and the gate stays closed. The in-tab check skips
+    endpoints without CORS, so those are used by the background path only.
+13. **Disabling the extension** (user or enterprise policy) removes all rules
     immediately. There is no protection outside Firefox.
 
 ## Files
@@ -208,7 +264,10 @@ manifest.json          MV3 manifest (Firefox keys, gecko id, event page)
 src/browser.js         `browser.*` namespace wrapper
 src/cidr.js            strict IPv4/CIDR parse + match
 src/config.js          storage schema, validation, state
+src/endpoints.js       HTTPS endpoint presets and CORS capability
 src/trust.js           endpoint fetch -> verdict
+src/probe.js           same check inside an open listed tab (fallback: background)
+src/tick.js            active-tab 2 s heartbeat (registered dynamically)
 src/rules.js           DNR rule builder, reconcile, verification
 src/background.js      event page: orchestration, triggers, messages, alarms
 src/i18n.js            locale loading, t(), document localization
@@ -277,6 +336,9 @@ runtime checks are not part of this repository's automated verification.
 | 14 | Damaged stored config | settings locked, rules untouched, Save rejected; repair + reload unlocks |
 | 15 | Check again on the blocked page with a newly trusted IP | navigates back to the original URL |
 | 16 | Private window with the add-on not allowed there | documented limitation: no protection there |
+| 17 | Guarded tab open; the tab path and the background path would get different endpoint answers | verdict comes from the tab-context check; with no listed tab the background check decides |
+| 18 | Active visible listed tab; listed tab in the background; active tab not listed | heartbeat checks about every 2 s; a background listed tab and a non-listed active tab make no automatic request (the 30 s alarm also requires an active listed tab) |
+| 19 | Main endpoint fails or returns an invalid body; fallback returns a trusted IP; a valid untrusted IP appears on another endpoint | rotation uses the next endpoint; the first valid IPv4 is final; an untrusted address is not retried elsewhere; all attempts fail → `unknown`/closed; the in-tab check skips non-CORS presets |
 
 To test the IP change without changing networks, point the endpoint at an HTTPS
 mock that returns a fixed untrusted address (for example a local server with a
@@ -285,8 +347,11 @@ certificate Firefox trusts) and use **Check now**.
 ## Privacy
 
 Config and state stay in `browser.storage.local` inside the Firefox profile. No
-telemetry, accounts, analytics, or auto-update. The only outbound request is
-the configured HTTPS IP-check endpoint; the extension stores the returned
-address locally and never includes browsing data, domain lists, or identifiers
-in that request. The endpoint sees the request's source IP, as it would for any
-HTTPS client.
+telemetry, accounts, analytics, or auto-update. The only outbound requests are
+the configured HTTPS IP-check endpoints: the main endpoint plus any fallbacks
+you add. Each enabled endpoint sees your IP. A tab-context check runs in the
+listed tab, carries no cookies or credentials, and suppresses the `Referer`;
+the extension stores the returned address locally and sends it nowhere else.
+The visible-tab heartbeat only asks for that same check; it sends no data of
+its own. The endpoint sees the request's source IP, as it would for any HTTPS
+client.

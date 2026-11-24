@@ -8,7 +8,7 @@
 
 ## Browser extensions
 
-The Chrome and Firefox extensions block a list of domains when your public IP is not trusted. They are standalone artifacts: the macOS app is not required, and they do not read its configuration. Both keep settings and the last verdict locally; the only outbound request is the configured HTTPS IP-check endpoint.
+The Chrome and Firefox extensions block a list of domains when your public IP is not trusted. They are standalone artifacts: the macOS app is not required, and they do not read its configuration. Both keep settings and the last verdict locally; the only outbound requests are the configured HTTPS IP-check endpoints: the main one plus any fallbacks you add. The main endpoint can be picked from a preset list or typed; up to eight fallbacks are tried in rotation. When a listed tab is already open, the check runs from that tab so it uses the same network path; Chrome includes the tab's origin in the request (the Referer is suppressed). When the active tab is a visible listed domain, it is checked about every 2 seconds; the 30 s background alarm also requires the active tab to be a listed domain, so switching to another tab or domain makes no automatic requests (manual, startup, and navigation checks still run).
 
 ### Get the extensions
 
@@ -16,7 +16,7 @@ The Chrome and Firefox extensions block a list of domains when your public IP is
 - **Firefox AMO:** [Install No-halla Gate](https://addons.mozilla.org/en-US/firefox/addon/no-halla-gate/) (Firefox 140+). For development, load `extension-firefox/manifest.json` via `about:debugging`; see [extension-firefox/README.md](extension-firefox/README.md).
 - **Store previews:** [store-assets/README.md](store-assets/README.md) has the Chrome/AMO screenshots, promotional tiles and listing copy.
 
-Both artifacts are version **1.0.0** and share the design tokens and EN/RU copy source. The Firefox build is prepared for AMO signing.
+Both artifacts are version **1.0.1** and share the design tokens and EN/RU copy source. The Firefox build is prepared for AMO signing.
 
 ## Protection in action
 

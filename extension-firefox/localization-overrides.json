@@ -8,15 +8,15 @@
     "ru": "Доступ Firefox отклонён — домен не добавлен."
   },
   "gate.options.backgroundCheckHelp": {
-    "en": "Off by default.\n\nWhen on: the extension checks your public IP automatically at the chosen interval, even if no listed site is open. The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site.\n\nNote: Firefox may delay automatic checks.",
-    "ru": "По умолчанию эта функция отключена.\n\nЕсли включить: расширение будет автоматически проверять ваш публичный IP через заданные промежутки времени, даже если сайты из списка не открыты. Результат проверки будет действовать для всех сайтов в списке.\n\nЕсли оставить выключенной: IP будет проверяться только при открытии сайта из списка.\n\nВажно: Firefox может задерживать автоматические проверки."
+    "en": "Off by default.\n\nWhen on: while the active tab is a listed domain, the IP is checked about every 2 seconds. If that tab's window is minimized or occluded, a fallback alarm checks at the interval below (minimum 30 seconds). The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site, on browser startup, or via Check now. Switching to another tab or domain stops automatic checks.\n\nNote: Firefox may delay the fallback alarm.",
+    "ru": "По умолчанию эта функция отключена.\n\nЕсли включить: пока активная вкладка — домен из списка, IP проверяется примерно каждые 2 секунды. Если окно этой вкладки свёрнуто или перекрыто, срабатывает фоновый alarm с интервалом ниже (минимум 30 секунд). Результат действует для всех сайтов в списке.\n\nЕсли оставить выключенной: IP проверяется только при открытии сайта из списка, при старте браузера или по кнопке «Проверить сейчас». Переключение на другую вкладку или домен останавливает автоматические проверки.\n\nВажно: Firefox может задержать фоновый alarm."
   },
   "gate.options.domainsHelp": {
     "en": "Subdomains are covered. Firefox asks for access to each domain.",
     "ru": "Поддомены покрываются. Firefox спросит доступ к каждому домену."
   },
   "gate.options.intervalHelp": {
-    "en": "Seconds between background checks. Firefox uses this interval as-is; the browser can still delay a check while it is busy or asleep.",
-    "ru": "Секунды между фоновыми проверками. Firefox использует этот интервал как есть; браузер всё равно может задержать проверку, если занят или находится в спящем режиме."
+    "en": "Fallback alarm interval. Minimum 30 seconds; Firefox uses it as-is but may delay a check while busy or asleep. It checks an active listed tab whose window is minimized or occluded. While the active tab is a visible listed domain, checks run about every 2 seconds.",
+    "ru": "Интервал фонового alarm. Минимум 30 секунд; Firefox использует его как есть, но может задержать проверку, если занят или спит. Он проверяет активную вкладку домена из списка, когда окно свёрнуто или перекрыто. Пока активная вкладка — видимый домен из списка, проверки идут примерно каждые 2 секунды."
   }
 }

@@ -4,12 +4,17 @@
 // keeps the user gesture, and any failure surfaces a localized message.
 
 import { api } from "../src/browser.js";
-import { DEFAULT_CONFIG, normalizeHostname, validateConfig } from "../src/config.js";
+import {
+  DEFAULT_CONFIG,
+  MIN_INTERVAL_SECONDS,
+  normalizeHostname,
+  validateConfig
+} from "../src/config.js";
+import { ENDPOINT_PRESETS, FALLBACK_LIMIT } from "../src/endpoints.js";
 import { applyLanguage, localizeDocument, t } from "../src/i18n.js";
 
 const MAX_DOMAINS = 500;
 const MAX_TRUSTED = 64;
-const MIN_INTERVAL_SECONDS = 1;
 const SAVED_TIMEOUT_MS = 2500;
 
 const form = document.getElementById("options-form");
@@ -30,6 +35,11 @@ const trustedError = document.getElementById("trusted-error");
 const endpointInput = document.getElementById("endpoint");
 const endpointSave = document.getElementById("endpoint-save");
 const endpointError = document.getElementById("endpoint-error");
+const endpointPresets = document.getElementById("endpoint-presets");
+const fallbackSelect = document.getElementById("fallback-preset");
+const fallbackAdd = document.getElementById("fallback-add");
+const fallbackList = document.getElementById("fallback-list");
+const fallbackError = document.getElementById("fallback-error");
 
 const languageSelect = document.getElementById("language");
 const backgroundInput = document.getElementById("background-check");
@@ -41,6 +51,7 @@ const errorNodes = {
   domains: domainsError,
   trusted: trustedError,
   endpoint: endpointError,
+  fallbacks: fallbackError,
   settings: settingsError
 };
 
@@ -57,6 +68,7 @@ function cloneDefault() {
     domains: [],
     trustedAddresses: [],
     endpoint: DEFAULT_CONFIG.endpoint,
+    fallbackEndpoints: [],
     language: DEFAULT_CONFIG.language,
     backgroundCheck: DEFAULT_CONFIG.backgroundCheck,
     backgroundIntervalSeconds: DEFAULT_CONFIG.backgroundIntervalSeconds
@@ -72,6 +84,9 @@ function readConfig(raw) {
     domains: Array.isArray(raw.domains) ? raw.domains.slice() : [],
     trustedAddresses: Array.isArray(raw.trustedAddresses) ? raw.trustedAddresses.slice() : [],
     endpoint: typeof raw.endpoint === "string" ? raw.endpoint : DEFAULT_CONFIG.endpoint,
+    fallbackEndpoints: Array.isArray(raw.fallbackEndpoints)
+      ? raw.fallbackEndpoints.filter((url) => typeof url === "string")
+      : [],
     language: ["system", "en", "ru"].includes(raw.language) ? raw.language : DEFAULT_CONFIG.language,
     backgroundCheck: raw.backgroundCheck === true,
     backgroundIntervalSeconds: Number.isInteger(raw.backgroundIntervalSeconds)
@@ -116,6 +131,9 @@ function mapValidation(detail) {
   if (typeof detail !== "string") return t("gate.error.generic");
   if (detail === "interval:range") return t("gate.error.interval", MIN_INTERVAL_SECONDS);
   if (detail === "endpoint:invalid") return t("gate.error.endpoint");
+  if (detail === "fallback:invalid") return t("gate.error.endpoint");
+  if (detail === "fallback:limit") return t("gate.error.fallbackLimit", FALLBACK_LIMIT);
+  if (detail === "fallback:duplicate") return t("gate.error.duplicate");
   if (detail === "trusted:limit") return t("gate.error.addressLimit", MAX_TRUSTED);
   if (detail === "trusted:invalid") return t("gate.error.address");
   if (detail === "domains:limit") return t("gate.error.domainLimit", MAX_DOMAINS);
@@ -172,6 +190,11 @@ function syncDisabled() {
     field.disabled = disabled;
   }
   intervalInput.disabled = disabled || backgroundInput.checked !== true;
+  const noFallbackOptions =
+    fallbackSelect.options.length === 0 || fallbackSelect.value === "";
+  const fallbackFull = config.fallbackEndpoints.length >= FALLBACK_LIMIT;
+  fallbackSelect.disabled = disabled || noFallbackOptions || fallbackFull;
+  fallbackAdd.disabled = disabled || noFallbackOptions || fallbackFull;
 }
 
 function syncInterval() {
@@ -238,9 +261,71 @@ function syncSettings() {
   intervalInput.value = String(config.backgroundIntervalSeconds);
 }
 
+function endpointOriginPattern(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return null;
+    return `${url.protocol}//${url.hostname}/*`;
+  } catch {
+    return null;
+  }
+}
+
+function renderEndpointPresets() {
+  endpointPresets.replaceChildren();
+  for (const preset of ENDPOINT_PRESETS) {
+    const option = document.createElement("option");
+    option.value = preset.url;
+    endpointPresets.append(option);
+  }
+}
+
+function renderFallbacks() {
+  fallbackSelect.replaceChildren();
+  const used = new Set([config.endpoint, ...config.fallbackEndpoints]);
+  const available = ENDPOINT_PRESETS.filter((preset) => !used.has(preset.url));
+  if (available.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = t("gate.options.noFallbackOptions");
+    fallbackSelect.append(option);
+  } else {
+    for (const preset of available) {
+      const option = document.createElement("option");
+      option.value = preset.url;
+      option.textContent = preset.url;
+      fallbackSelect.append(option);
+    }
+  }
+
+  fallbackList.replaceChildren();
+  if (config.fallbackEndpoints.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = t("gate.options.noFallbacks");
+    fallbackList.append(empty);
+  } else {
+    for (const url of config.fallbackEndpoints) {
+      const row = document.createElement("li");
+      const value = document.createElement("span");
+      value.className = "value";
+      value.textContent = url;
+      row.append(
+        value,
+        createRemoveButton(`${t("gate.options.remove")} ${url}`, () => {
+          removeFallback(url);
+        })
+      );
+      fallbackList.append(row);
+    }
+  }
+  syncDisabled();
+}
+
 function render() {
   renderDomains();
   renderTrusted();
+  renderFallbacks();
   syncSettings();
   syncInterval();
   syncDisabled();
@@ -289,6 +374,104 @@ async function removeTrusted(address) {
     return;
   }
   showError("trusted", t("gate.error.generic"));
+}
+
+async function addFallback() {
+  if (busy || locked) return;
+  clearMessages();
+
+  const value = fallbackSelect.value;
+  if (value === "") return;
+  if (config.fallbackEndpoints.length >= FALLBACK_LIMIT) {
+    showError("fallbacks", t("gate.error.fallbackLimit", FALLBACK_LIMIT));
+    return;
+  }
+  if (value === config.endpoint || config.fallbackEndpoints.includes(value)) {
+    showError("fallbacks", t("gate.error.duplicate"));
+    return;
+  }
+  const originPattern = endpointOriginPattern(value);
+  if (originPattern === null) {
+    showError("fallbacks", t("gate.error.endpoint"));
+    return;
+  }
+
+  setBusy(true);
+  let granted = false;
+  try {
+    // Requested synchronously from the click handler, before any await, so the
+    // Firefox prompt keeps the user gesture.
+    granted = await api.permissions.request({ origins: [originPattern] });
+  } catch {
+    granted = false;
+  }
+  if (granted !== true) {
+    setBusy(false);
+    renderFallbacks();
+    showError("fallbacks", t("gate.error.endpointPermission"));
+    return;
+  }
+
+  const candidate = {
+    ...config,
+    fallbackEndpoints: [...config.fallbackEndpoints, value]
+  };
+  const result = await persist(candidate);
+  setBusy(false);
+  if (result.ok) {
+    renderFallbacks();
+    showSaved();
+    return;
+  }
+
+  const live = await send({ type: "getConfig" });
+  const used = new Set();
+  if (live.ok === true && live.config) {
+    for (const item of [
+      live.config.endpoint,
+      ...(live.config.fallbackEndpoints || [])
+    ]) {
+      const pattern = endpointOriginPattern(item);
+      if (pattern !== null) used.add(pattern);
+    }
+  }
+  if (!used.has(originPattern)) {
+    try {
+      await api.permissions.remove({ origins: [originPattern] });
+    } catch {
+      // Best effort: the fallback was not saved.
+    }
+  }
+  renderFallbacks();
+  showError(
+    "fallbacks",
+    result.error === "permission-denied"
+      ? t("gate.error.endpointPermission")
+      : t("gate.error.generic")
+  );
+}
+
+async function removeFallback(url) {
+  if (busy || locked) return;
+  clearMessages();
+  const index = config.fallbackEndpoints.indexOf(url);
+  setBusy(true);
+  const candidate = {
+    ...config,
+    fallbackEndpoints: config.fallbackEndpoints.filter((item) => item !== url)
+  };
+  const result = await persist(candidate);
+  setBusy(false);
+  if (result.ok) {
+    renderFallbacks();
+    const buttons = fallbackList.querySelectorAll(".btn-remove");
+    const target = buttons[Math.min(index, buttons.length - 1)] || fallbackAdd;
+    if (target) target.focus();
+    showSaved();
+    return;
+  }
+  renderFallbacks();
+  showError("fallbacks", t("gate.error.generic"));
 }
 
 async function addDomain() {
@@ -453,21 +636,22 @@ async function saveEndpoint() {
     return;
   }
 
-  const candidate = { ...config, endpoint: value };
+  // A fallback equal to the new primary would be a duplicate; the primary
+  // wins and the fallback is removed.
+  const fallbackEndpoints = config.fallbackEndpoints.filter(
+    (item) => item !== value
+  );
+  const candidate = { ...config, endpoint: value, fallbackEndpoints };
   if (validateConfig(candidate) !== null) {
     showError("endpoint", t("gate.error.endpoint"));
     return;
   }
 
-  const originPattern = `${url.protocol}//${url.hostname}/*`;
-  const previousOrigin = (() => {
-    try {
-      const current = new URL(config.endpoint);
-      return `${current.protocol}//${current.hostname}/*`;
-    } catch {
-      return null;
-    }
-  })();
+  const originPattern = endpointOriginPattern(value);
+  if (originPattern === null) {
+    showError("endpoint", t("gate.error.endpoint"));
+    return;
+  }
   // Requested directly in the handler, before the first await.
   setBusy(true);
   let granted = false;
@@ -478,7 +662,7 @@ async function saveEndpoint() {
   }
   if (granted !== true) {
     setBusy(false);
-    showError("endpoint", t("gate.error.endpoint"));
+    showError("endpoint", t("gate.error.endpointPermission"));
     return;
   }
 
@@ -486,33 +670,34 @@ async function saveEndpoint() {
   setBusy(false);
   if (result.ok) {
     syncEndpoint();
+    renderFallbacks();
     showSaved();
     return;
   }
-  if (originPattern !== previousOrigin) {
-    // Remove the grant only when the live config still points at the old
-    // endpoint. Another tab may already have saved this endpoint.
-    const live = await send({ type: "getConfig" });
-    let liveOrigin = null;
-    if (live.ok === true && live.config && typeof live.config.endpoint === "string") {
-      try {
-        const liveURL = new URL(live.config.endpoint);
-        liveOrigin = `${liveURL.protocol}//${liveURL.hostname}/*`;
-      } catch {
-        liveOrigin = null;
-      }
+
+  // The save failed. Drop the just-requested grant only when neither the live
+  // primary nor a live fallback uses it.
+  const live = await send({ type: "getConfig" });
+  const used = new Set();
+  if (live.ok === true && live.config) {
+    for (const item of [
+      live.config.endpoint,
+      ...(live.config.fallbackEndpoints || [])
+    ]) {
+      const pattern = endpointOriginPattern(item);
+      if (pattern !== null) used.add(pattern);
     }
-    if (liveOrigin === previousOrigin) {
-      try {
-        await api.permissions.remove({ origins: [originPattern] });
-      } catch {
-        // Best effort: the grant is unused if the endpoint was not saved.
-      }
+  }
+  if (!used.has(originPattern)) {
+    try {
+      await api.permissions.remove({ origins: [originPattern] });
+    } catch {
+      // Best effort: the grant is unused if the endpoint was not saved.
     }
   }
   showError(
     "endpoint",
-    result.error === "permission-denied" ? t("gate.error.endpoint") : t("gate.error.generic")
+    result.error === "permission-denied" ? t("gate.error.endpointPermission") : t("gate.error.generic")
   );
 }
 
@@ -611,6 +796,7 @@ async function initialize() {
     }
 
     syncEndpoint();
+    renderEndpointPresets();
     render();
   } catch {
     setLocked(true);
@@ -649,6 +835,10 @@ trustedAddCurrent.addEventListener("click", () => {
 
 endpointSave.addEventListener("click", () => {
   saveEndpoint();
+});
+
+fallbackAdd.addEventListener("click", () => {
+  addFallback();
 });
 
 domainInput.addEventListener("keydown", (event) => {

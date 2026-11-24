@@ -50,11 +50,23 @@
         <h2 id="endpoint-title" data-i18n="gate.options.endpoint"></h2>
         <p class="help" data-i18n="gate.options.endpointHelp"></p>
         <div class="row">
-          <input id="endpoint" type="url" autocomplete="url" spellcheck="false"
+          <input id="endpoint" type="url" list="endpoint-presets" autocomplete="url" spellcheck="false"
                  data-i18n-aria-label="gate.options.endpoint">
           <button id="endpoint-save" class="btn-primary" type="button" data-i18n="gate.options.save"></button>
         </div>
+        <datalist id="endpoint-presets"></datalist>
         <p id="endpoint-error" class="error" aria-live="polite"></p>
+      </section>
+
+      <section class="card" aria-labelledby="fallback-title">
+        <h2 id="fallback-title" data-i18n="gate.options.fallbacks"></h2>
+        <p class="help" data-i18n="gate.options.fallbacksHelp"></p>
+        <div class="row">
+          <select id="fallback-preset" data-i18n-aria-label="gate.options.fallbacks"></select>
+          <button id="fallback-add" class="btn-primary" type="button" data-i18n="gate.options.fallbackAdd"></button>
+        </div>
+        <p id="fallback-error" class="error" aria-live="polite"></p>
+        <ul id="fallback-list" class="list" data-i18n-aria-label="gate.options.fallbacks"></ul>
       </section>
 
       <section class="card" aria-labelledby="settings-title">
@@ -79,7 +91,7 @@
 
         <div id="interval-field" class="field" hidden>
           <label for="interval-seconds" data-i18n="gate.options.interval"></label>
-          <input id="interval-seconds" type="number" min="1" step="1" inputmode="numeric">
+          <input id="interval-seconds" type="number" min="30" step="1" inputmode="numeric">
           <p class="help" data-i18n="gate.options.intervalHelp"></p>
         </div>
 

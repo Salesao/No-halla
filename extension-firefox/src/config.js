@@ -4,11 +4,13 @@
 
 import { api } from "./browser.js";
 import { parseIPv4, parseCIDR } from "./cidr.js";
+import { FALLBACK_LIMIT } from "./endpoints.js";
 
 const CONFIG_KEY = "gateConfig";
 const STATE_KEY = "gateState";
 const MAX_DOMAINS = 500;
 const MAX_TRUSTED = 64;
+export const MIN_INTERVAL_SECONDS = 30;
 const VERDICTS = ["trusted", "untrusted", "unknown"];
 const LANGUAGES = ["system", "en", "ru"];
 
@@ -18,6 +20,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   domains: Object.freeze([]),
   trustedAddresses: Object.freeze([]),
   endpoint: "https://ipinfo.io/ip",
+  fallbackEndpoints: Object.freeze([]),
   language: "system",
   backgroundCheck: false,
   backgroundIntervalSeconds: 30
@@ -37,6 +40,7 @@ function cloneConfig(config) {
     domains: Array.isArray(config.domains) ? config.domains.slice() : [],
     trustedAddresses: Array.isArray(config.trustedAddresses) ? config.trustedAddresses.slice() : [],
     endpoint: config.endpoint,
+    fallbackEndpoints: Array.isArray(config.fallbackEndpoints) ? config.fallbackEndpoints.slice() : [],
     language: config.language,
     backgroundCheck: config.backgroundCheck,
     backgroundIntervalSeconds: config.backgroundIntervalSeconds
@@ -113,13 +117,44 @@ export function validateConfig(config) {
 
   if (!isValidEndpoint(config.endpoint)) return "endpoint:invalid";
 
+  const fallbackEndpoints =
+    config.fallbackEndpoints === undefined ? [] : config.fallbackEndpoints;
+  if (!Array.isArray(fallbackEndpoints)) return "fallback:invalid";
+  if (fallbackEndpoints.length > FALLBACK_LIMIT) return "fallback:limit";
+  const endpointSet = new Set([config.endpoint]);
+  for (const url of fallbackEndpoints) {
+    if (!isValidEndpoint(url)) return "fallback:invalid";
+    if (endpointSet.has(url)) return "fallback:duplicate";
+    endpointSet.add(url);
+  }
+
   if (!LANGUAGES.includes(config.language)) return "language:invalid";
   if (typeof config.backgroundCheck !== "boolean") return "schema:invalid";
-  if (!Number.isInteger(config.backgroundIntervalSeconds) || config.backgroundIntervalSeconds < 1) {
+  if (
+    !Number.isInteger(config.backgroundIntervalSeconds) ||
+    config.backgroundIntervalSeconds < MIN_INTERVAL_SECONDS
+  ) {
     return "interval:range";
   }
 
   return null;
+}
+
+// Old builds allowed a 1 s floor. Clamp that field on load so an upgrade never
+// turns a valid stored config into config-error and freezes the rules.
+export function normalizeStoredConfig(raw) {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  if (raw.schemaVersion !== 1) return raw;
+  let normalized = raw;
+  const interval = normalized.backgroundIntervalSeconds;
+  if (Number.isInteger(interval) && interval >= 1 && interval < MIN_INTERVAL_SECONDS) {
+    normalized = { ...normalized, backgroundIntervalSeconds: MIN_INTERVAL_SECONDS };
+  }
+  // Added after 1.0.0: an old config has no fallback list, which means none.
+  if (normalized.fallbackEndpoints === undefined) {
+    normalized = { ...normalized, fallbackEndpoints: [] };
+  }
+  return normalized;
 }
 
 export async function loadConfig() {
@@ -133,10 +168,11 @@ export async function loadConfig() {
     if (raw === undefined) {
       return { config: cloneConfig(DEFAULT_CONFIG), error: null };
     }
-    if (validateConfig(raw) !== null) {
+    const normalized = normalizeStoredConfig(raw);
+    if (validateConfig(normalized) !== null) {
       return { config: cloneConfig(DEFAULT_CONFIG), error: "config-error" };
     }
-    return { config: cloneConfig(raw), error: null };
+    return { config: cloneConfig(normalized), error: null };
   } catch {
     return { config: cloneConfig(DEFAULT_CONFIG), error: "config-error" };
   }

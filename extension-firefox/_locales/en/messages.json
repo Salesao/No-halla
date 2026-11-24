@@ -65,6 +65,12 @@
   "gate_error_endpoint": {
     "message": "The endpoint must be a valid HTTPS URL."
   },
+  "gate_error_endpointPermission": {
+    "message": "Host access for the endpoint was denied."
+  },
+  "gate_error_fallbackLimit": {
+    "message": "At most %d fallback endpoints."
+  },
   "gate_error_generic": {
     "message": "Something went wrong."
   },
@@ -93,7 +99,7 @@
     "message": "Background IP check"
   },
   "gate_options_backgroundCheckHelp": {
-    "message": "Off by default.\n\nWhen on: the extension checks your public IP automatically at the chosen interval, even if no listed site is open. The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site.\n\nNote: Firefox may delay automatic checks."
+    "message": "Off by default.\n\nWhen on: while the active tab is a listed domain, the IP is checked about every 2 seconds. If that tab's window is minimized or occluded, a fallback alarm checks at the interval below (minimum 30 seconds). The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site, on browser startup, or via Check now. Switching to another tab or domain stops automatic checks.\n\nNote: Firefox may delay the fallback alarm."
   },
   "gate_options_domainPlaceholder": {
     "message": "example.com"
@@ -105,16 +111,25 @@
     "message": "Subdomains are covered. Firefox asks for access to each domain."
   },
   "gate_options_endpoint": {
-    "message": "IP check endpoint"
+    "message": "Main IP check endpoint"
   },
   "gate_options_endpointHelp": {
-    "message": "HTTPS only. Must return the public IPv4 as plain text."
+    "message": "HTTPS only; the body must be the public IPv4 as plain text. Pick a known endpoint or type your own. Fallbacks are tried in rotation when this one fails."
+  },
+  "gate_options_fallbackAdd": {
+    "message": "Add"
+  },
+  "gate_options_fallbacks": {
+    "message": "Fallback IP check endpoints"
+  },
+  "gate_options_fallbacksHelp": {
+    "message": "Tried in rotation when the main endpoint fails. Up to 8. Each enabled endpoint sees your IP. The in-tab check uses only endpoints that allow CORS; others are used by the background check."
   },
   "gate_options_interval": {
-    "message": "Interval (seconds)"
+    "message": "Fallback alarm interval (seconds)"
   },
   "gate_options_intervalHelp": {
-    "message": "Seconds between background checks. Firefox uses this interval as-is; the browser can still delay a check while it is busy or asleep."
+    "message": "Fallback alarm interval. Minimum 30 seconds; Firefox uses it as-is but may delay a check while busy or asleep. It checks an active listed tab whose window is minimized or occluded. While the active tab is a visible listed domain, checks run about every 2 seconds."
   },
   "gate_options_language": {
     "message": "Language"
@@ -130,6 +145,12 @@
   },
   "gate_options_noDomains": {
     "message": "No domains added."
+  },
+  "gate_options_noFallbackOptions": {
+    "message": "No endpoints left"
+  },
+  "gate_options_noFallbacks": {
+    "message": "No fallback endpoints yet."
   },
   "gate_options_remove": {
     "message": "Remove"
