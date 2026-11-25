@@ -2,16 +2,17 @@
 //
 // Registered dynamically (scripting.registerContentScripts) only for listed
 // domains that have a host grant and only while the background check is on.
-// While the page is visible it asks the service worker to run the same trust
-// check as the 30 s alarm, every TICK_MS. It sends no data of its own and does
-// not open or close the gate; the endpoint check remains authoritative.
+// While the page is visible and its window has focus it asks the service
+// worker to run the same trust check as the 30 s alarm, every TICK_MS. It
+// sends no data of its own and does not open or close the gate; the endpoint
+// check remains authoritative.
 //
-// The script stops itself when the tab is hidden, when the stored config no
-// longer lists the page (or turns the background check off), or when the
-// extension context is invalidated (update/reload).
+// The script stops itself when the tab is hidden or unfocused, when the stored
+// config no longer lists the page (or turns the background check off), or when
+// the extension context is invalidated (update/reload).
 
 (() => {
-  const TICK_MS = 2000;
+  const TICK_MS = 5000;
   const LOADED_FLAG = "__nohallaTickLoaded";
   if (globalThis[LOADED_FLAG]) return;
   globalThis[LOADED_FLAG] = true;
@@ -80,7 +81,7 @@
 
   async function tick() {
     try {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible" || !document.hasFocus()) return;
       if (!(await relevant())) {
         stop();
         return;
@@ -96,7 +97,7 @@
   }
 
   function sync() {
-    if (document.visibilityState === "visible") {
+    if (document.visibilityState === "visible" && document.hasFocus()) {
       tick();
       start();
     } else {
@@ -105,6 +106,8 @@
   }
 
   document.addEventListener("visibilitychange", sync);
+  window.addEventListener("focus", sync);
+  window.addEventListener("blur", sync);
   window.addEventListener("pageshow", sync);
   window.addEventListener("pagehide", stop);
   sync();

@@ -32,9 +32,14 @@ const BACKOFF_MAX_MS = 60000;
 const ALARM_CHECK = "gate-check";
 const TICK_SCRIPT_ID = "gate-tick";
 const TICK_SCRIPT_FILE = "src/tick.js";
-// A tick this recent means the visible-tab heartbeat is already checking, so
-// the 30 s alarm can stay quiet.
+// A tick this recent means the 5 s visible-tab heartbeat is already checking,
+// so the 30 s alarm can stay quiet.
 const TICK_STALE_MS = 20000;
+const ENDPOINT_RATE_LIMIT_COOLDOWN_MS = 60000;
+const ENDPOINT_FORBIDDEN_COOLDOWN_MS = 300000;
+const ENDPOINT_SERVER_COOLDOWN_MS = 60000;
+const ENDPOINT_NETWORK_COOLDOWN_MS = 30000;
+const ENDPOINT_COOLDOWN_MAX_MS = 86400000;
 // Firefox does not clamp alarm periods: `periodInMinutes` is passed to the
 // platform timer as-is, so the stored interval is used exactly. Alarms are not
 // persisted across browser restarts, which is why every cold start resyncs it.
@@ -46,6 +51,7 @@ let cachedState = {
   lastIP: null,
   lastCheckAt: null,
   degraded: false,
+  endpointCooldowns: {},
 };
 let configError = false;
 let lastAttemptAt = 0;
@@ -416,25 +422,136 @@ function configEndpoints(config) {
   return list;
 }
 
+function pruneEndpointCooldowns(now) {
+  const current = cachedState.endpointCooldowns;
+  if (!current || typeof current !== "object" || Array.isArray(current)) {
+    cachedState = { ...cachedState, endpointCooldowns: {} };
+    return;
+  }
+  const next = {};
+  let changed = false;
+  for (const [endpoint, until] of Object.entries(current)) {
+    if (!Number.isFinite(until) || until <= now) {
+      changed = true;
+      continue;
+    }
+    next[endpoint] = until;
+  }
+  if (changed) cachedState = { ...cachedState, endpointCooldowns: next };
+}
+
+function isEndpointCooling(endpoint, now) {
+  const until =
+    cachedState.endpointCooldowns && cachedState.endpointCooldowns[endpoint];
+  return Number.isFinite(until) && until > now;
+}
+
+function cooldownForFailure(failure) {
+  const retry =
+    Number.isFinite(failure.retryAfterMs) && failure.retryAfterMs > 0
+      ? failure.retryAfterMs
+      : 0;
+  const status = Number.isFinite(failure.status) ? failure.status : 0;
+  let cooldown = ENDPOINT_NETWORK_COOLDOWN_MS;
+  if (failure.kind === "http") {
+    if (status === 429) {
+      cooldown = Math.max(retry, ENDPOINT_RATE_LIMIT_COOLDOWN_MS);
+    } else if (status === 403) {
+      cooldown = Math.max(retry, ENDPOINT_FORBIDDEN_COOLDOWN_MS);
+    } else if (status >= 500) {
+      cooldown = Math.max(retry, ENDPOINT_SERVER_COOLDOWN_MS);
+    } else {
+      cooldown = Math.max(retry, ENDPOINT_FORBIDDEN_COOLDOWN_MS);
+    }
+  } else if (failure.kind === "timeout" || failure.kind === "network") {
+    cooldown = ENDPOINT_NETWORK_COOLDOWN_MS;
+  } else {
+    cooldown = Math.max(retry, ENDPOINT_SERVER_COOLDOWN_MS);
+  }
+  return Math.min(cooldown, ENDPOINT_COOLDOWN_MAX_MS);
+}
+
+function recordEndpointFailure(endpoint, failure) {
+  if (typeof endpoint !== "string" || !failure) return;
+  const cooldown = cooldownForFailure(failure);
+  const until = Date.now() + cooldown;
+  cachedState = {
+    ...cachedState,
+    endpointCooldowns: {
+      ...(cachedState.endpointCooldowns || {}),
+      [endpoint]: until,
+    },
+  };
+  console.warn(
+    "No-halla Gate: endpoint cooldown",
+    endpoint,
+    failure.kind || "unknown",
+    failure.status ?? 0,
+    failure.retryAfterMs ?? null,
+    failure.cfRay ?? null,
+    cooldown
+  );
+}
+
+function recordCheckFailures(result, fallbackEndpoint) {
+  const failed = result && Array.isArray(result.failed) ? result.failed : [];
+  for (const failure of failed) {
+    const endpoint =
+      failure && typeof failure.endpoint === "string"
+        ? failure.endpoint
+        : fallbackEndpoint;
+    if (typeof endpoint === "string") recordEndpointFailure(endpoint, failure);
+  }
+}
+
 // The guarded tab's network path is what the page actually uses, so its verdict
 // wins when a listed tab is available. No tab, a restricted page, a CORS
 // refusal, or any probe failure falls back to the extension-context check.
 async function checkTrustFor(config) {
   const endpoints = configEndpoints(config);
   if (endpoints.length === 0) return { verdict: "unknown", ip: null };
+  const now = Date.now();
+  pruneEndpointCooldowns(now);
+  const available = endpoints.filter(
+    (endpoint) => !isEndpointCooling(endpoint, now)
+  );
+  if (available.length === 0) return { verdict: "unknown", ip: null };
   const start = endpointCursor % endpoints.length;
-  endpointCursor = (endpointCursor + 1) % endpoints.length;
   const ordered = endpoints.slice(start).concat(endpoints.slice(0, start));
+  const endpoint = ordered.find((url) => available.includes(url));
+  if (!endpoint) return { verdict: "unknown", ip: null };
+  endpointCursor = (endpoints.indexOf(endpoint) + 1) % endpoints.length;
+
   const domains = await grantedForProbe(config.domains);
   if (domains.length > 0) {
     try {
-      const tabResult = await checkTrustInTab(config, domains, ordered);
-      if (tabResult !== null) return tabResult;
+      const tabResult = await checkTrustInTab(config, domains, [endpoint]);
+      if (tabResult !== null) {
+        if (!tabResult.failure) return tabResult;
+        // A rate limit or WAF block from the tab is authoritative; repeating it
+        // in the background page would only add another request.
+        if (
+          tabResult.failure.kind === "http" &&
+          (tabResult.failure.status === 429 ||
+            tabResult.failure.status === 403)
+        ) {
+          recordEndpointFailure(endpoint, tabResult.failure);
+          return { verdict: "unknown", ip: null };
+        }
+      }
     } catch (error) {
       // Fall through to the extension-context check.
     }
   }
-  return checkTrust(config, ordered);
+
+  let result;
+  try {
+    result = await checkTrust(config, [endpoint]);
+  } catch (error) {
+    result = { verdict: "unknown", ip: null, failed: [] };
+  }
+  recordCheckFailures(result, endpoint);
+  return result;
 }
 
 function onRequest(details) {
@@ -761,6 +878,9 @@ async function handleMessage(message, sender) {
       }
       if (configError) {
         return { ok: true, skipped: "config-error" };
+      }
+      if (cachedState.lastVerdict !== "trusted") {
+        return { ok: true, skipped: "gate-closed" };
       }
       if (!sender || !sender.tab || typeof sender.tab.id !== "number") {
         return { ok: true, skipped: "not-listed" };

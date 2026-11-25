@@ -99,7 +99,7 @@
     "message": "Background IP check"
   },
   "gate_options_backgroundCheckHelp": {
-    "message": "Off by default.\n\nWhen on: while the active tab is a listed domain, the IP is checked about every 2 seconds. If that tab's window is minimized or occluded, a fallback alarm checks at the interval below (minimum 30 seconds). The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site, on browser startup, or via Check now. Switching to another tab or domain stops automatic checks.\n\nNote: the browser may delay the fallback alarm."
+    "message": "Off by default.\n\nWhen on: while the active tab is a listed domain and its window has focus, the IP is checked about every 5 seconds. If the tab is hidden or the window loses focus, a fallback alarm checks at the interval below (minimum 30 seconds). The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site, on browser startup, or via Check now. Switching to another tab or domain stops automatic checks.\n\nNote: the browser may delay the fallback alarm."
   },
   "gate_options_domainPlaceholder": {
     "message": "example.com"
@@ -114,7 +114,7 @@
     "message": "Main IP check endpoint"
   },
   "gate_options_endpointHelp": {
-    "message": "HTTPS only; the body must be the public IPv4 as plain text. Pick a known endpoint or type your own. Fallbacks are tried in rotation when this one fails."
+    "message": "HTTPS only; the body must be the public IPv4 as plain text. Pick a known endpoint or type your own. Fallbacks are used on later checks when this one fails; failed endpoints cool down."
   },
   "gate_options_fallbackAdd": {
     "message": "Add"
@@ -123,13 +123,13 @@
     "message": "Fallback IP check endpoints"
   },
   "gate_options_fallbacksHelp": {
-    "message": "Tried in rotation when the main endpoint fails. Up to 8. Each enabled endpoint sees your IP. The in-tab check uses only endpoints that allow CORS; others are used by the background check."
+    "message": "Each automatic check uses one available endpoint; a failed endpoint cools down and later checks try another. Up to 8. Each enabled endpoint sees your IP. The in-tab check uses only endpoints that allow CORS; others are used by the background check."
   },
   "gate_options_interval": {
     "message": "Fallback alarm interval (seconds)"
   },
   "gate_options_intervalHelp": {
-    "message": "Fallback alarm interval. Minimum 30 seconds; the browser may delay it. It checks an active listed tab whose window is minimized or occluded. While the active tab is a visible listed domain, checks run about every 2 seconds."
+    "message": "Fallback alarm interval. Minimum 30 seconds; the browser may delay it. It checks an active listed tab whose window is hidden or unfocused. While the active tab is a visible listed domain with focus, checks run about every 5 seconds."
   },
   "gate_options_language": {
     "message": "Language"

@@ -93,17 +93,18 @@ not allow cross-origin reads. A failed tab check never opens the gate.
 
 **Fallback endpoints.** The main endpoint can be picked from a preset list or
 typed (HTTPS only; the body must be a plain IPv4). Up to eight extra endpoints
-can be added from the preset list. A check starts at the next endpoint in the
-rotation and tries up to four sequentially: a valid IPv4 (trusted or
-untrusted) is final; a network error, non-2xx, redirect or unparseable body
-falls through to the next endpoint; if all attempts fail the verdict is
+can be added from the preset list. Each automatic check uses one available
+endpoint in rotation: a valid IPv4 (trusted or untrusted) is final; a network
+error, non-2xx, redirect or unparseable body cools that endpoint down and the
+next check tries another; if no endpoint is available the verdict is
 `unknown`/closed. A valid untrusted address is never retried against another
-endpoint. The in-tab check skips known presets that do not send
-`Access-Control-Allow-Origin` (they are used by the background check only); a
-custom URL is tried and falls through on CORS. HTTP-only services such as
-`ip-api.com` are not offered: a plaintext answer could be rewritten in transit.
-Each enabled endpoint sees your IP. Presets and their CORS capability live in
-`src/endpoints.js`.
+endpoint. The in-tab check uses the same endpoint; if its request fails for
+CORS or transport, the background page may try that endpoint once. A 429/403 is
+not repeated in the same check. The in-tab check skips known presets that do
+not send `Access-Control-Allow-Origin` (they are used by the background path
+only). HTTP-only services such as `ip-api.com` are not offered: a plaintext
+answer could be rewritten in transit. Each enabled endpoint sees your IP.
+Presets and their CORS capability live in `src/endpoints.js`.
 
 **When a check runs.**
 
@@ -113,7 +114,8 @@ Each enabled endpoint sees your IP. Presets and their CORS capability live in
 - On browser startup and extension install/update.
 - On **Check now** and on the blocked page.
 - While the active tab is a visible listed domain, a content script asks for a
-  check about every 2 seconds, so an IP change is noticed without a navigation.
+  check about every 5 seconds while the window has focus and the gate is trusted,
+  so an IP change is noticed without a navigation.
   The script is registered only for granted listed domains and only while the
   background check is on; the background ignores ticks from any other tab.
 - Optionally, in the background. **Background check is off by default.** When
@@ -243,17 +245,21 @@ section and should be restated in the AMO submission notes.
     The request carries no cookies or credentials, and the extension suppresses
     the `Referer`. If both contexts are wrong, the gate stays closed.
 11. **The heartbeat runs only while the active tab is a visible listed
-    domain.** Switching to another tab or domain stops automatic checks
-    entirely; the 30 s alarm also requires the active tab to be a listed
-    domain (it covers a minimized or occluded window). A tab that is already
-    on the blocked page has no heartbeat, so recovery from there is manual. An
-    active visible listed tab makes about thirty checks a minute; the
-    endpoint's rate limits and the existing backoff still apply.
+    domain, its window has focus, and the gate is trusted.** Switching to
+    another tab or domain stops automatic checks entirely; while the gate is
+    closed the heartbeat is ignored and the 30 s alarm covers a hidden or
+    unfocused window. A tab that is already on the blocked page has no
+    heartbeat, so recovery from there is manual. An active visible and focused
+    listed tab makes about twelve checks a minute; failed endpoints cool down
+    and the remaining backoff applies.
 12. **Every fallback endpoint is another trust source.** Each enabled endpoint
-    sees your IP; a broken endpoint can add up to 2 s before the next attempt,
-    and every enabled endpoint host must be granted. If all attempts fail the
-    verdict is `unknown` and the gate stays closed. The in-tab check skips
-    endpoints without CORS, so those are used by the background path only.
+    sees your IP; each check uses one endpoint, so a failed endpoint cools down
+    for the next check instead of adding attempts. The in-tab request and one
+    background retry of the same endpoint can add up to 2 s each; every enabled
+    endpoint host must be granted. If no endpoint is available or the answer is
+    invalid, the verdict is `unknown` and the gate stays closed. The in-tab
+    check skips endpoints without CORS, so those are used by the background
+    path only.
 13. **Disabling the extension** (user or enterprise policy) removes all rules
     immediately. There is no protection outside Firefox.
 
@@ -267,7 +273,7 @@ src/config.js          storage schema, validation, state
 src/endpoints.js       HTTPS endpoint presets and CORS capability
 src/trust.js           endpoint fetch -> verdict
 src/probe.js           same check inside an open listed tab (fallback: background)
-src/tick.js            active-tab 2 s heartbeat (registered dynamically)
+src/tick.js            active-tab 5 s heartbeat (registered dynamically)
 src/rules.js           DNR rule builder, reconcile, verification
 src/background.js      event page: orchestration, triggers, messages, alarms
 src/i18n.js            locale loading, t(), document localization

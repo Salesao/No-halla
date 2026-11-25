@@ -9,17 +9,16 @@ import { parseIPv4, ipInTrustedList } from './cidr.js';
 // An IPv4 answer is 15 characters; anything larger is not this endpoint.
 const MAX_BODY_BYTES = 128;
 const ATTEMPT_TIMEOUT_MS = 2000;
-// One check tries up to MAX_ATTEMPTS endpoints (rotation/fallback) inside a
-// bounded total budget. A single endpoint still gets one transport retry for
-// the intermittent ERR_CONNECTION_CLOSED case.
+// Each check uses one endpoint. The total budget still bounds the request and
+// the one transport retry kept for the intermittent ERR_CONNECTION_CLOSED case.
 const TOTAL_BUDGET_MS = 6000;
-const MAX_ATTEMPTS = 4;
+const MAX_ATTEMPTS = 1;
 const RETRY_MIN_REMAINING_MS = 500;
 const RETRY_JITTER_MS = 250;
 
 // Fresh object per call: callers can never mutate a shared verdict.
 function unknownVerdict() {
-  return { verdict: 'unknown', ip: null };
+  return { verdict: 'unknown', ip: null, failed: [] };
 }
 
 async function cancelBody(response) {
@@ -93,10 +92,42 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// A transport failure rejects as a TypeError in both browsers. Timeouts abort
-// with an AbortError and are never retried.
-function isTransportError(error) {
-  return Boolean(error) && error.name === 'TypeError';
+// Endpoint failures carry status/header details for per-endpoint cooldowns.
+// Timeouts and transport errors are classified; only a network error is retried.
+function headerValue(res, name) {
+  return res && res.headers && typeof res.headers.get === 'function'
+    ? res.headers.get(name)
+    : null;
+}
+
+function parseRetryAfter(value) {
+  if (typeof value !== 'string' || value.trim() === '') return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1000, 86400000);
+  }
+  const date = Date.parse(value);
+  if (Number.isFinite(date)) {
+    return Math.min(Math.max(0, date - Date.now()), 86400000);
+  }
+  return null;
+}
+
+function makeFailure(endpoint, kind, details = {}) {
+  const status = Number.isFinite(details.status) ? details.status : 0;
+  const retryAfterMs = Number.isFinite(details.retryAfterMs)
+    ? details.retryAfterMs
+    : null;
+  const cfRay = typeof details.cfRay === 'string' ? details.cfRay : null;
+  console.warn(
+    'No-halla Gate: endpoint failed',
+    endpoint,
+    kind,
+    status,
+    retryAfterMs,
+    cfRay
+  );
+  return { endpoint, kind, status, retryAfterMs, cfRay };
 }
 
 async function attempt(endpoint, trustedAddresses, timeoutMs) {
@@ -113,19 +144,44 @@ async function attempt(endpoint, trustedAddresses, timeoutMs) {
 
     if (!res || res.ok !== true) {
       await cancelBody(res);
-      return unknownVerdict();
+      return {
+        failure: makeFailure(endpoint, 'http', {
+          status: res && Number.isFinite(res.status) ? res.status : 0,
+          retryAfterMs: parseRetryAfter(headerValue(res, 'Retry-After')),
+          cfRay: headerValue(res, 'CF-Ray')
+        })
+      };
     }
     if (!String(res.url).startsWith('https://')) {
       await cancelBody(res);
-      return unknownVerdict();
+      return {
+        failure: makeFailure(endpoint, 'scheme', {
+          status: res.status,
+          cfRay: headerValue(res, 'CF-Ray')
+        })
+      };
     }
 
     // Strict IPv4 only: IPv6, HTML/captive-portal markup and empty bodies are
     // all unparseable and therefore `unknown`.
     const text = await readBoundedText(res);
-    if (text === null) return unknownVerdict();
+    if (text === null) {
+      return {
+        failure: makeFailure(endpoint, 'body', {
+          status: res.status,
+          cfRay: headerValue(res, 'CF-Ray')
+        })
+      };
+    }
     const body = text.trim();
-    if (parseIPv4(body) === null) return unknownVerdict();
+    if (parseIPv4(body) === null) {
+      return {
+        failure: makeFailure(endpoint, 'body', {
+          status: res.status,
+          cfRay: headerValue(res, 'CF-Ray')
+        })
+      };
+    }
 
     // Empty trusted list is a setup state, not a pass: fail closed.
     if (!Array.isArray(trustedAddresses) || trustedAddresses.length === 0) {
@@ -134,19 +190,26 @@ async function attempt(endpoint, trustedAddresses, timeoutMs) {
 
     const trusted = ipInTrustedList(body, trustedAddresses);
     return { verdict: trusted ? 'trusted' : 'untrusted', ip: body };
+  } catch (error) {
+    return {
+      failure: makeFailure(
+        endpoint,
+        error && error.name === 'AbortError' ? 'timeout' : 'network'
+      )
+    };
   } finally {
     clearTimeout(timer);
   }
 }
 
 /**
- * Check the current public address against `config.trustedAddresses`, trying
- * the supplied endpoints in order until one returns a valid IPv4 (or the
- * budget runs out). A valid untrusted address is final; only failures without
- * a usable address fall through to the next endpoint.
+ * Check the current public address against `config.trustedAddresses`, using the
+ * supplied endpoint. The caller selects one available endpoint per check; this
+ * function keeps the one transport retry and returns failure details so the
+ * caller can cool down that endpoint.
  * @param {object} config
- * @param {string[]} [endpoints] ordered endpoints; defaults to config.endpoint.
- * @returns {Promise<{verdict: 'trusted'|'untrusted'|'unknown', ip: string|null}>}
+ * @param {string[]} [endpoints] endpoint list; the first HTTPS endpoint is used.
+ * @returns {Promise<{verdict: 'trusted'|'untrusted'|'unknown', ip: string|null, failed: Array<{endpoint: string, kind: string, status: number, retryAfterMs: number|null, cfRay: string|null}>}>}
  */
 export async function checkTrust(config, endpoints = []) {
   if (typeof config !== 'object' || config === null || Array.isArray(config)) {
@@ -164,24 +227,29 @@ export async function checkTrust(config, endpoints = []) {
   const startedAt = Date.now();
   const deadline = startedAt + TOTAL_BUDGET_MS;
   const attempts = Math.min(list.length, MAX_ATTEMPTS);
+  const failed = [];
   let transportFailure = false;
 
   for (let index = 0; index < attempts; index += 1) {
     const remaining = deadline - Date.now();
     if (remaining < RETRY_MIN_REMAINING_MS) break;
-    try {
-      const result = await attempt(
-        list[index],
-        trustedAddresses,
-        Math.min(ATTEMPT_TIMEOUT_MS, remaining)
-      );
-      if (result.verdict !== 'unknown') return result;
-      // A valid IPv4 with an empty trusted list is a setup state; another
-      // endpoint cannot change it.
-      if (result.ip !== null) return result;
-    } catch (error) {
-      if (isTransportError(error)) transportFailure = true;
-      // A timeout or network error on one endpoint falls through to the next.
+    const outcome = await attempt(
+      list[index],
+      trustedAddresses,
+      Math.min(ATTEMPT_TIMEOUT_MS, remaining)
+    );
+    if (outcome.failure) {
+      failed.push(outcome.failure);
+      if (outcome.failure.kind === 'network') transportFailure = true;
+      continue;
+    }
+    if (outcome.verdict !== 'unknown') {
+      return { verdict: outcome.verdict, ip: outcome.ip, failed };
+    }
+    // A valid IPv4 with an empty trusted list is a setup state; another
+    // endpoint cannot change it.
+    if (outcome.ip !== null) {
+      return { verdict: outcome.verdict, ip: outcome.ip, failed };
     }
   }
 
@@ -192,13 +260,13 @@ export async function checkTrust(config, endpoints = []) {
       await sleep(1 + Math.floor(Math.random() * RETRY_JITTER_MS));
       const retryTimeout = deadline - Date.now();
       if (retryTimeout >= RETRY_MIN_REMAINING_MS) {
-        try {
-          return await attempt(list[0], trustedAddresses, retryTimeout);
-        } catch {
-          return unknownVerdict();
+        const retry = await attempt(list[0], trustedAddresses, retryTimeout);
+        if (!retry.failure) {
+          return { verdict: retry.verdict, ip: retry.ip, failed };
         }
+        failed.push(retry.failure);
       }
     }
   }
-  return unknownVerdict();
+  return { verdict: 'unknown', ip: null, failed };
 }

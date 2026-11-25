@@ -20,10 +20,10 @@ No-halla Gate blocks the domains you choose whenever your public IPv4 address is
 - Trust IPv4 addresses or CIDR ranges, and add the current IP with one click.
 - Fail-closed: if the IP check fails, listed domains stay blocked.
 - See the verdict, current IP, trusted count and last check in the popup.
-- Optional background check, off by default; one-shot checks still run on startup and from the popup.
+- Automatic checks while an active listed tab is focused (about every 5 s); a delayed fallback alarm at 30 s or more; one-shot checks still run on startup and from the popup.
 - English and Russian UI with light, dark and high-contrast design tokens.
 
-Settings and the last verdict stay in browser storage. The only outbound request is the configured HTTPS IP-check endpoint.
+Settings and the last verdict stay in browser storage. The only outbound requests are the configured HTTPS IP-check endpoints (main plus fallbacks).
 
 Honest limits: the first request after an IP change can still reach a site; an already-cached PWA may continue from its own cache; other extensions can override the block; private windows require explicit permission; disabling the extension removes all rules.
 
@@ -63,10 +63,10 @@ No-halla Gate is a standalone Firefox extension that blocks the domains you list
 - Trust IPv4 addresses or CIDR ranges; add the current IP from the popup or settings.
 - Fail-closed: if the IP check fails, listed domains stay blocked.
 - Popup status, current IP, trusted count, last check and domain management.
-- Optional background check (off by default); one-shot checks on startup and from the UI.
+- Automatic checks while an active listed tab is focused (about every 5 s); a delayed fallback alarm at 30 s or more; one-shot checks on startup and from the UI.
 - English and Russian; package-only assets; no telemetry.
 
-The only outbound request is the configured HTTPS IP-check endpoint. Settings and the last verdict stay in `browser.storage.local`.
+The only outbound requests are the configured HTTPS IP-check endpoints (main plus fallbacks). Settings and the last verdict stay in `browser.storage.local`.
 
 Honest limits: the first request after an IP change can still reach a site; an already-cached PWA may continue from its cache; other extensions can override the block; private windows require the extension to be allowed there; disabling the extension removes all rules.
 
@@ -88,11 +88,13 @@ No-halla Gate — самостоятельное расширение Firefox, �
 ## Privacy note (both stores)
 
 Config, domain list and the last verdict are stored locally. The only outbound
-request is the configured HTTPS IP-check endpoint (`https://ipinfo.io/ip` by
-default); the endpoint sees the source IP of that request, as any HTTPS server
-does. No browsing history, domain list, account data or telemetry is sent. The
-extension declares `data_collection_permissions.required: ["none"]` in the
-Firefox manifest.
+requests are the configured HTTPS IP-check endpoints (main plus fallbacks);
+each enabled endpoint sees the source IP of its request, as any HTTPS server
+does. When a check runs from a listed tab, Chrome adds that tab's origin to the
+request and the extension suppresses the Referer; the origin is not stored or
+sent anywhere else. No browsing history, page content, domain list, account
+data or telemetry is sent. The extension declares
+`data_collection_permissions.required: ["none"]` in the Firefox manifest.
 
 If AMO asks for a data-collection category, explain the plain GET: no query,
 no custom headers, no body, and the returned address stays in local storage.
@@ -140,6 +142,12 @@ Runs the optional background IP check at the interval chosen by the user. Backgr
 Grants temporary access to the active tab URL only after the user clicks the toolbar icon, so the popup's "Add current site" control can suggest the current domain. It is not used to read browsing history or other tabs.
 ```
 
+**`scripting`**
+
+```text
+Runs the existing IP-check fetch inside an active tab of a domain the user explicitly added and granted, so the request follows that tab's network path. It selects only listed, granted tabs; it reads no page content and injects nothing on other sites.
+```
+
 **Host permission `https://ipinfo.io/*`**
 
 ```text
@@ -161,7 +169,7 @@ No. All JavaScript, HTML, CSS, locale files, and icons are packaged in the exten
 ### Data usage
 
 ```text
-The extension does not collect, sell, or share user data with the developer. Settings and the last verdict remain in chrome.storage.local. The only outbound request is the configured HTTPS IP-check endpoint; that server sees the request's source IP, as any HTTPS server does. The returned IPv4 address is matched and stored locally. No analytics, accounts, telemetry, browsing history, or domain list is transmitted.
+The extension does not collect, sell, or share user data with the developer. Settings and the last verdict remain in chrome.storage.local. The only outbound requests are the configured HTTPS IP-check endpoints (main plus fallbacks); each sees the request's source IP, as any HTTPS server does. When the check runs from a listed tab, Chrome adds that tab's origin to the request (the Referer is suppressed); the origin is not stored or sent elsewhere. No analytics, accounts, telemetry, browsing history, page content, or domain list is transmitted.
 ```
 
 ### Reviewer test instructions

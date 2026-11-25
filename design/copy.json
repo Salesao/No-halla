@@ -852,16 +852,16 @@
     "ru": "Основной эндпоинт проверки IP"
   },
   "gate.options.endpointHelp": {
-    "en": "HTTPS only; the body must be the public IPv4 as plain text. Pick a known endpoint or type your own. Fallbacks are tried in rotation when this one fails.",
-    "ru": "Только HTTPS; тело — публичный IPv4 обычным текстом. Выберите известный эндпоинт или введите свой. Если он не отвечает, резервные эндпоинты пробуются по очереди."
+    "en": "HTTPS only; the body must be the public IPv4 as plain text. Pick a known endpoint or type your own. Fallbacks are used on later checks when this one fails; failed endpoints cool down.",
+    "ru": "Только HTTPS; тело — публичный IPv4 обычным текстом. Выберите известный эндпоинт или введите свой. Если он не отвечает, резервные используются в следующих проверках; не ответившие получают паузу."
   },
   "gate.options.fallbacks": {
     "en": "Fallback IP check endpoints",
     "ru": "Резервные эндпоинты проверки IP"
   },
   "gate.options.fallbacksHelp": {
-    "en": "Tried in rotation when the main endpoint fails. Up to 8. Each enabled endpoint sees your IP. The in-tab check uses only endpoints that allow CORS; others are used by the background check.",
-    "ru": "Пробуются по очереди, если основной эндпоинт не отвечает. До 8. Каждый видит ваш IP. Проверка из вкладки использует только эндпоинты с CORS; остальные — фоновая проверка."
+    "en": "Each automatic check uses one available endpoint; a failed endpoint cools down and later checks try another. Up to 8. Each enabled endpoint sees your IP. The in-tab check uses only endpoints that allow CORS; others are used by the background check.",
+    "ru": "Каждая автоматическая проверка использует один доступный эндпоинт; не ответивший эндпоинт получает паузу, следующая проверка пробует другой. До 8. Каждый видит ваш IP. Проверка из вкладки использует только эндпоинты с CORS; остальные — фоновая проверка."
   },
   "gate.options.fallbackAdd": {
     "en": "Add",
@@ -896,16 +896,16 @@
     "ru": "Фоновая проверка IP"
   },
   "gate.options.backgroundCheckHelp": {
-    "en": "Off by default.\n\nWhen on: while the active tab is a listed domain, the IP is checked about every 2 seconds. If that tab's window is minimized or occluded, a fallback alarm checks at the interval below (minimum 30 seconds). The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site, on browser startup, or via Check now. Switching to another tab or domain stops automatic checks.\n\nNote: the browser may delay the fallback alarm.",
-    "ru": "По умолчанию эта функция отключена.\n\nЕсли включить: пока активная вкладка — домен из списка, IP проверяется примерно каждые 2 секунды. Если окно этой вкладки свёрнуто или перекрыто, срабатывает фоновый alarm с интервалом ниже (минимум 30 секунд). Результат действует для всех сайтов в списке.\n\nЕсли оставить выключенной: IP проверяется только при открытии сайта из списка, при старте браузера или по кнопке «Проверить сейчас». Переключение на другую вкладку или домен останавливает автоматические проверки.\n\nВажно: браузер может задержать фоновый alarm."
+    "en": "Off by default.\n\nWhen on: while the active tab is a listed domain and its window has focus, the IP is checked about every 5 seconds. If the tab is hidden or the window loses focus, a fallback alarm checks at the interval below (minimum 30 seconds). The result applies to every site in the list.\n\nWhen off: the IP is checked only when you open a listed site, on browser startup, or via Check now. Switching to another tab or domain stops automatic checks.\n\nNote: the browser may delay the fallback alarm.",
+    "ru": "По умолчанию эта функция отключена.\n\nЕсли включить: пока активная вкладка — домен из списка и её окно в фокусе, IP проверяется примерно каждые 5 секунд. Если вкладка скрыта или окно теряет фокус, срабатывает фоновый alarm с интервалом ниже (минимум 30 секунд). Результат действует для всех сайтов в списке.\n\nЕсли оставить выключенной: IP проверяется только при открытии сайта из списка, при старте браузера или по кнопке «Проверить сейчас». Переключение на другую вкладку или домен останавливает автоматические проверки.\n\nВажно: браузер может задержать фоновый alarm."
   },
   "gate.options.interval": {
     "en": "Fallback alarm interval (seconds)",
     "ru": "Интервал фонового alarm (секунды)"
   },
   "gate.options.intervalHelp": {
-    "en": "Fallback alarm interval. Minimum 30 seconds; the browser may delay it. It checks an active listed tab whose window is minimized or occluded. While the active tab is a visible listed domain, checks run about every 2 seconds.",
-    "ru": "Интервал фонового alarm. Минимум 30 секунд; браузер может его задержать. Он проверяет активную вкладку домена из списка, когда окно свёрнуто или перекрыто. Пока активная вкладка — видимый домен из списка, проверки идут примерно каждые 2 секунды."
+    "en": "Fallback alarm interval. Minimum 30 seconds; the browser may delay it. It checks an active listed tab whose window is hidden or unfocused. While the active tab is a visible listed domain with focus, checks run about every 5 seconds.",
+    "ru": "Интервал фонового alarm. Минимум 30 секунд; браузер может его задержать. Он проверяет активную вкладку домена из списка, когда окно скрыто или не в фокусе. Пока активная вкладка — видимый домен из списка и окно в фокусе, проверки идут примерно каждые 5 секунд."
   },
   "gate.options.save": {
     "en": "Save",

@@ -3,14 +3,14 @@
 // The service worker's `fetch` does not always use the same network path as
 // the tab it guards (observed on Vivaldi: the tab used the VPN route while the
 // service worker reached the endpoint over the direct ISP route). This module
-// runs the check inside an already-open listed tab, trying the ordered
-// endpoints until one returns a strict IPv4 answer. Every failure returns
-// `null`, so the caller falls back to the service-worker check; a probe can
-// never open the gate on its own.
+// runs the check inside an already-open listed tab using one selected endpoint.
+// A failure returns its endpoint/status/header details for a cooldown; a
+// missing tab or CORS refusal returns `null`, so the caller can fall back to
+// the extension-context check; a probe can never open the gate on its own.
 //
 // Chrome MV3 content scripts are CORS-constrained even with host permissions.
 // Known presets without Access-Control-Allow-Origin are skipped here; a custom
-// URL is tried and falls through to the next endpoint if CORS refuses it.
+// URL is tried once; a CORS/fetch failure is returned for cooldown/fallback.
 
 import { parseIPv4, ipInTrustedList } from './cidr.js';
 import { isHttpsEndpoint } from './trust.js';
@@ -18,17 +18,44 @@ import { endpointSupportsCors } from './endpoints.js';
 
 const PROBE_TIMEOUT_MS = 6000;
 const PROBE_DEADLINE_MS = 7000;
-const MAX_PROBE_ENDPOINTS = 4;
+const MAX_PROBE_ENDPOINTS = 1;
 const MAX_BODY_BYTES = 128;
 
 // Serialized into the tab by executeScript: it must not reference module
-// scope, imports, or any extension API. It returns the first strict IPv4 body
-// as { endpoint, text }, or null.
+// scope, imports, or any extension API. It uses one endpoint and returns
+// { endpoint, text } on success, { endpoint, failure } with status/header
+// details on failure, or null when the deadline expires.
 async function readEndpointsInTab(endpoints, timeoutMs, maxBytes) {
   const deadline = Date.now() + timeoutMs;
   const attemptMs = 2000;
   const ipv4 =
     /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
+
+  function retryAfterMs(value) {
+    if (typeof value !== 'string' || value.trim() === '') return null;
+    const seconds = Number(value);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.min(seconds * 1000, 86400000);
+    }
+    const date = Date.parse(value);
+    if (Number.isFinite(date)) {
+      return Math.min(Math.max(0, date - Date.now()), 86400000);
+    }
+    return null;
+  }
+
+  function failure(kind, res) {
+    const headers = res && res.headers;
+    const get = headers && typeof headers.get === 'function'
+      ? (name) => headers.get(name)
+      : () => null;
+    return {
+      kind,
+      status: res && Number.isFinite(res.status) ? res.status : 0,
+      retryAfterMs: retryAfterMs(get('Retry-After')),
+      cfRay: typeof get('CF-Ray') === 'string' ? get('CF-Ray') : null
+    };
+  }
 
   async function readBody(res) {
     const body = res.body;
@@ -87,15 +114,36 @@ async function readEndpointsInTab(endpoints, timeoutMs, maxBytes) {
         referrerPolicy: 'no-referrer',
         signal: controller.signal
       });
-      if (!res || res.ok !== true) continue;
-      if (!String(res.url).startsWith('https://')) continue;
+      if (!res || res.ok !== true) {
+        try {
+          if (res && res.body && typeof res.body.cancel === 'function') {
+            await res.body.cancel();
+          }
+        } catch (error) {
+          // Body already closed.
+        }
+        return { endpoint, failure: failure('http', res) };
+      }
+      if (!String(res.url).startsWith('https://')) {
+        return { endpoint, failure: failure('scheme', res) };
+      }
       const text = await readBody(res);
-      if (text === null) continue;
+      if (text === null) {
+        return { endpoint, failure: failure('body', res) };
+      }
       const body = text.trim();
-      if (!ipv4.test(body)) continue;
+      if (!ipv4.test(body)) {
+        return { endpoint, failure: failure('body', res) };
+      }
       return { endpoint, text: body };
     } catch (error) {
-      // CORS refusal, timeout, redirect, network failure: try the next one.
+      return {
+        endpoint,
+        failure: failure(
+          error && error.name === 'AbortError' ? 'timeout' : 'network',
+          null
+        )
+      };
     } finally {
       clearTimeout(timer);
     }
@@ -173,9 +221,10 @@ async function injectProbe(tabId, endpoints) {
  * Run the endpoint check from an open listed tab.
  * @param {object} config extension config (`endpoint`, `trustedAddresses`).
  * @param {string[]} domains listed domains that have a host grant.
- * @param {string[]} [endpoints] ordered endpoints (primary, then fallbacks).
- * @returns {Promise<{verdict: 'trusted'|'untrusted'|'unknown', ip: string}|null>}
+ * @param {string[]} [endpoints] the one endpoint selected for this check.
+ * @returns {Promise<{verdict: 'trusted'|'untrusted'|'unknown', ip: string, endpoint?: string, failure?: object}|null>}
  *   `null` means no usable tab result; the caller must run the fallback check.
+ *   A failure carries endpoint, status, Retry-After and CF-Ray for cooldown.
  */
 export async function checkTrustInTab(config, domains, endpoints = []) {
   if (typeof config !== 'object' || config === null) return null;
@@ -186,7 +235,7 @@ export async function checkTrustInTab(config, domains, endpoints = []) {
     Array.isArray(endpoints) && endpoints.length > 0
       ? endpoints
       : [config.endpoint];
-  // Custom URLs have no preset entry: try them and fall through on CORS.
+  // Custom URLs have no preset entry: try one; CORS refusal returns null.
   const list = requested
     .filter((url) => endpointSupportsCors(url) !== false)
     .slice(0, MAX_PROBE_ENDPOINTS);
@@ -196,7 +245,16 @@ export async function checkTrustInTab(config, domains, endpoints = []) {
   if (tab === null) return null;
 
   const result = await injectProbe(tab.id, list);
-  if (!result || typeof result.text !== 'string') return null;
+  if (!result || typeof result !== 'object') return null;
+  if (result.failure) {
+    return {
+      verdict: 'unknown',
+      ip: null,
+      endpoint: result.endpoint,
+      failure: result.failure
+    };
+  }
+  if (typeof result.text !== 'string') return null;
   const body = result.text.trim();
   // The tab result is usable only when it is strict IPv4, exactly like the
   // service-worker check. Anything else falls back instead of deciding.

@@ -27,10 +27,11 @@ export const DEFAULT_CONFIG = Object.freeze({
 });
 
 const DEFAULT_STATE = Object.freeze({
-  lastVerdict: "unknown",
+  lastVerdict: 'unknown',
   lastIP: null,
   lastCheckAt: null,
-  degraded: false
+  degraded: false,
+  endpointCooldowns: Object.freeze({})
 });
 
 function cloneConfig(config) {
@@ -52,8 +53,20 @@ function cloneState(state) {
     lastVerdict: state.lastVerdict,
     lastIP: state.lastIP,
     lastCheckAt: state.lastCheckAt,
-    degraded: state.degraded
+    degraded: state.degraded,
+    endpointCooldowns: cloneEndpointCooldowns(state.endpointCooldowns)
   };
+}
+
+function cloneEndpointCooldowns(value) {
+  const cooldowns = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return cooldowns;
+  for (const [endpoint, until] of Object.entries(value)) {
+    if (typeof endpoint === 'string' && Number.isFinite(until) && until > 0) {
+      cooldowns[endpoint] = until;
+    }
+  }
+  return cooldowns;
 }
 
 // Canonical hostname or null. Strips a scheme, path/query/fragment and a
@@ -198,7 +211,8 @@ function coerceState(raw) {
     lastVerdict: verdict,
     lastIP,
     lastCheckAt,
-    degraded: Boolean(state.degraded)
+    degraded: Boolean(state.degraded),
+    endpointCooldowns: cloneEndpointCooldowns(state.endpointCooldowns)
   };
 }
 
