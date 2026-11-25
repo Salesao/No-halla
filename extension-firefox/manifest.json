@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "No-halla Gate",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Blocks a user-defined domain list unless the current public IPv4 address is in a trusted list.",
   "default_locale": "en",
   "browser_specific_settings": {
